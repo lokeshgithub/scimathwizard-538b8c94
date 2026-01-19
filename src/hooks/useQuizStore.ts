@@ -92,30 +92,60 @@ export const useQuizStore = () => {
   }, [banks, progress, questionTracking, sessionStats]);
 
   const parseCSV = useCallback((text: string): Question[] => {
-    const lines = text.trim().split('\n');
     const questions: Question[] = [];
-
-    const parseLine = (line: string): string[] => {
-      const result: string[] = [];
-      let current = '';
+    
+    // Parse CSV handling multi-line quoted fields
+    const parseCSVContent = (content: string): string[][] => {
+      const rows: string[][] = [];
+      let currentRow: string[] = [];
+      let currentField = '';
       let inQuotes = false;
-
-      for (const c of line) {
-        if (c === '"') {
-          inQuotes = !inQuotes;
-        } else if (c === ',' && !inQuotes) {
-          result.push(current.trim());
-          current = '';
-        } else {
-          current += c;
+      
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        const nextChar = content[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            // Escaped quote
+            currentField += '"';
+            i++;
+          } else {
+            // Toggle quote state
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          currentRow.push(currentField.trim());
+          currentField = '';
+        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+          currentRow.push(currentField.trim());
+          if (currentRow.some(field => field.length > 0)) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentField = '';
+          if (char === '\r') i++; // Skip \n after \r
+        } else if (char !== '\r') {
+          currentField += char;
         }
       }
-      result.push(current.trim());
-      return result;
+      
+      // Don't forget the last field/row
+      if (currentField.length > 0 || currentRow.length > 0) {
+        currentRow.push(currentField.trim());
+        if (currentRow.some(field => field.length > 0)) {
+          rows.push(currentRow);
+        }
+      }
+      
+      return rows;
     };
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseLine(lines[i]);
+    const rows = parseCSVContent(text);
+    
+    // Skip header row (index 0)
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
       if (values.length >= 9) {
         questions.push({
           id: values[0],
