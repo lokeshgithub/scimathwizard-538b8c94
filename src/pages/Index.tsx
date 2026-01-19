@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
-import { UploadArea } from '@/components/quiz/UploadArea';
 import { TopicGrid } from '@/components/quiz/TopicGrid';
 import { MasteryPanel } from '@/components/quiz/MasteryPanel';
 import { QuizCard } from '@/components/quiz/QuizCard';
@@ -46,6 +45,7 @@ const Index = () => {
   }, [modalPassed, quiz]);
 
   const topics = quiz.banks[quiz.subject] || {};
+  const hasTopics = Object.keys(topics).length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,35 +75,59 @@ const Index = () => {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <StatsBar stats={quiz.sessionStats} />
         <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
-        <UploadArea onUpload={quiz.uploadQuestionBank} />
-        <TopicGrid 
-          topics={topics}
-          currentTopic={quiz.topic}
-          getProgress={quiz.getTopicProgress}
-          onSelectTopic={quiz.selectTopic}
-        />
-
-        {quiz.topic && (
-          <MasteryPanel
-            topicName={quiz.topic}
-            currentLevel={quiz.level}
-            progress={quiz.getTopicProgress(quiz.topic)}
-            levelStats={quiz.levelStats}
-            perLevel={quiz.PER_LEVEL}
-          />
-        )}
-
-        {quiz.currentQuestion ? (
-          <QuizCard
-            question={quiz.currentQuestion}
-            level={quiz.level}
-            levelStats={quiz.levelStats}
-            onAnswer={handleAnswer}
-            onNext={handleNext}
-            onSolutionViewed={quiz.markSolutionViewed}
-          />
+        
+        {quiz.isLoading ? (
+          <motion.div 
+            className="flex flex-col items-center justify-center py-16"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Loading magical questions...</p>
+          </motion.div>
         ) : (
-          <WelcomeScreen />
+          <>
+            <TopicGrid 
+              topics={topics}
+              currentTopic={quiz.topic}
+              getProgress={quiz.getTopicProgress}
+              onSelectTopic={quiz.selectTopic}
+            />
+
+            {!hasTopics && (
+              <motion.div 
+                className="text-center py-8 text-muted-foreground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <p className="mb-2">No topics available for this subject yet.</p>
+                <p className="text-sm">Questions will appear here once added by the admin.</p>
+              </motion.div>
+            )}
+
+            {quiz.topic && (
+              <MasteryPanel
+                topicName={quiz.topic}
+                currentLevel={quiz.level}
+                progress={quiz.getTopicProgress(quiz.topic)}
+                levelStats={quiz.levelStats}
+                perLevel={quiz.PER_LEVEL}
+              />
+            )}
+
+            {quiz.currentQuestion ? (
+              <QuizCard
+                question={quiz.currentQuestion}
+                level={quiz.level}
+                levelStats={quiz.levelStats}
+                onAnswer={handleAnswer}
+                onNext={handleNext}
+                onSolutionViewed={quiz.markSolutionViewed}
+              />
+            ) : (
+              <WelcomeScreen />
+            )}
+          </>
         )}
       </main>
 
