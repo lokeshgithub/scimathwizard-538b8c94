@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
-import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key } from 'lucide-react';
 
 interface QuizCardProps {
   question: Question;
@@ -63,27 +63,41 @@ export const QuizCard = ({
     onNext();
   }, [onNext]);
 
+  const sectionIcons: Record<string, React.ReactNode> = {
+    'UNDERSTANDING': <Brain className="w-4 h-4" />,
+    'WHY THIS WORKS': <Lightbulb className="w-4 h-4" />,
+    'STEP-BY-STEP': <Footprints className="w-4 h-4" />,
+    'VERIFICATION': <ShieldCheck className="w-4 h-4" />,
+    'COMMON ERRORS': <AlertTriangle className="w-4 h-4" />,
+    'KEY CONCEPT': <Key className="w-4 h-4" />,
+  };
+
+  const sectionColors: Record<string, string> = {
+    'UNDERSTANDING': 'text-blue-600',
+    'WHY THIS WORKS': 'text-amber-600',
+    'STEP-BY-STEP': 'text-emerald-600',
+    'VERIFICATION': 'text-green-600',
+    'COMMON ERRORS': 'text-red-500',
+    'KEY CONCEPT': 'text-purple-600',
+  };
+
   const formatExplanation = (explanation: string) => {
-    // Parse the structured explanation format
-    const sections = explanation.split(/【([^】]+)】/).filter(Boolean);
+    // Parse sections marked with 【TITLE】
+    const regex = /【([^】]+)】\s*([\s\S]*?)(?=【|$)/g;
     const formatted: { title: string; content: string }[] = [];
+    let match;
     
-    for (let i = 0; i < sections.length; i += 2) {
-      if (sections[i + 1]) {
-        formatted.push({
-          title: sections[i],
-          content: sections[i + 1].trim()
-        });
-      } else {
-        formatted.push({
-          title: 'Explanation',
-          content: sections[i].trim()
-        });
+    while ((match = regex.exec(explanation)) !== null) {
+      const title = match[1].trim();
+      const content = match[2].trim();
+      if (content) {
+        formatted.push({ title, content });
       }
     }
     
-    if (formatted.length === 0) {
-      formatted.push({ title: 'Explanation', content: explanation });
+    // Fallback if no sections found
+    if (formatted.length === 0 && explanation.trim()) {
+      formatted.push({ title: 'Explanation', content: explanation.trim() });
     }
     
     return formatted;
@@ -237,21 +251,22 @@ export const QuizCard = ({
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {formatExplanation(question.explanation).map((section, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
+                    className="bg-background/50 rounded-lg p-4 border border-border/50"
                   >
-                    <h5 className="font-semibold text-primary mb-1 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" />
+                    <h5 className={`font-semibold mb-2 flex items-center gap-2 ${sectionColors[section.title] || 'text-primary'}`}>
+                      {sectionIcons[section.title] || <Sparkles className="w-4 h-4" />}
                       {section.title}
                     </h5>
-                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm">
                       {section.content}
-                    </p>
+                    </div>
                   </motion.div>
                 ))}
               </div>
