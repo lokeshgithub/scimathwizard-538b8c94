@@ -2,6 +2,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
+import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
+import { FunElementCard } from './FunElementCard';
+import { MilestoneAnimation } from './MilestoneAnimation';
 import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key } from 'lucide-react';
 
 interface QuizCardProps {
@@ -27,6 +30,9 @@ export const QuizCard = ({
   const [showExplanation, setShowExplanation] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
   const [message, setMessage] = useState('');
+  const [funElement, setFunElement] = useState<FunElement | null>(null);
+  const [milestone, setMilestone] = useState<{ emoji: string; message: string; animation: string } | null>(null);
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
 
   const currentTheme = themeLevels.find(t => t.level === level);
 
@@ -38,6 +44,8 @@ export const QuizCard = ({
     setShowExplanation(false);
     setCharacter(null);
     setMessage('');
+    setFunElement(null);
+    setMilestone(null);
   }, [question.id]);
 
   const handleAnswer = useCallback((index: number) => {
@@ -52,7 +60,23 @@ export const QuizCard = ({
     const char = getRandomCharacter(level);
     setCharacter(char);
     setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
-  }, [isAnswered, onAnswer, level]);
+
+    // Get a fun element for surprise
+    const fun = getRandomFunElement(level);
+    setFunElement(fun);
+
+    // Track consecutive correct answers for milestones
+    if (result.isCorrect) {
+      const newConsecutive = consecutiveCorrect + 1;
+      setConsecutiveCorrect(newConsecutive);
+      const milestoneAnim = getMilestoneAnimation(newConsecutive);
+      if (milestoneAnim) {
+        setMilestone(milestoneAnim);
+      }
+    } else {
+      setConsecutiveCorrect(0);
+    }
+  }, [isAnswered, onAnswer, level, consecutiveCorrect]);
 
   const handleShowExplanation = useCallback(() => {
     setShowExplanation(true);
@@ -213,6 +237,21 @@ export const QuizCard = ({
           )}
         </AnimatePresence>
 
+        {/* Fun Element Surprise */}
+        <AnimatePresence>
+          {isAnswered && funElement && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-4"
+            >
+              <FunElementCard element={funElement} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Show Answer Button */}
         <AnimatePresence>
           {isAnswered && !showExplanation && (
@@ -303,6 +342,12 @@ export const QuizCard = ({
           </motion.button>
         )}
       </div>
+
+      {/* Milestone Celebration Animation */}
+      <MilestoneAnimation 
+        milestone={milestone} 
+        onComplete={() => setMilestone(null)} 
+      />
     </motion.div>
   );
 };
