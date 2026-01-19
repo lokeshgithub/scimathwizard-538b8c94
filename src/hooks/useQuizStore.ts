@@ -7,6 +7,7 @@ import type {
   Question, 
   Subject 
 } from '@/types/quiz';
+import { fetchAllQuestions } from '@/services/questionService';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const THRESHOLD = 0.8;
@@ -85,6 +86,25 @@ export const useQuizStore = () => {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load questions from database on mount
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setIsLoading(true);
+      try {
+        const dbQuestions = await fetchAllQuestions();
+        if (Object.keys(dbQuestions).length > 0) {
+          setBanks(dbQuestions);
+        }
+      } catch (error) {
+        console.error('Failed to load questions from database:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadQuestions();
+  }, []);
 
   // Save to storage when relevant state changes
   useEffect(() => {
@@ -377,6 +397,7 @@ export const useQuizStore = () => {
     sessionStats,
     levelStats,
     currentQuestion: getCurrentQuestion(),
+    isLoading,
     
     // Constants
     MAX_LEVEL,
@@ -386,7 +407,6 @@ export const useQuizStore = () => {
     // Actions
     setSubject,
     selectTopic,
-    uploadQuestionBank,
     answerQuestion,
     checkMastery,
     advanceLevel,
@@ -394,5 +414,18 @@ export const useQuizStore = () => {
     nextQuestion,
     markSolutionViewed,
     getTopicProgress,
+    refreshQuestions: async () => {
+      setIsLoading(true);
+      try {
+        const dbQuestions = await fetchAllQuestions();
+        if (Object.keys(dbQuestions).length > 0) {
+          setBanks(dbQuestions);
+        }
+      } catch (error) {
+        console.error('Failed to refresh questions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
   };
 };
