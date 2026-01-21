@@ -142,3 +142,39 @@ export async function calculatePercentile(
     return { percentile: null, totalResults: 0 };
   }
 }
+
+// Leaderboard entry type
+export interface LeaderboardEntry {
+  rank: number;
+  display_name: string;
+  avatar_url: string | null;
+  skill_score: number;
+  skill_tier: string;
+  highest_level: number;
+  accuracy: number;
+  challenges_completed: number;
+  best_result_date: string;
+}
+
+// Get leaderboard data
+export async function getAdaptiveLeaderboard(
+  subject?: string,
+  limit: number = 50
+): Promise<{ data: LeaderboardEntry[] | null; error: string | null }> {
+  try {
+    const { data, error } = await supabase.rpc('get_adaptive_leaderboard', {
+      p_subject: subject || null,
+      p_limit: limit,
+    });
+
+    if (error) {
+      console.error('Error fetching leaderboard:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as LeaderboardEntry[], error: null };
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    return { data: null, error: 'An unexpected error occurred' };
+  }
+}

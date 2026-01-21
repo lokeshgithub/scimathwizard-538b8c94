@@ -317,6 +317,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_adaptive_leaderboard: {
+        Args: { p_limit?: number; p_subject?: string }
+        Returns: {
+          accuracy: number
+          avatar_url: string
+          best_result_date: string
+          challenges_completed: number
+          display_name: string
+          highest_level: number
+          rank: number
+          skill_score: number
+          skill_tier: string
+        }[]
+      }
       get_public_questions: {
         Args: never
         Returns: {
