@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { AdaptiveState, TopicPerformance } from '@/types/adaptiveChallenge';
 import { analyzeTopicPerformance } from '@/types/adaptiveChallenge';
+import type { Subject } from '@/types/quiz';
 
 interface SaveResultParams {
   state: AdaptiveState;
@@ -290,6 +291,133 @@ export async function getUserRank(
     };
   } catch (err) {
     console.error('Error fetching user rank:', err);
+    return { data: null, error: 'An unexpected error occurred' };
+  }
+}
+
+// Weak topic info for focused practice
+export interface WeakTopic {
+  topicName: string;
+  subject: Subject;
+  accuracy: number;
+  questionsAttempted: number;
+  highestLevel: number;
+  averageTime: number;
+  lastPracticed: string;
+  improvementNeeded: 'high' | 'medium' | 'low';
+}
+
+// Get user's weak topics aggregated across all adaptive challenges
+export async function getWeakTopics(
+  subject?: Subject
+): Promise<{ data: WeakTopic[] | null; error: string | null }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return { data: null, error: 'Not authenticated' };
+    }
+
+    // Get recent results (last 30 days or last 20 challenges)
+    let query = supabase
+      .from('adaptive_challenge_results')
+      .select('subject, topic_performance, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (subject) {
+      query = query.eq('subject', subject);
+    }
+
+    const { data: results, error } = await query;
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    if (!results || results.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Aggregate topic performance across all results
+    const topicAggregates = new Map<string, {
+      subject: Subject;
+      totalAttempts: number;
+      totalCorrect: number;
+      totalTime: number;
+      levels: number[];
+      lastPracticed: string;
+    }>();
+
+    for (const result of results) {
+      const performances = (result.topic_performance || []) as unknown as TopicPerformance[];
+      const resultSubject = result.subject as Subject;
+      
+      for (const perf of performances) {
+        const key = `${resultSubject}::${perf.topicName}`;
+        const existing = topicAggregates.get(key) || {
+          subject: resultSubject,
+          totalAttempts: 0,
+          totalCorrect: 0,
+          totalTime: 0,
+          levels: [],
+          lastPracticed: result.created_at,
+        };
+        
+        existing.totalAttempts += perf.questionsAttempted;
+        existing.totalCorrect += perf.correctAnswers;
+        existing.totalTime += perf.averageTime * perf.questionsAttempted;
+        existing.levels.push(perf.highestLevel);
+        
+        // Keep the most recent practice date
+        if (result.created_at > existing.lastPracticed) {
+          existing.lastPracticed = result.created_at;
+        }
+        
+        topicAggregates.set(key, existing);
+      }
+    }
+
+    // Convert to WeakTopic array and filter for weak topics
+    const weakTopics: WeakTopic[] = [];
+    
+    for (const [key, data] of topicAggregates) {
+      const topicName = key.split('::')[1];
+      const accuracy = data.totalAttempts > 0 
+        ? Math.round((data.totalCorrect / data.totalAttempts) * 100)
+        : 0;
+      
+      // Only include topics with accuracy below 70% or those attempted at least twice
+      if (accuracy < 70 || data.totalAttempts >= 3) {
+        let improvementNeeded: 'high' | 'medium' | 'low' = 'low';
+        if (accuracy < 40) improvementNeeded = 'high';
+        else if (accuracy < 60) improvementNeeded = 'medium';
+        
+        weakTopics.push({
+          topicName,
+          subject: data.subject,
+          accuracy,
+          questionsAttempted: data.totalAttempts,
+          highestLevel: Math.max(...data.levels),
+          averageTime: data.totalAttempts > 0 
+            ? Math.round(data.totalTime / data.totalAttempts)
+            : 0,
+          lastPracticed: data.lastPracticed,
+          improvementNeeded,
+        });
+      }
+    }
+
+    // Sort by accuracy (weakest first), then by attempts (more attempts = more confident in weakness)
+    weakTopics.sort((a, b) => {
+      if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+      return b.questionsAttempted - a.questionsAttempted;
+    });
+
+    return { data: weakTopics, error: null };
+  } catch (err) {
+    console.error('Error fetching weak topics:', err);
     return { data: null, error: 'An unexpected error occurred' };
   }
 }
