@@ -35,9 +35,9 @@ export const WelcomeScreen = () => {
 
       <div className="grid gap-4 max-w-lg mx-auto text-left">
         {[
-          { step: '1', text: '📁 Upload your question bank CSV files', color: 'from-blue-400 to-cyan-400' },
-          { step: '2', text: '📚 Select a magical topic to study', color: 'from-purple-400 to-pink-400' },
-          { step: '3', text: '🎯 Answer questions and get 80% to level up!', color: 'from-orange-400 to-red-400' },
+          { step: '1', text: '📚 Choose a subject from the tabs above', color: 'from-blue-400 to-cyan-400' },
+          { step: '2', text: '🎯 Select a topic to start practicing', color: 'from-purple-400 to-pink-400' },
+          { step: '3', text: '✅ Answer questions and get 80% to level up!', color: 'from-orange-400 to-red-400' },
           { step: '4', text: '⭐ Master all 5 levels to complete a topic!', color: 'from-yellow-400 to-orange-400' },
         ].map((item, index) => (
           <motion.div
