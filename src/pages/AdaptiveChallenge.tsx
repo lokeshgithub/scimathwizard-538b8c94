@@ -22,6 +22,7 @@ import { SubjectTabs } from '@/components/quiz/SubjectTabs';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { AdaptiveQuizCard } from '@/components/adaptive/AdaptiveQuizCard';
 import { AdaptiveChallengeResults } from '@/components/adaptive/AdaptiveChallengeResults';
+import { AdaptiveLeaderboard } from '@/components/adaptive/AdaptiveLeaderboard';
 import { SKILL_TIERS } from '@/types/adaptiveChallenge';
 import { saveAdaptiveChallengeResult, calculatePercentile } from '@/services/adaptiveResultsService';
 import type { Subject } from '@/types/quiz';
@@ -36,6 +37,7 @@ const AdaptiveChallenge = () => {
   const [selectedSubject, setSelectedSubject] = useState<Subject>('math');
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [showInfo, setShowInfo] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [percentileData, setPercentileData] = useState<{ percentile: number | null; totalResults: number } | null>(null);
@@ -183,7 +185,18 @@ const AdaptiveChallenge = () => {
                 <h1 className="text-2xl md:text-3xl font-bold">Adaptive Challenge</h1>
               </div>
             </div>
-            <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20"
+                onClick={() => setShowLeaderboard(true)}
+              >
+                <Trophy className="w-4 h-4 mr-1" />
+                Leaderboard
+              </Button>
+              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
+            </div>
           </div>
           <p className="text-white/80 text-sm mt-2 ml-2">
             Discover your true skill level with AI-powered adaptive testing ✨
@@ -376,6 +389,32 @@ const AdaptiveChallenge = () => {
             percentileData={percentileData}
           />
         )}
+
+        {/* Leaderboard Modal */}
+        <AnimatePresence>
+          {showLeaderboard && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLeaderboard(false)}
+            >
+              <motion.div
+                className="w-full max-w-lg"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AdaptiveLeaderboard 
+                  initialSubject={selectedSubject}
+                  onClose={() => setShowLeaderboard(false)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
