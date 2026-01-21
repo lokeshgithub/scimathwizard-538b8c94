@@ -227,7 +227,7 @@ export async function uploadQuestionsFromCSV(
   }
 }
 
-// Parse CSV content
+// Parse CSV/TSV content - auto-detects delimiter
 export function parseCSVContent(text: string): Array<{
   level: number;
   question: string;
@@ -249,8 +249,14 @@ export function parseCSVContent(text: string): Array<{
     explanation: string;
   }> = [];
 
-  // Parse CSV handling multi-line quoted fields
-  const parseCSV = (content: string): string[][] => {
+  // Auto-detect delimiter: check first line for tabs vs commas
+  const firstLine = text.split('\n')[0] || '';
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const delimiter = tabCount > commaCount ? '\t' : ',';
+
+  // Parse delimited content handling multi-line quoted fields
+  const parseDelimited = (content: string, delim: string): string[][] => {
     const rows: string[][] = [];
     let currentRow: string[] = [];
     let currentField = '';
@@ -267,7 +273,7 @@ export function parseCSVContent(text: string): Array<{
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === delim && !inQuotes) {
         currentRow.push(currentField.trim());
         currentField = '';
       } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
@@ -293,7 +299,7 @@ export function parseCSVContent(text: string): Array<{
     return rows;
   };
 
-  const rows = parseCSV(text);
+  const rows = parseDelimited(text, delimiter);
 
   // Skip header row
   for (let i = 1; i < rows.length; i++) {

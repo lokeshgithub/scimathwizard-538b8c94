@@ -166,7 +166,7 @@ const Admin = () => {
 
     for (const file of Array.from(files)) {
       const content = await file.text();
-      const fileName = file.name.replace('.csv', '');
+      const fileName = file.name.replace(/\.(csv|tsv)$/i, '');
       const detectedSubject = topicName ? subject : detectSubjectFromName(fileName);
       const finalTopicName = topicName || fileName;
 
@@ -346,7 +346,7 @@ const Admin = () => {
               Upload Question Bank
             </CardTitle>
             <CardDescription>
-              Upload CSV files with questions. Each file will create a topic under the selected subject.
+              Upload CSV or TSV files with questions. Each file will create a topic under the selected subject.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -377,7 +377,7 @@ const Admin = () => {
             <label className="block cursor-pointer">
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.tsv,.txt"
                 multiple
                 onChange={handleFileChange}
                 className="hidden"
@@ -407,10 +407,13 @@ const Admin = () => {
                       <FileText className="w-8 h-8 text-primary" />
                     </motion.div>
                     <p className="font-semibold text-foreground mb-1">
-                      Click to upload CSV files
+                      Click to upload CSV or TSV files
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Format: ID, Level, Question, A, B, C, D, Answer, Explanation
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports both comma (CSV) and tab (TSV) separated files
                     </p>
                   </>
                 )}
