@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
-import { getRandomFunElement, getMilestoneAnimation, getMilestoneBonus, FunElement } from '@/data/funElements';
+import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { MilestoneAnimation } from './MilestoneAnimation';
-import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key } from 'lucide-react';
+import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
 
@@ -39,8 +39,36 @@ export const QuizCard = ({
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
+  
+  // Timer state
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
-  const currentTheme = themeLevels.find(t => t.level === level);
+  const currentTheme = themeLevels.find(t => t.level === level) || themeLevels[Math.min(level - 1, themeLevels.length - 1)] || themeLevels[0];
+
+  // Start timer when question loads
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+    setElapsedTime(0);
+    
+    timerRef.current = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [question.id]);
+
+  // Stop timer when answered
+  useEffect(() => {
+    if (isAnswered && timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  }, [isAnswered]);
 
   useEffect(() => {
     // Reset state when question changes
@@ -55,6 +83,12 @@ export const QuizCard = ({
     setIsValidating(false);
     setCorrectIndex(-1);
   }, [question.id]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+  };
 
   const handleAnswer = useCallback(async (index: number) => {
     if (isAnswered || isValidating) return;
@@ -161,9 +195,26 @@ export const QuizCard = ({
               Level {level}
             </span>
           </div>
-          <span className="text-white/80 text-sm">
-            {levelStats.correct}/{levelStats.total} correct
-          </span>
+          <div className="flex items-center gap-3">
+            {/* Timer */}
+            <motion.div 
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                isAnswered 
+                  ? 'bg-white/20 text-white' 
+                  : elapsedTime > 60 
+                    ? 'bg-amber-500/80 text-white animate-pulse' 
+                    : 'bg-white/20 text-white'
+              }`}
+              animate={!isAnswered && elapsedTime > 30 ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <Clock className="w-4 h-4" />
+              <span>{formatTime(elapsedTime)}</span>
+            </motion.div>
+            <span className="text-white/80 text-sm">
+              {levelStats.correct}/{levelStats.total} correct
+            </span>
+          </div>
         </div>
       </div>
 
@@ -228,6 +279,24 @@ export const QuizCard = ({
             );
           })}
         </div>
+
+        {/* Time Feedback after answering */}
+        {isAnswered && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex items-center gap-2 mb-4 text-sm ${
+              elapsedTime < 15 ? 'text-success' : elapsedTime < 45 ? 'text-foreground' : 'text-amber-600'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>
+              Time taken: {formatTime(elapsedTime)}
+              {elapsedTime < 15 && ' ⚡ Quick!'}
+              {elapsedTime > 60 && ' - Take your time to understand the concept!'}
+            </span>
+          </motion.div>
+        )}
 
         {/* Character Feedback */}
         <AnimatePresence>

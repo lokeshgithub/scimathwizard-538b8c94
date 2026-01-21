@@ -1,11 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { 
   QuestionBank, 
   Progress, 
   QuestionTracking, 
   SessionStats, 
   Question, 
-  Subject 
+  Subject,
+  QuestionTiming,
+  SessionPerformance,
+  SessionAnalysis,
+  TopicAnalysis
 } from '@/types/quiz';
 import { fetchAllQuestions, validateAnswer as validateAnswerAPI } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
@@ -13,7 +17,9 @@ import { getMilestoneBonus } from '@/data/funElements';
 const STORAGE_KEY = 'magical-mastery-quiz';
 const THRESHOLD = 0.8;
 const PER_LEVEL = 5;
-const MAX_LEVEL = 5;
+const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
+const MIN_LEVEL = 1;
+const MAX_SUPPORTED_LEVEL = 7; // Maximum levels we support
 
 // Streak-based star rewards
 const getStreakStars = (streak: number): number => {
@@ -49,6 +55,11 @@ const initialSessionStats: SessionStats = {
   stars: 0,
   totalCorrect: 0,
   maxStreak: 0,
+};
+
+const initialSessionPerformance: SessionPerformance = {
+  questionTimings: [],
+  startTime: Date.now(),
 };
 
 const loadFromStorage = (): Partial<QuizState> => {
@@ -101,6 +112,36 @@ export const useQuizStore = () => {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Timer tracking
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [sessionPerformance, setSessionPerformance] = useState<SessionPerformance>(initialSessionPerformance);
+  const [showSessionSummary, setShowSessionSummary] = useState(false);
+
+  // Get max level for a specific topic (dynamic based on data)
+  const getTopicMaxLevel = useCallback((topicName: string): number => {
+    const questions = banks[subject]?.[topicName] || [];
+    if (questions.length === 0) return DEFAULT_MAX_LEVEL;
+    
+    const levels = questions.map(q => q.level);
+    const maxLevel = Math.max(...levels);
+    return Math.min(Math.max(maxLevel, MIN_LEVEL), MAX_SUPPORTED_LEVEL);
+  }, [banks, subject]);
+
+  // Get all levels available for a topic
+  const getTopicLevels = useCallback((topicName: string): number[] => {
+    const questions = banks[subject]?.[topicName] || [];
+    if (questions.length === 0) return [1, 2, 3, 4, 5];
+    
+    const levelsSet = new Set(questions.map(q => q.level));
+    return Array.from(levelsSet).sort((a, b) => a - b);
+  }, [banks, subject]);
+
+  // Current topic's max level
+  const currentMaxLevel = useMemo(() => {
+    if (!topic) return DEFAULT_MAX_LEVEL;
+    return getTopicMaxLevel(topic);
+  }, [topic, getTopicMaxLevel]);
 
   // Load questions from database on mount
   useEffect(() => {
@@ -124,6 +165,11 @@ export const useQuizStore = () => {
   useEffect(() => {
     saveToStorage({ banks, progress, questionTracking, sessionStats });
   }, [banks, progress, questionTracking, sessionStats]);
+
+  // Reset timer when question changes
+  useEffect(() => {
+    setQuestionStartTime(Date.now());
+  }, [questionIndex, currentQuestions]);
 
   const parseCSV = useCallback((text: string): Question[] => {
     const questions: Question[] = [];
@@ -218,15 +264,26 @@ export const useQuizStore = () => {
   }, [parseCSV]);
 
   const getTopicProgress = useCallback((topicName: string) => {
+    const maxLevel = getTopicMaxLevel(topicName);
+    
     if (!progress[topicName]) {
       const newProgress: any = {};
-      for (let i = 1; i <= MAX_LEVEL; i++) {
+      for (let i = 1; i <= maxLevel; i++) {
         newProgress[i] = { correct: 0, total: 0, mastered: false };
       }
       return newProgress;
     }
-    return progress[topicName];
-  }, [progress]);
+    
+    // Ensure all levels are present
+    const existingProgress = { ...progress[topicName] };
+    for (let i = 1; i <= maxLevel; i++) {
+      if (!existingProgress[i]) {
+        existingProgress[i] = { correct: 0, total: 0, mastered: false };
+      }
+    }
+    
+    return existingProgress;
+  }, [progress, getTopicMaxLevel]);
 
   const getAvailableQuestions = useCallback((topicName: string, lvl: number): Question[] => {
     const allQuestions = banks[subject]?.[topicName] || [];
@@ -244,16 +301,17 @@ export const useQuizStore = () => {
     setTopic(topicName);
     setMixedTopics(null); // Clear mixed mode
     const prog = getTopicProgress(topicName);
+    const maxLevel = getTopicMaxLevel(topicName);
     
     // Find the current level (first non-mastered level)
     let currentLevel = 1;
-    for (let i = 1; i <= MAX_LEVEL; i++) {
+    for (let i = 1; i <= maxLevel; i++) {
       if (!prog[i]?.mastered) {
         currentLevel = i;
         break;
       }
-      if (i === MAX_LEVEL && prog[i]?.mastered) {
-        currentLevel = MAX_LEVEL;
+      if (i === maxLevel && prog[i]?.mastered) {
+        currentLevel = maxLevel;
       }
     }
     
@@ -270,7 +328,8 @@ export const useQuizStore = () => {
     
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
-  }, [getTopicProgress, getAvailableQuestions, banks, subject]);
+    setQuestionStartTime(Date.now());
+  }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject]);
 
   // Start a mixed topics quiz
   const startMixedQuiz = useCallback((selectedTopics: string[]) => {
@@ -290,6 +349,7 @@ export const useQuizStore = () => {
     const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
+    setQuestionStartTime(Date.now());
   }, [banks, subject]);
 
   const markQuestionAnswered = useCallback((questionId: string, correct: boolean) => {
@@ -318,6 +378,9 @@ export const useQuizStore = () => {
     const currentQ = currentQuestions[questionIndex];
     if (!currentQ) return { isCorrect: false, correctIndex: -1, question: null };
 
+    // Calculate time spent on this question
+    const timeSpent = (Date.now() - questionStartTime) / 1000;
+
     try {
       // Validate answer via secure edge function
       const { isCorrect, correctIndex, explanation } = await validateAnswerAPI(currentQ.id, selectedIndex);
@@ -325,6 +388,21 @@ export const useQuizStore = () => {
       // Update the question with correct answer and explanation from server
       currentQ.correct = correctIndex;
       if (explanation) currentQ.explanation = explanation;
+
+      // Record timing for this question
+      const timing: QuestionTiming = {
+        questionId: currentQ.id,
+        topic: topic || 'mixed',
+        level: currentQ.level,
+        timeSpentSeconds: timeSpent,
+        wasCorrect: isCorrect,
+        concepts: currentQ.concepts,
+      };
+
+      setSessionPerformance(prev => ({
+        ...prev,
+        questionTimings: [...prev.questionTimings, timing],
+      }));
       
       // Update level stats
       setLevelStats(prev => ({
@@ -358,7 +436,7 @@ export const useQuizStore = () => {
       console.error('Error validating answer:', error);
       return { isCorrect: false, correctIndex: -1, question: currentQ };
     }
-  }, [currentQuestions, questionIndex, markQuestionAnswered]);
+  }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
 
   const checkMastery = useCallback((): 'passed' | 'failed' | 'continue' => {
     if (levelStats.total < PER_LEVEL) return 'continue';
@@ -390,7 +468,7 @@ export const useQuizStore = () => {
   }, [levelStats, level, topic, getTopicProgress]);
 
   const advanceLevel = useCallback(() => {
-    if (level < MAX_LEVEL) {
+    if (level < currentMaxLevel) {
       const newLevel = level + 1;
       setLevel(newLevel);
       setLevelStats({ correct: 0, total: 0 });
@@ -403,8 +481,9 @@ export const useQuizStore = () => {
       
       setCurrentQuestions(shuffled);
       setQuestionIndex(0);
+      setQuestionStartTime(Date.now());
     }
-  }, [level, topic, getAvailableQuestions, banks, subject]);
+  }, [level, currentMaxLevel, topic, getAvailableQuestions, banks, subject]);
 
   const retryLevel = useCallback(() => {
     setLevelStats({ correct: 0, total: 0 });
@@ -417,6 +496,7 @@ export const useQuizStore = () => {
     
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
+    setQuestionStartTime(Date.now());
   }, [level, topic, getAvailableQuestions, banks, subject]);
 
   const nextQuestion = useCallback(() => {
@@ -428,11 +508,109 @@ export const useQuizStore = () => {
     } else {
       setQuestionIndex(prev => prev + 1);
     }
+    setQuestionStartTime(Date.now());
   }, [questionIndex, currentQuestions]);
 
   const getCurrentQuestion = useCallback(() => {
     return currentQuestions[questionIndex] || null;
   }, [currentQuestions, questionIndex]);
+
+  // Calculate session analysis for summary
+  const calculateSessionAnalysis = useCallback((): SessionAnalysis => {
+    const timings = sessionPerformance.questionTimings;
+    
+    if (timings.length === 0) {
+      return {
+        totalQuestions: 0,
+        correctAnswers: 0,
+        overallAccuracy: 0,
+        totalTimeSeconds: 0,
+        averageTimePerQuestion: 0,
+        topicAnalyses: [],
+        strengths: [],
+        weaknesses: [],
+        slowTopics: [],
+        fastTopics: [],
+      };
+    }
+
+    const totalQuestions = timings.length;
+    const correctAnswers = timings.filter(t => t.wasCorrect).length;
+    const overallAccuracy = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
+    const totalTimeSeconds = timings.reduce((sum, t) => sum + t.timeSpentSeconds, 0);
+    const averageTimePerQuestion = totalQuestions > 0 ? totalTimeSeconds / totalQuestions : 0;
+
+    // Group by topic
+    const topicGroups: Record<string, QuestionTiming[]> = {};
+    for (const timing of timings) {
+      if (!topicGroups[timing.topic]) {
+        topicGroups[timing.topic] = [];
+      }
+      topicGroups[timing.topic].push(timing);
+    }
+
+    const topicAnalyses: TopicAnalysis[] = Object.entries(topicGroups).map(([topicName, topicTimings]) => {
+      const questionsAttempted = topicTimings.length;
+      const correctCount = topicTimings.filter(t => t.wasCorrect).length;
+      const accuracy = questionsAttempted > 0 ? correctCount / questionsAttempted : 0;
+      const avgTime = questionsAttempted > 0 
+        ? topicTimings.reduce((sum, t) => sum + t.timeSpentSeconds, 0) / questionsAttempted 
+        : 0;
+
+      return {
+        topic: topicName,
+        questionsAttempted,
+        correctAnswers: correctCount,
+        accuracy,
+        averageTimeSeconds: avgTime,
+        isStrength: accuracy >= 0.8 && questionsAttempted >= 3,
+        isWeakness: accuracy < 0.6 && questionsAttempted >= 3,
+      };
+    });
+
+    const strengths = topicAnalyses.filter(t => t.isStrength).map(t => t.topic);
+    const weaknesses = topicAnalyses.filter(t => t.isWeakness).map(t => t.topic);
+
+    // Find slow and fast topics (compared to average)
+    const avgTimeOverall = averageTimePerQuestion;
+    const slowTopics = topicAnalyses
+      .filter(t => t.averageTimeSeconds > avgTimeOverall * 1.3 && t.questionsAttempted >= 2)
+      .map(t => t.topic);
+    const fastTopics = topicAnalyses
+      .filter(t => t.averageTimeSeconds < avgTimeOverall * 0.7 && t.questionsAttempted >= 2)
+      .map(t => t.topic);
+
+    return {
+      totalQuestions,
+      correctAnswers,
+      overallAccuracy,
+      totalTimeSeconds,
+      averageTimePerQuestion,
+      topicAnalyses,
+      strengths,
+      weaknesses,
+      slowTopics,
+      fastTopics,
+    };
+  }, [sessionPerformance]);
+
+  // End session and show summary
+  const endSession = useCallback(() => {
+    setSessionPerformance(prev => ({
+      ...prev,
+      endTime: Date.now(),
+    }));
+    setShowSessionSummary(true);
+  }, []);
+
+  // Reset session for new practice
+  const resetSession = useCallback(() => {
+    setSessionPerformance({
+      questionTimings: [],
+      startTime: Date.now(),
+    });
+    setShowSessionSummary(false);
+  }, []);
 
   return {
     // State
@@ -446,9 +624,16 @@ export const useQuizStore = () => {
     levelStats,
     currentQuestion: getCurrentQuestion(),
     isLoading,
+    sessionPerformance,
+    showSessionSummary,
+    
+    // Dynamic level info
+    getTopicMaxLevel,
+    getTopicLevels,
+    currentMaxLevel,
     
     // Constants
-    MAX_LEVEL,
+    MAX_LEVEL: currentMaxLevel, // Dynamic based on topic
     PER_LEVEL,
     THRESHOLD,
     
@@ -463,6 +648,10 @@ export const useQuizStore = () => {
     nextQuestion,
     markSolutionViewed,
     getTopicProgress,
+    calculateSessionAnalysis,
+    endSession,
+    setShowSessionSummary,
+    resetSession,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {

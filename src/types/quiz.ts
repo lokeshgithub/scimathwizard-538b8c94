@@ -37,6 +37,23 @@ export interface QuestionTracking {
   [questionId: string]: QuestionStatus;
 }
 
+// Track time spent on each question
+export interface QuestionTiming {
+  questionId: string;
+  topic: string;
+  level: number;
+  timeSpentSeconds: number;
+  wasCorrect: boolean;
+  concepts: string[];
+}
+
+// Session performance data for analysis
+export interface SessionPerformance {
+  questionTimings: QuestionTiming[];
+  startTime: number;
+  endTime?: number;
+}
+
 export interface SessionStats {
   solved: number;
   correct: number;
@@ -72,3 +89,28 @@ export interface ThemeLevel {
 }
 
 export type Subject = 'math' | 'physics' | 'chemistry';
+
+// Session analysis types
+export interface TopicAnalysis {
+  topic: string;
+  questionsAttempted: number;
+  correctAnswers: number;
+  accuracy: number;
+  averageTimeSeconds: number;
+  isStrength: boolean;
+  isWeakness: boolean;
+}
+
+export interface SessionAnalysis {
+  totalQuestions: number;
+  correctAnswers: number;
+  overallAccuracy: number;
+  totalTimeSeconds: number;
+  averageTimePerQuestion: number;
+  topicAnalyses: TopicAnalysis[];
+  strengths: string[];
+  weaknesses: string[];
+  slowTopics: string[]; // Topics where they took longer
+  fastTopics: string[]; // Topics where they were quick
+  recommendations?: string; // AI-generated recommendations
+}

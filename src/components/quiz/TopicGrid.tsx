@@ -12,6 +12,8 @@ interface TopicGridProps {
   onSelectTopic: (topic: string) => void;
   onStartMixedQuiz?: (topics: string[]) => void;
   isMixedMode?: boolean;
+  getTopicLevels?: (topic: string) => number[];
+  isAdmin?: boolean;
 }
 
 const formatName = (name: string) => {
@@ -26,7 +28,9 @@ export const TopicGrid = ({
   getProgress, 
   onSelectTopic,
   onStartMixedQuiz,
-  isMixedMode 
+  isMixedMode,
+  getTopicLevels,
+  isAdmin = false
 }: TopicGridProps) => {
   const [showMixModal, setShowMixModal] = useState(false);
   const topicEntries = Object.entries(topics);
@@ -52,9 +56,11 @@ export const TopicGrid = ({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       {topicEntries.map(([name, questions], index) => {
         const progress = getProgress(name);
-        const masteredCount = Object.values(progress).filter(l => l.mastered).length;
+        const topicLevels = getTopicLevels ? getTopicLevels(name) : [1, 2, 3, 4, 5];
+        const masteredCount = topicLevels.filter(l => progress[l]?.mastered).length;
+        const totalLevels = topicLevels.length;
         const isSelected = currentTopic === name;
-        const isComplete = masteredCount === 5;
+        const isComplete = masteredCount === totalLevels;
 
         return (
           <motion.button
@@ -92,14 +98,17 @@ export const TopicGrid = ({
                 <h3 className={`font-semibold ${isSelected ? 'text-white' : 'text-foreground'}`}>
                   {formatName(name)}
                 </h3>
-                <p className={`text-sm ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>
-                  {questions.length} questions
-                </p>
+                {/* Only show question count to admins */}
+                {isAdmin && (
+                  <p className={`text-sm ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>
+                    {questions.length} questions
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mb-2">
-              {[1, 2, 3, 4, 5].map(level => {
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {topicLevels.map(level => {
                 const isMastered = progress[level]?.mastered;
                 return (
                   <div
@@ -124,7 +133,7 @@ export const TopicGrid = ({
               <motion.div
                 className={isSelected ? 'bg-white/60 h-full' : 'bg-success h-full'}
                 initial={{ width: 0 }}
-                animate={{ width: `${(masteredCount / 5) * 100}%` }}
+                animate={{ width: `${(masteredCount / totalLevels) * 100}%` }}
                 transition={{ duration: 0.5, delay: index * 0.05 }}
               />
             </div>
