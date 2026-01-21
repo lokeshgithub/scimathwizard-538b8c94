@@ -4,8 +4,9 @@ import { SessionAnalysis } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart3, Clock, Target, TrendingUp, TrendingDown, Zap, BookOpen, X, Loader2 } from 'lucide-react';
+import { BarChart3, Clock, Target, TrendingUp, Zap, BookOpen, X, Loader2, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { exportSessionToPdf } from '@/utils/exportPdf';
 
 interface SessionSummaryProps {
   analysis: SessionAnalysis;
@@ -27,6 +28,18 @@ const formatName = (name: string) => {
 export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryProps) => {
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      exportSessionToPdf(analysis, subject, recommendations);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -167,9 +180,25 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
             )}
           </div>
 
-          <Button onClick={onClose} className="w-full" size="lg">
-            Continue Practicing
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleExportPdf} 
+              variant="outline" 
+              size="lg"
+              className="flex-1"
+              disabled={isExporting || isLoadingAI}
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Export PDF
+            </Button>
+            <Button onClick={onClose} className="flex-1" size="lg">
+              Continue Practicing
+            </Button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
