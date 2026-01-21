@@ -29,11 +29,20 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
+
+  const handleExportClick = () => {
+    setShowNameInput(true);
+  };
 
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      exportSessionToPdf(analysis, subject, recommendations);
+      const trimmedName = studentName.trim().slice(0, 100); // Validate: max 100 chars
+      exportSessionToPdf(analysis, subject, recommendations, trimmedName || undefined);
+      setShowNameInput(false);
+      setStudentName('');
     } catch (error) {
       console.error('Error exporting PDF:', error);
     } finally {
@@ -180,19 +189,59 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
             )}
           </div>
 
+          {/* Export Name Input */}
+          {showNameInput && (
+            <motion.div 
+              className="bg-muted rounded-xl p-4 border border-border"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+            >
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Student Name (optional)
+              </label>
+              <input
+                type="text"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value.slice(0, 100))}
+                placeholder="Enter your name for the report..."
+                className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                maxLength={100}
+              />
+              <div className="flex gap-2 mt-3">
+                <Button 
+                  onClick={() => setShowNameInput(false)} 
+                  variant="ghost" 
+                  size="sm"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleExportPdf} 
+                  size="sm"
+                  className="flex-1"
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Download PDF
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
           <div className="flex gap-3">
             <Button 
-              onClick={handleExportPdf} 
+              onClick={handleExportClick} 
               variant="outline" 
               size="lg"
               className="flex-1"
-              disabled={isExporting || isLoadingAI}
+              disabled={isExporting || isLoadingAI || showNameInput}
             >
-              {isExporting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4 mr-2" />
-              )}
+              <Download className="w-4 h-4 mr-2" />
               Export PDF
             </Button>
             <Button onClick={onClose} className="flex-1" size="lg">
