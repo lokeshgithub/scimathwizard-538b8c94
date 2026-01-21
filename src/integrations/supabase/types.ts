@@ -116,7 +116,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      questions_public: {
+        Row: {
+          created_at: string | null
+          explanation: string | null
+          id: string | null
+          level: number | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          question: string | null
+          topic_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          explanation?: string | null
+          id?: string | null
+          level?: number | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question?: string | null
+          topic_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          explanation?: string | null
+          id?: string | null
+          level?: number | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question?: string | null
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never

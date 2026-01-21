@@ -13,7 +13,8 @@ interface DBTopic {
   subject_id: string;
 }
 
-interface DBQuestion {
+// Public question data (without correct_answer for security)
+interface DBQuestionPublic {
   id: string;
   topic_id: string;
   level: number;
@@ -22,7 +23,6 @@ interface DBQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_answer: string;
   explanation: string | null;
 }
 
@@ -50,12 +50,13 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
 
-  // Fetch questions
+  // Fetch questions from secure view (without correct_answer)
+  // Use raw query since view isn't in generated types
   const { data: questions, error: questionsError } = await supabase
-    .from('questions')
-    .select('*');
+    .from('questions_public')
+    .select('id, topic_id, level, question, option_a, option_b, option_c, option_d, explanation, created_at') as { data: DBQuestionPublic[] | null; error: any };
 
-  if (questionsError) {
+  if (questionsError || !questions) {
     console.error('Error fetching questions:', questionsError);
     return bank;
   }
@@ -68,8 +69,8 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     (topics as DBTopic[]).map(t => [t.id, t])
   );
 
-  // Organize questions
-  for (const q of questions as DBQuestion[]) {
+  // Organize questions (correct answer will be validated server-side)
+  for (const q of questions) {
     const topic = topicMap.get(q.topic_id);
     if (!topic) continue;
 
@@ -86,20 +87,36 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       bank[subjectKey][topicName] = [];
     }
 
-    const correctIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
-
+    // correct is set to -1 as it will be validated server-side
     bank[subjectKey][topicName].push({
       id: q.id,
       level: q.level,
       question: q.question,
       options: [q.option_a, q.option_b, q.option_c, q.option_d],
-      correct: correctIndex,
+      correct: -1, // Will be validated by edge function
       explanation: q.explanation || '',
       concepts: [],
     });
   }
 
   return bank;
+}
+
+// Validate answer via edge function (secure server-side validation)
+export async function validateAnswer(
+  questionId: string,
+  selectedAnswer: number
+): Promise<{ isCorrect: boolean; correctIndex: number; explanation: string }> {
+  const { data, error } = await supabase.functions.invoke('validate-answer', {
+    body: { questionId, selectedAnswer },
+  });
+
+  if (error) {
+    console.error('Error validating answer:', error);
+    throw new Error('Failed to validate answer');
+  }
+
+  return data;
 }
 
 // Admin function to upload questions from CSV
