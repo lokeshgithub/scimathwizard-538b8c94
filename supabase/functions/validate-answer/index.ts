@@ -15,7 +15,7 @@ interface ValidateRequest {
 // Simple in-memory rate limiting (per-instance)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute per IP
+const MAX_REQUESTS_PER_WINDOW = 60; // Increased to 60 requests per minute per IP
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -41,32 +41,32 @@ function isValidUUID(str: string): boolean {
   return UUID_REGEX.test(str);
 }
 
-// Log usage to database (non-blocking)
-async function logUsage(
-  supabaseUrl: string,
-  supabaseKey: string,
+// Initialize Supabase client once at module level for reuse
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Log usage to database - truly fire-and-forget, no await
+function logUsage(
   userId: string | null,
   sessionId: string | null,
   actionType: string,
   details: Record<string, unknown>,
   estimatedCost: number = 0
-) {
-  try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    await supabase.from('usage_logs').insert({
-      user_id: userId,
-      session_id: sessionId,
-      action_type: actionType,
-      details,
-      estimated_cost: estimatedCost,
-    } as any);
-  } catch (error) {
-    console.error('Failed to log usage:', error);
-  }
+): void {
+  // Fire and forget - don't await, just let it run in background
+  supabase.from('usage_logs').insert({
+    user_id: userId,
+    session_id: sessionId,
+    action_type: actionType,
+    details,
+    estimated_cost: estimatedCost,
+  // deno-lint-ignore no-explicit-any
+  } as any);
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
+  // Handle CORS preflight - respond immediately
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -92,11 +92,6 @@ Deno.serve(async (req) => {
       { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-
-  // Create Supabase client with service role
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     let body: ValidateRequest;
@@ -148,7 +143,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Validating answer for question ${questionId}, selected: ${selectedAnswer}, IP: ${ip}`);
+    console.info(`Validating answer for question ${questionId}, selected: ${selectedAnswer}, IP: ${ip}`);
 
     // Fetch the question with correct answer (only service role can see this)
     const { data: question, error } = await supabase
@@ -169,13 +164,11 @@ Deno.serve(async (req) => {
     const correctIndex = question.correct_answer.toUpperCase().charCodeAt(0) - 65;
     const isCorrect = selectedAnswer === correctIndex;
 
-    console.log(`Question ${questionId}: isCorrect=${isCorrect}`);
+    console.info(`Question ${questionId}: isCorrect=${isCorrect}`);
 
-    // Log usage (fire-and-forget) - minimal cost for answer validation
+    // Log usage - fire-and-forget (non-blocking)
     const validUserId = userId && isValidUUID(userId) ? userId : null;
     logUsage(
-      supabaseUrl,
-      supabaseServiceKey,
       validUserId,
       sessionId || null,
       'answer_validation',
@@ -183,13 +176,19 @@ Deno.serve(async (req) => {
       0.0001
     );
 
+    // Return response immediately
     return new Response(
       JSON.stringify({
         isCorrect,
         correctIndex,
         explanation: question.explanation || '',
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+        } 
+      }
     );
   } catch (error) {
     console.error('Error validating answer:', error);
