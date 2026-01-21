@@ -178,3 +178,118 @@ export async function getAdaptiveLeaderboard(
     return { data: null, error: 'An unexpected error occurred' };
   }
 }
+
+// User rank info type
+export interface UserRankInfo {
+  rank: number;
+  totalParticipants: number;
+  skill_score: number;
+  skill_tier: string;
+  highest_level: number;
+  accuracy: number;
+  challenges_completed: number;
+}
+
+// Get current user's rank on the leaderboard
+export async function getUserRank(
+  subject?: string
+): Promise<{ data: UserRankInfo | null; error: string | null }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return { data: null, error: 'Not authenticated' };
+    }
+
+    // Get user's best result
+    let query = supabase
+      .from('adaptive_challenge_results')
+      .select('skill_score, skill_tier, highest_level_reached, correct_answers, total_questions')
+      .eq('user_id', user.id)
+      .order('skill_score', { ascending: false })
+      .limit(1);
+    
+    if (subject) {
+      query = query.eq('subject', subject);
+    }
+
+    const { data: userBest, error: userError } = await query.single();
+
+    if (userError || !userBest) {
+      return { data: null, error: null }; // User hasn't participated
+    }
+
+    // Count total unique users with results
+    const { count: totalParticipants, error: countError } = await supabase
+      .from('adaptive_challenge_results')
+      .select('user_id', { count: 'exact', head: true })
+      .not('user_id', 'is', null);
+
+    if (countError) {
+      return { data: null, error: countError.message };
+    }
+
+    // Count users with better scores (using the best score per user approach via RPC)
+    // Since we can't use RPC directly, we'll get the leaderboard and find user's position
+    const { data: leaderboard, error: lbError } = await supabase.rpc('get_adaptive_leaderboard', {
+      p_subject: subject || null,
+      p_limit: 1000, // Get more to find user's position
+    });
+
+    if (lbError) {
+      return { data: null, error: lbError.message };
+    }
+
+    // Get user's profile to match by display name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', user.id)
+      .single();
+
+    // Find user in leaderboard
+    const userEntry = leaderboard?.find(
+      (entry: LeaderboardEntry) => profile && entry.display_name === profile.display_name
+    );
+
+    if (!userEntry) {
+      // User not in top 1000, estimate rank
+      const { count: betterScores } = await supabase
+        .from('adaptive_challenge_results')
+        .select('*', { count: 'exact', head: true })
+        .gt('skill_score', userBest.skill_score)
+        .not('user_id', 'is', null);
+
+      return {
+        data: {
+          rank: (betterScores || 0) + 1,
+          totalParticipants: totalParticipants || 0,
+          skill_score: userBest.skill_score,
+          skill_tier: userBest.skill_tier,
+          highest_level: userBest.highest_level_reached,
+          accuracy: userBest.total_questions > 0 
+            ? Math.round((userBest.correct_answers / userBest.total_questions) * 100)
+            : 0,
+          challenges_completed: 1, // Approximate
+        },
+        error: null,
+      };
+    }
+
+    return {
+      data: {
+        rank: userEntry.rank,
+        totalParticipants: totalParticipants || leaderboard?.length || 0,
+        skill_score: userEntry.skill_score,
+        skill_tier: userEntry.skill_tier,
+        highest_level: userEntry.highest_level,
+        accuracy: userEntry.accuracy,
+        challenges_completed: userEntry.challenges_completed,
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error('Error fetching user rank:', err);
+    return { data: null, error: 'An unexpected error occurred' };
+  }
+}

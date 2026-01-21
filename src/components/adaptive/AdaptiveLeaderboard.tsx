@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Trophy, Medal, Crown, User, TrendingUp, Target, 
-  Loader2, RefreshCw, ChevronDown
+  Loader2, RefreshCw, ChevronDown, Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getAdaptiveLeaderboard, type LeaderboardEntry } from '@/services/adaptiveResultsService';
+import { getAdaptiveLeaderboard, getUserRank, type LeaderboardEntry, type UserRankInfo } from '@/services/adaptiveResultsService';
 import { SKILL_TIERS } from '@/types/adaptiveChallenge';
 import type { Subject } from '@/types/quiz';
 
@@ -28,6 +28,7 @@ export const AdaptiveLeaderboard = ({
 }: AdaptiveLeaderboardProps) => {
   const [subject, setSubject] = useState<string>(initialSubject || '');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<UserRankInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
@@ -36,14 +37,19 @@ export const AdaptiveLeaderboard = ({
     setIsLoading(true);
     setError(null);
     
-    const result = await getAdaptiveLeaderboard(subject || undefined);
+    // Fetch both leaderboard and user rank in parallel
+    const [leaderboardResult, rankResult] = await Promise.all([
+      getAdaptiveLeaderboard(subject || undefined),
+      getUserRank(subject || undefined),
+    ]);
     
-    if (result.error) {
-      setError(result.error);
+    if (leaderboardResult.error) {
+      setError(leaderboardResult.error);
     } else {
-      setEntries(result.data || []);
+      setEntries(leaderboardResult.data || []);
     }
     
+    setUserRank(rankResult.data);
     setIsLoading(false);
   };
 
@@ -138,6 +144,41 @@ export const AdaptiveLeaderboard = ({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* My Rank Card */}
+      {userRank && (
+        <div className="px-4 pt-4">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-primary/20 to-accent/20 border-2 border-primary/30 rounded-xl p-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <Star className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="text-xs text-muted-foreground font-medium">Your Rank</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold text-foreground">#{userRank.rank}</span>
+                  <span className="text-sm text-muted-foreground">
+                    of {userRank.totalParticipants}
+                  </span>
+                  <span className="text-lg">{getTierInfo(userRank.skill_tier).emoji}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`text-lg font-bold bg-gradient-to-r ${getTierInfo(userRank.skill_tier).colorClass} bg-clip-text text-transparent`}>
+                  {userRank.skill_score}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {userRank.accuracy}% • L{userRank.highest_level}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-4 max-h-[500px] overflow-y-auto">

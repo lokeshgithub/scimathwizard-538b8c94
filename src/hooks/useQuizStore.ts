@@ -15,7 +15,7 @@ import { fetchAllQuestions, validateAnswer as validateAnswerAPI } from '@/servic
 import { getMilestoneBonus } from '@/data/funElements';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
-const THRESHOLD = 0.8;
+const THRESHOLD = 0.9;
 const PER_LEVEL = 5;
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
