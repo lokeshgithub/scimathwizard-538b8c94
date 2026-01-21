@@ -14,7 +14,7 @@ interface QuizCardProps {
   level: number;
   levelStats: { correct: number; total: number };
   sessionStats: SessionStats;
-  onAnswer: (selectedIndex: number) => { isCorrect: boolean; question: Question | null };
+  onAnswer: (selectedIndex: number) => Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null }>;
   onNext: () => void;
   onSolutionViewed: (questionId: string) => void;
 }
@@ -37,6 +37,8 @@ export const QuizCard = ({
   const [funElement, setFunElement] = useState<FunElement | null>(null);
   const [milestone, setMilestone] = useState<{ emoji: string; message: string; animation: string } | null>(null);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [isValidating, setIsValidating] = useState(false);
+  const [correctIndex, setCorrectIndex] = useState<number>(-1);
 
   const currentTheme = themeLevels.find(t => t.level === level);
 
@@ -50,39 +52,50 @@ export const QuizCard = ({
     setMessage('');
     setFunElement(null);
     setMilestone(null);
+    setIsValidating(false);
+    setCorrectIndex(-1);
   }, [question.id]);
 
-  const handleAnswer = useCallback((index: number) => {
-    if (isAnswered) return;
+  const handleAnswer = useCallback(async (index: number) => {
+    if (isAnswered || isValidating) return;
 
     setSelectedAnswer(index);
-    const result = onAnswer(index);
-    setIsAnswered(true);
-    setIsCorrect(result.isCorrect);
+    setIsValidating(true);
 
-    // Get character and message
-    const char = getRandomCharacter(level);
-    setCharacter(char);
-    setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
+    try {
+      const result = await onAnswer(index);
+      setIsAnswered(true);
+      setIsCorrect(result.isCorrect);
+      setCorrectIndex(result.correctIndex);
 
-    // Get a fun element for surprise
-    const fun = getRandomFunElement(level);
-    setFunElement(fun);
+      // Get character and message
+      const char = getRandomCharacter(level);
+      setCharacter(char);
+      setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
 
-    // Track consecutive correct answers for milestones
-    if (result.isCorrect) {
-      const newConsecutive = consecutiveCorrect + 1;
-      setConsecutiveCorrect(newConsecutive);
-      // Check for streak or total correct milestones
-      const newTotalCorrect = sessionStats.totalCorrect + 1;
-      const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
-      if (milestoneAnim) {
-        setMilestone(milestoneAnim);
+      // Get a fun element for surprise
+      const fun = getRandomFunElement(level);
+      setFunElement(fun);
+
+      // Track consecutive correct answers for milestones
+      if (result.isCorrect) {
+        const newConsecutive = consecutiveCorrect + 1;
+        setConsecutiveCorrect(newConsecutive);
+        // Check for streak or total correct milestones
+        const newTotalCorrect = sessionStats.totalCorrect + 1;
+        const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
+        if (milestoneAnim) {
+          setMilestone(milestoneAnim);
+        }
+      } else {
+        setConsecutiveCorrect(0);
       }
-    } else {
-      setConsecutiveCorrect(0);
+    } catch (error) {
+      console.error('Error validating answer:', error);
+    } finally {
+      setIsValidating(false);
     }
-  }, [isAnswered, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect]);
+  }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect]);
 
   const handleShowExplanation = useCallback(() => {
     setShowExplanation(true);
@@ -169,7 +182,7 @@ export const QuizCard = ({
         <div className="space-y-3 mb-6">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
-            const isCorrectAnswer = index === question.correct;
+            const isCorrectAnswer = index === correctIndex;
             const showAsCorrect = isAnswered && isCorrectAnswer;
             const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
 
@@ -177,23 +190,25 @@ export const QuizCard = ({
               <motion.button
                 key={index}
                 onClick={() => handleAnswer(index)}
-                disabled={isAnswered}
+                disabled={isAnswered || isValidating}
                 className={`
                   w-full p-4 rounded-xl text-left transition-all flex items-center gap-3
-                  ${!isAnswered 
-                    ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30' 
-                    : showAsCorrect 
-                      ? 'bg-success/20 ring-2 ring-success' 
-                      : showAsIncorrect 
-                        ? 'bg-destructive/20 ring-2 ring-destructive' 
-                        : 'bg-muted opacity-60'
+                  ${isValidating && isSelected
+                    ? 'bg-primary/20 ring-2 ring-primary animate-pulse'
+                    : !isAnswered 
+                      ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30' 
+                      : showAsCorrect 
+                        ? 'bg-success/20 ring-2 ring-success' 
+                        : showAsIncorrect 
+                          ? 'bg-destructive/20 ring-2 ring-destructive' 
+                          : 'bg-muted opacity-60'
                   }
                 `}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
-                whileHover={!isAnswered ? { scale: 1.01 } : undefined}
-                whileTap={!isAnswered ? { scale: 0.99 } : undefined}
+                whileHover={!isAnswered && !isValidating ? { scale: 1.01 } : undefined}
+                whileTap={!isAnswered && !isValidating ? { scale: 0.99 } : undefined}
               >
                 <span className={`
                   w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
@@ -288,10 +303,10 @@ export const QuizCard = ({
                 <h4 className="font-bold text-foreground">Step-by-Step Solution</h4>
               </div>
               
-              {!isCorrect && (
+              {!isCorrect && correctIndex >= 0 && (
                 <div className="mb-4 p-3 bg-success/10 rounded-lg">
                   <p className="text-sm text-success font-semibold">
-                    ✓ Correct Answer: {String.fromCharCode(65 + question.correct)}. {question.options[question.correct]}
+                    ✓ Correct Answer: {String.fromCharCode(65 + correctIndex)}. {question.options[correctIndex]}
                   </p>
                 </div>
               )}
