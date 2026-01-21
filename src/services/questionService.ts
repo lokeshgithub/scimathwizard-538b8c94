@@ -2,6 +2,28 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
 import * as XLSX from 'xlsx';
 
+/**
+ * Shuffle an array of options and return the shuffled array plus a map
+ * that tracks where each shuffled element came from.
+ * shuffleMap[shuffledIdx] = originalIdx
+ */
+function shuffleOptions(options: string[]): { shuffledOptions: string[]; shuffleMap: number[] } {
+  // Create array of indices [0, 1, 2, 3]
+  const indices = options.map((_, i) => i);
+  
+  // Fisher-Yates shuffle on indices
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  
+  // Build shuffled options and map
+  const shuffledOptions = indices.map(i => options[i]);
+  const shuffleMap = indices; // shuffleMap[newIdx] = originalIdx
+  
+  return { shuffledOptions, shuffleMap };
+}
+
 interface DBSubject {
   id: string;
   name: string;
@@ -86,15 +108,20 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       bank[subjectKey][topicName] = [];
     }
 
+    // Shuffle options for each student session
+    const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
+
     // correct is set to -1 as it will be validated server-side
     bank[subjectKey][topicName].push({
       id: q.id,
       level: q.level,
       question: q.question,
-      options: [q.option_a, q.option_b, q.option_c, q.option_d],
+      options: shuffledOptions,
       correct: -1, // Will be validated by edge function
       explanation: q.explanation || '',
       concepts: [],
+      shuffleMap, // Maps shuffled index to original index
     });
   }
 
