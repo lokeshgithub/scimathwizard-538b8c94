@@ -159,6 +159,30 @@ export interface AdaptiveQuestionResult {
   isCorrect: boolean;
   timeSpent: number;
   levelAtTime: number;
+  topicName: string; // Track which topic this question came from
+}
+
+// Topic performance analysis
+export interface TopicPerformance {
+  topicName: string;
+  questionsAttempted: number;
+  correctAnswers: number;
+  accuracy: number;
+  averageTime: number;
+  highestLevel: number;
+  lowestLevel: number;
+  isStrength: boolean;
+  isWeakness: boolean;
+}
+
+// Recommendations based on performance
+export interface StudyRecommendation {
+  type: 'weakness' | 'slow' | 'improvement' | 'strength';
+  topic: string;
+  message: string;
+  priority: 'high' | 'medium' | 'low';
+  icon: string;
+  actionItems: string[];
 }
 
 export interface AdaptiveConfig {
@@ -204,4 +228,148 @@ export function calculateSkillScore(
 export function getSkillTier(score: number): SkillTier {
   const tier = SKILL_TIERS.find(t => score >= t.minScore && score <= t.maxScore);
   return tier || SKILL_TIERS[0];
+}
+
+// Analyze topic performance from question history
+export function analyzeTopicPerformance(questionHistory: AdaptiveQuestionResult[]): TopicPerformance[] {
+  const topicMap = new Map<string, {
+    attempts: number;
+    correct: number;
+    totalTime: number;
+    levels: number[];
+  }>();
+
+  for (const result of questionHistory) {
+    const existing = topicMap.get(result.topicName) || {
+      attempts: 0,
+      correct: 0,
+      totalTime: 0,
+      levels: [],
+    };
+    
+    existing.attempts++;
+    if (result.isCorrect) existing.correct++;
+    existing.totalTime += result.timeSpent;
+    existing.levels.push(result.levelAtTime);
+    
+    topicMap.set(result.topicName, existing);
+  }
+
+  const performances: TopicPerformance[] = [];
+  const overallAccuracy = questionHistory.length > 0 
+    ? questionHistory.filter(r => r.isCorrect).length / questionHistory.length 
+    : 0;
+  const overallAvgTime = questionHistory.length > 0
+    ? questionHistory.reduce((sum, r) => sum + r.timeSpent, 0) / questionHistory.length
+    : 0;
+
+  for (const [topicName, data] of topicMap) {
+    const accuracy = data.attempts > 0 ? data.correct / data.attempts : 0;
+    const avgTime = data.attempts > 0 ? data.totalTime / data.attempts : 0;
+    
+    performances.push({
+      topicName,
+      questionsAttempted: data.attempts,
+      correctAnswers: data.correct,
+      accuracy: Math.round(accuracy * 100),
+      averageTime: Math.round(avgTime),
+      highestLevel: Math.max(...data.levels),
+      lowestLevel: Math.min(...data.levels),
+      isStrength: accuracy >= overallAccuracy + 0.15 && data.attempts >= 2,
+      isWeakness: accuracy < overallAccuracy - 0.15 && data.attempts >= 2,
+    });
+  }
+
+  // Sort by accuracy (weakest first)
+  return performances.sort((a, b) => a.accuracy - b.accuracy);
+}
+
+// Generate study recommendations based on performance
+export function generateRecommendations(
+  performances: TopicPerformance[],
+  questionHistory: AdaptiveQuestionResult[]
+): StudyRecommendation[] {
+  const recommendations: StudyRecommendation[] = [];
+  
+  const overallAvgTime = questionHistory.length > 0
+    ? questionHistory.reduce((sum, r) => sum + r.timeSpent, 0) / questionHistory.length
+    : 0;
+
+  // Find weaknesses (accuracy < 50% or significantly below average)
+  const weakTopics = performances.filter(p => p.isWeakness || p.accuracy < 50);
+  for (const topic of weakTopics.slice(0, 2)) {
+    recommendations.push({
+      type: 'weakness',
+      topic: topic.topicName,
+      message: `You struggled with ${topic.topicName} (${topic.accuracy}% accuracy)`,
+      priority: topic.accuracy < 40 ? 'high' : 'medium',
+      icon: '📚',
+      actionItems: [
+        `Review the fundamentals of ${topic.topicName}`,
+        'Practice Level 1-2 questions before attempting harder ones',
+        'Focus on understanding concepts rather than memorizing solutions',
+        'Consider watching video explanations for this topic',
+      ],
+    });
+  }
+
+  // Find slow topics (significantly slower than average)
+  const slowTopics = performances.filter(p => 
+    p.averageTime > overallAvgTime * 1.5 && 
+    p.questionsAttempted >= 2 &&
+    !weakTopics.includes(p)
+  );
+  for (const topic of slowTopics.slice(0, 1)) {
+    recommendations.push({
+      type: 'slow',
+      topic: topic.topicName,
+      message: `You\'re taking extra time on ${topic.topicName} (${topic.averageTime}s avg)`,
+      priority: 'medium',
+      icon: '⏱️',
+      actionItems: [
+        'Practice more problems to build speed and confidence',
+        'Learn shortcuts and quick solving techniques',
+        'Time yourself during practice sessions',
+      ],
+    });
+  }
+
+  // Find strengths
+  const strongTopics = performances.filter(p => p.isStrength || p.accuracy >= 80);
+  for (const topic of strongTopics.slice(0, 1)) {
+    recommendations.push({
+      type: 'strength',
+      topic: topic.topicName,
+      message: `Excellent work on ${topic.topicName}! (${topic.accuracy}% accuracy)`,
+      priority: 'low',
+      icon: '🌟',
+      actionItems: [
+        'Challenge yourself with even harder problems',
+        `Try Level ${topic.highestLevel + 1} questions in this topic`,
+        'Help others learn this topic to reinforce your knowledge',
+      ],
+    });
+  }
+
+  // If all topics have room for improvement
+  if (recommendations.length === 0 && performances.length > 0) {
+    const lowestTopic = performances[0];
+    recommendations.push({
+      type: 'improvement',
+      topic: lowestTopic.topicName,
+      message: `Focus on improving ${lowestTopic.topicName} first`,
+      priority: 'medium',
+      icon: '🎯',
+      actionItems: [
+        'Start with basic concepts and build up',
+        'Practice consistently, even 10 minutes daily helps',
+        'Review mistakes to understand where you went wrong',
+      ],
+    });
+  }
+
+  return recommendations.sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
 }

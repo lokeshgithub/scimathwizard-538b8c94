@@ -36,7 +36,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [usedQuestionIds, setUsedQuestionIds] = useState<Set<string>>(new Set());
 
-  // Get all questions for a subject, organized by level
+  // Get all questions for a subject, organized by level (also track topic names)
   const getQuestionsByLevel = useCallback((subject: Subject, topics: string[]): Map<number, Question[]> => {
     const levelMap = new Map<number, Question[]>();
     
@@ -55,6 +55,20 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
     }
     
     return levelMap;
+  }, [banks]);
+
+  // Get topic name for a question
+  const getQuestionTopic = useCallback((questionId: string, subject: Subject, topics: string[]): string => {
+    const subjectBank = banks[subject] || {};
+    const topicsToSearch = topics.length > 0 ? topics : Object.keys(subjectBank);
+    
+    for (const topicName of topicsToSearch) {
+      const topicQuestions = subjectBank[topicName] || [];
+      if (topicQuestions.some(q => q.id === questionId)) {
+        return topicName;
+      }
+    }
+    return 'Unknown';
   }, [banks]);
 
   // Get max level available
@@ -143,6 +157,8 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
         selectedIndex
       );
 
+      const topicName = getQuestionTopic(state.currentQuestion.id, state.subject, state.selectedTopics);
+
       const result: AdaptiveQuestionResult = {
         question: state.currentQuestion,
         selectedAnswer: selectedIndex,
@@ -150,6 +166,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
         isCorrect,
         timeSpent,
         levelAtTime: state.currentLevel,
+        topicName,
       };
 
       // Calculate new level
