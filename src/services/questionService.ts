@@ -156,17 +156,26 @@ export async function uploadQuestionsFromCSV(
     }
 
     // Insert questions
-    const questionsToInsert = questions.map(q => ({
-      topic_id: topic!.id,
-      level: q.level,
-      question: q.question,
-      option_a: q.optionA,
-      option_b: q.optionB,
-      option_c: q.optionC,
-      option_d: q.optionD,
-      correct_answer: q.correctAnswer.toUpperCase(),
-      explanation: q.explanation,
-    }));
+    const questionsToInsert = questions.map(q => {
+      // Ensure correct_answer is a valid uppercase letter A-D
+      const answer = q.correctAnswer.trim().toUpperCase();
+      const validAnswer = ['A', 'B', 'C', 'D'].includes(answer) ? answer : 'A';
+      
+      // Ensure level is between 1-5
+      const validLevel = Math.min(5, Math.max(1, q.level || 1));
+      
+      return {
+        topic_id: topic!.id,
+        level: validLevel,
+        question: q.question,
+        option_a: q.optionA,
+        option_b: q.optionB,
+        option_c: q.optionC,
+        option_d: q.optionD,
+        correct_answer: validAnswer,
+        explanation: q.explanation,
+      };
+    });
 
     const { error: insertError } = await supabase
       .from('questions')
