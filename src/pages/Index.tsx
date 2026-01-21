@@ -24,6 +24,7 @@ import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
+import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { Button } from '@/components/ui/button';
 
@@ -371,6 +372,9 @@ const Index = () => {
           achievements.clearNewlyUnlocked();
         }}
       />
+
+      {/* Welcome Modal for first-time users */}
+      <WelcomeModal />
     </div>
   );
 };
