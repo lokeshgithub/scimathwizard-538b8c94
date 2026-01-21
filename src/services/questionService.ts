@@ -180,6 +180,18 @@ export async function deleteTopicQuestions(topicId: string): Promise<{ success: 
   }
 }
 
+// Sanitize database error messages for user display
+function sanitizeDbError(error: { message?: string } | null): string {
+  if (!error?.message) return 'Database operation failed';
+  const msg = error.message.toLowerCase();
+  if (msg.includes('duplicate') || msg.includes('unique')) return 'Item already exists';
+  if (msg.includes('foreign key')) return 'Invalid reference - related item not found';
+  if (msg.includes('not-null') || msg.includes('null value')) return 'Missing required field';
+  if (msg.includes('violates check')) return 'Invalid data format';
+  if (msg.includes('permission denied') || msg.includes('rls')) return 'Permission denied';
+  return 'Database operation failed';
+}
+
 // Admin function to upload questions from CSV
 export async function uploadQuestionsFromCSV(
   subjectName: string,
@@ -211,7 +223,10 @@ export async function uploadQuestionsFromCSV(
         .select('id')
         .single();
 
-      if (subjectError) throw new Error(`Failed to create subject: ${subjectError.message}`);
+      if (subjectError) {
+        console.error('Subject creation error:', subjectError);
+        throw new Error(`Failed to create subject: ${sanitizeDbError(subjectError)}`);
+      }
       subject = newSubject;
     }
 
@@ -230,7 +245,10 @@ export async function uploadQuestionsFromCSV(
         .select('id')
         .single();
 
-      if (topicError) throw new Error(`Failed to create topic: ${topicError.message}`);
+      if (topicError) {
+        console.error('Topic creation error:', topicError);
+        throw new Error(`Failed to create topic: ${sanitizeDbError(topicError)}`);
+      }
       topic = newTopic;
     }
 
@@ -314,7 +332,10 @@ export async function uploadQuestionsFromCSV(
         .from('questions')
         .insert(questionsToInsert);
 
-      if (insertError) throw new Error(`Failed to insert questions: ${insertError.message}`);
+      if (insertError) {
+        console.error('Question insert error:', insertError);
+        throw new Error(`Failed to insert questions: ${sanitizeDbError(insertError)}`);
+      }
     }
 
     return { 
