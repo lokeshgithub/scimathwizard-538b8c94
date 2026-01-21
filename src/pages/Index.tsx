@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3 } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
+import { useAchievements } from '@/hooks/useAchievements';
+import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
 import { TopicGrid } from '@/components/quiz/TopicGrid';
@@ -10,17 +12,45 @@ import { QuizCard } from '@/components/quiz/QuizCard';
 import { WelcomeScreen } from '@/components/quiz/WelcomeScreen';
 import { LevelCompleteModal } from '@/components/quiz/LevelCompleteModal';
 import { SessionSummary } from '@/components/quiz/SessionSummary';
+import { AchievementsPanel } from '@/components/quiz/AchievementsPanel';
+import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
+import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const quiz = useQuizStore();
+  const achievements = useAchievements();
+  const dailyChallenge = useDailyChallenge(quiz.banks);
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
+  const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
+  const [wasRetrying, setWasRetrying] = useState(false);
 
-  const handleAnswer = useCallback((selectedIndex: number) => {
-    const result = quiz.answerQuestion(selectedIndex);
+  // Helper to add stars from daily challenge
+  const handleAddStars = useCallback((stars: number) => {
+    // Stars are tracked in sessionStats - we'd need to update the quiz store
+    // For now, this is handled internally by daily challenge
+  }, []);
+
+  // Track subject exploration for achievements
+  useEffect(() => {
+    achievements.recordSubjectExplored(quiz.subject);
+  }, [quiz.subject, achievements]);
+
+  const handleAnswer = useCallback(async (selectedIndex: number) => {
+    const result = await quiz.answerQuestion(selectedIndex);
+    
+    // Record for achievements
+    const timeSpent = result.timeSpent || 0;
+    setLastAnswerTime(timeSpent);
+    achievements.recordAnswer(
+      result.isCorrect, 
+      timeSpent, 
+      result.isCorrect ? quiz.sessionStats.streak : 0
+    );
+    
     return result;
-  }, [quiz]);
+  }, [quiz, achievements]);
 
   const handleNext = useCallback(() => {
     const masteryResult = quiz.checkMastery();
@@ -35,6 +65,19 @@ const Index = () => {
   const handleModalAction = useCallback(() => {
     setShowModal(false);
     if (modalPassed) {
+      // Check for perfect level (100% accuracy)
+      if (quiz.levelStats.correct === quiz.levelStats.total && quiz.levelStats.total > 0) {
+        achievements.recordPerfectLevel();
+      }
+      // Record mastery
+      achievements.recordMastery();
+      
+      // Check for comeback kid achievement
+      if (wasRetrying) {
+        achievements.recordRetrySuccess();
+        setWasRetrying(false);
+      }
+      
       if (quiz.level < quiz.MAX_LEVEL) {
         quiz.advanceLevel();
       } else {
@@ -42,9 +85,10 @@ const Index = () => {
         quiz.selectTopic(quiz.topic!);
       }
     } else {
+      setWasRetrying(true);
       quiz.retryLevel();
     }
-  }, [modalPassed, quiz]);
+  }, [modalPassed, quiz, achievements, wasRetrying]);
 
   const topics = quiz.banks[quiz.subject] || {};
   const hasTopics = Object.keys(topics).length > 0;
@@ -188,6 +232,31 @@ const Index = () => {
           }}
         />
       )}
+
+      {/* Daily Challenge */}
+      <DailyChallengeCard
+        challenge={dailyChallenge.challenge}
+        stats={dailyChallenge.stats}
+        isLoading={dailyChallenge.isLoading}
+        isTodayCompleted={dailyChallenge.isTodayCompleted}
+        bonusStars={dailyChallenge.bonusStars}
+        onComplete={dailyChallenge.completeChallenge}
+        onClearBonus={dailyChallenge.clearBonusStars}
+        onAddStars={handleAddStars}
+      />
+
+      {/* Achievements Panel */}
+      <AchievementsPanel 
+        achievements={achievements.achievements}
+        unlockedCount={achievements.getUnlockedCount()}
+        totalCount={achievements.getTotalCount()}
+      />
+
+      {/* Achievement Unlocked Animation */}
+      <AchievementUnlocked 
+        achievement={achievements.newlyUnlocked}
+        onComplete={achievements.clearNewlyUnlocked}
+      />
     </div>
   );
 };

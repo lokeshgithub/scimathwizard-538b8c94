@@ -374,9 +374,9 @@ export const useQuizStore = () => {
     }));
   }, []);
 
-  const answerQuestion = useCallback(async (selectedIndex: number): Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null }> => {
+  const answerQuestion = useCallback(async (selectedIndex: number): Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null; timeSpent: number }> => {
     const currentQ = currentQuestions[questionIndex];
-    if (!currentQ) return { isCorrect: false, correctIndex: -1, question: null };
+    if (!currentQ) return { isCorrect: false, correctIndex: -1, question: null, timeSpent: 0 };
 
     // Calculate time spent on this question
     const timeSpent = (Date.now() - questionStartTime) / 1000;
@@ -431,10 +431,10 @@ export const useQuizStore = () => {
       // Mark question as answered
       markQuestionAnswered(currentQ.id, isCorrect);
 
-      return { isCorrect, correctIndex, question: currentQ };
+      return { isCorrect, correctIndex, question: currentQ, timeSpent };
     } catch (error) {
       console.error('Error validating answer:', error);
-      return { isCorrect: false, correctIndex: -1, question: currentQ };
+      return { isCorrect: false, correctIndex: -1, question: currentQ, timeSpent: 0 };
     }
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
 

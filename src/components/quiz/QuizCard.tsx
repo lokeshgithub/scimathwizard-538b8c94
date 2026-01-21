@@ -14,7 +14,7 @@ interface QuizCardProps {
   level: number;
   levelStats: { correct: number; total: number };
   sessionStats: SessionStats;
-  onAnswer: (selectedIndex: number) => Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null }>;
+  onAnswer: (selectedIndex: number) => Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null; timeSpent?: number }>;
   onNext: () => void;
   onSolutionViewed: (questionId: string) => void;
 }
