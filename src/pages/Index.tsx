@@ -6,6 +6,8 @@ import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { useAuth } from '@/hooks/useAuth';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useConfetti } from '@/hooks/useConfetti';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
 import { TopicDashboard } from '@/components/quiz/TopicDashboard';
@@ -20,13 +22,15 @@ import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
+import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { Button } from '@/components/ui/button';
-
 const Index = () => {
   const quiz = useQuizStore();
   const achievements = useAchievements();
   const dailyChallenge = useDailyChallenge(quiz.banks);
   const { user, profile, signOut, updateStats } = useAuth();
+  const sound = useSoundEffects();
+  const confetti = useConfetti();
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
@@ -63,6 +67,18 @@ const Index = () => {
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
     
+    // Play sound and confetti effects
+    if (result.isCorrect) {
+      sound.playCorrect();
+      const streak = quiz.sessionStats.streak;
+      if (streak >= 3) {
+        sound.playStreak(streak);
+        confetti.fireStreak(streak);
+      }
+    } else {
+      sound.playIncorrect();
+    }
+    
     // Record for achievements
     const timeSpent = result.timeSpent || 0;
     setLastAnswerTime(timeSpent);
@@ -73,7 +89,7 @@ const Index = () => {
     );
     
     return result;
-  }, [quiz, achievements]);
+  }, [quiz, achievements, sound, confetti]);
 
   const handleNext = useCallback(() => {
     const masteryResult = quiz.checkMastery();
@@ -88,6 +104,16 @@ const Index = () => {
   const handleModalAction = useCallback(() => {
     setShowModal(false);
     if (modalPassed) {
+      // Play level up sound and confetti
+      sound.playLevelUp();
+      
+      const isTopicComplete = quiz.level >= quiz.MAX_LEVEL;
+      if (isTopicComplete) {
+        confetti.fireMastery();
+      } else {
+        confetti.fireLevelUp(true);
+      }
+      
       // Check for perfect level (100% accuracy)
       if (quiz.levelStats.correct === quiz.levelStats.total && quiz.levelStats.total > 0) {
         achievements.recordPerfectLevel();
@@ -111,7 +137,7 @@ const Index = () => {
       setWasRetrying(true);
       quiz.retryLevel();
     }
-  }, [modalPassed, quiz, achievements, wasRetrying]);
+  }, [modalPassed, quiz, achievements, wasRetrying, sound, confetti]);
 
   const topics = quiz.banks[quiz.subject] || {};
   const hasTopics = Object.keys(topics).length > 0;
@@ -138,6 +164,9 @@ const Index = () => {
             </motion.div>
             
             <div className="flex items-center gap-2">
+              {/* Sound Toggle */}
+              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
+              
               {hasAnsweredQuestions && (
                 <Button
                   variant="secondary"
@@ -325,7 +354,11 @@ const Index = () => {
       {/* Achievement Unlocked Animation */}
       <AchievementUnlocked 
         achievement={achievements.newlyUnlocked}
-        onComplete={achievements.clearNewlyUnlocked}
+        onComplete={() => {
+          sound.playAchievement();
+          confetti.fireAchievement();
+          achievements.clearNewlyUnlocked();
+        }}
       />
     </div>
   );
