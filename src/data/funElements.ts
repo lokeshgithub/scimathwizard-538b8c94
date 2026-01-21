@@ -165,14 +165,57 @@ export const getRandomFunElement = (level: number): FunElement | null => {
 };
 
 // Special celebration animations for milestones
-export const getMilestoneAnimation = (correctCount: number): { emoji: string; message: string; animation: string } | null => {
-  const milestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    3: { emoji: '🔥', message: "You're on fire! 3 in a row!", animation: 'fire' },
-    5: { emoji: '🌟', message: "Superstar! 5 correct answers!", animation: 'stars' },
-    10: { emoji: '🎆', message: "AMAZING! 10 correct! You're unstoppable!", animation: 'fireworks' },
-    15: { emoji: '👑', message: "LEGENDARY! 15 correct! Bow to the master!", animation: 'crown' },
-    20: { emoji: '🏆', message: "UNBELIEVABLE! 20 correct! You're a GENIUS!", animation: 'trophy' },
+export const getMilestoneAnimation = (streak: number, totalCorrect: number): { emoji: string; message: string; animation: string } | null => {
+  // Streak milestones take priority
+  const streakMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
+    5: { emoji: '🔥', message: "ON FIRE! 5 in a row! +50 bonus stars! ⭐", animation: 'fire' },
+    7: { emoji: '💎', message: "BRILLIANT! 7 streak! +75 bonus stars! 💫", animation: 'diamond' },
+    10: { emoji: '🎆', message: "UNSTOPPABLE! 10 streak! +100 bonus stars! 🌟", animation: 'fireworks' },
+    15: { emoji: '👑', message: "LEGENDARY! 15 streak! +150 bonus stars! ✨", animation: 'crown' },
+    20: { emoji: '🏆', message: "GODLIKE! 20 streak! +200 bonus stars! 🎉", animation: 'trophy' },
   };
-  
-  return milestones[correctCount] || null;
+
+  if (streakMilestones[streak]) {
+    return streakMilestones[streak];
+  }
+
+  // Total correct milestones
+  const totalMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
+    10: { emoji: '🎯', message: "10 total correct! You're getting started! 🌟", animation: 'stars' },
+    25: { emoji: '📚', message: "25 questions mastered! Knowledge is power! 💪", animation: 'books' },
+    50: { emoji: '🚀', message: "50 correct! You're a learning rocket! 🌙", animation: 'rocket' },
+    75: { emoji: '🧠', message: "75 correct! Big brain energy! ⚡", animation: 'brain' },
+    100: { emoji: '💯', message: "100 CORRECT! You're a CHAMPION! 🏆", animation: 'century' },
+    150: { emoji: '🌈', message: "150 correct! Absolutely AMAZING! ✨", animation: 'rainbow' },
+    200: { emoji: '👑', message: "200 correct! You're a TRUE MASTER! 🎓", animation: 'master' },
+  };
+
+  if (totalMilestones[totalCorrect]) {
+    return totalMilestones[totalCorrect];
+  }
+
+  return null;
+};
+
+// Get bonus stars for milestones
+export const getMilestoneBonus = (streak: number, totalCorrect: number): number => {
+  const streakBonuses: Record<number, number> = {
+    5: 50,
+    7: 75,
+    10: 100,
+    15: 150,
+    20: 200,
+  };
+
+  const totalBonuses: Record<number, number> = {
+    10: 25,
+    25: 50,
+    50: 100,
+    75: 150,
+    100: 250,
+    150: 350,
+    200: 500,
+  };
+
+  return (streakBonuses[streak] || 0) + (totalBonuses[totalCorrect] || 0);
 };

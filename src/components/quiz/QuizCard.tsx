@@ -2,15 +2,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
-import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
+import { getRandomFunElement, getMilestoneAnimation, getMilestoneBonus, FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { MilestoneAnimation } from './MilestoneAnimation';
 import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key } from 'lucide-react';
+
+import { SessionStats } from '@/types/quiz';
 
 interface QuizCardProps {
   question: Question;
   level: number;
   levelStats: { correct: number; total: number };
+  sessionStats: SessionStats;
   onAnswer: (selectedIndex: number) => { isCorrect: boolean; question: Question | null };
   onNext: () => void;
   onSolutionViewed: (questionId: string) => void;
@@ -20,6 +23,7 @@ export const QuizCard = ({
   question, 
   level, 
   levelStats, 
+  sessionStats,
   onAnswer, 
   onNext,
   onSolutionViewed 
@@ -69,14 +73,16 @@ export const QuizCard = ({
     if (result.isCorrect) {
       const newConsecutive = consecutiveCorrect + 1;
       setConsecutiveCorrect(newConsecutive);
-      const milestoneAnim = getMilestoneAnimation(newConsecutive);
+      // Check for streak or total correct milestones
+      const newTotalCorrect = sessionStats.totalCorrect + 1;
+      const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
       if (milestoneAnim) {
         setMilestone(milestoneAnim);
       }
     } else {
       setConsecutiveCorrect(0);
     }
-  }, [isAnswered, onAnswer, level, consecutiveCorrect]);
+  }, [isAnswered, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect]);
 
   const handleShowExplanation = useCallback(() => {
     setShowExplanation(true);

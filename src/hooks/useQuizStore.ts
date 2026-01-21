@@ -8,14 +8,24 @@ import type {
   Subject 
 } from '@/types/quiz';
 import { fetchAllQuestions } from '@/services/questionService';
+import { getMilestoneBonus } from '@/data/funElements';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const THRESHOLD = 0.8;
 const PER_LEVEL = 5;
 const MAX_LEVEL = 5;
-const XP_PER_CORRECT = 10;
-const XP_STREAK_BONUS = 5;
-const XP_LEVEL_UP = 50;
+
+// Streak-based star rewards
+const getStreakStars = (streak: number): number => {
+  if (streak >= 5) return 30; // 5+ in a row = 30 stars
+  if (streak >= 3) return 20; // 3-4 in a row = 20 stars
+  if (streak >= 2) return 15; // 2 in a row = 15 stars
+  return 10; // 1st correct = 10 stars
+};
+
+// Milestone definitions
+const STREAK_MILESTONES = [5, 7, 10, 15, 20];
+const TOTAL_MILESTONES = [10, 25, 50, 75, 100, 150, 200];
 
 interface QuizState {
   banks: QuestionBank;
@@ -36,7 +46,9 @@ const initialSessionStats: SessionStats = {
   correct: 0,
   streak: 0,
   mastered: 0,
-  xp: 0,
+  stars: 0,
+  totalCorrect: 0,
+  maxStreak: 0,
 };
 
 const loadFromStorage = (): Partial<QuizState> => {
@@ -314,19 +326,21 @@ export const useQuizStore = () => {
       total: prev.total + 1,
     }));
 
-    // Update session stats
+    // Update session stats with streak-based stars
     setSessionStats(prev => {
-      let xpGain = isCorrect ? XP_PER_CORRECT : 0;
-      if (isCorrect && prev.streak >= 2) {
-        xpGain += XP_STREAK_BONUS * Math.min(prev.streak, 5);
-      }
+      const newStreak = isCorrect ? prev.streak + 1 : 0;
+      const newTotalCorrect = prev.totalCorrect + (isCorrect ? 1 : 0);
+      const starsEarned = isCorrect ? getStreakStars(newStreak) : 0;
+      const milestoneBonus = isCorrect ? getMilestoneBonus(newStreak, newTotalCorrect) : 0;
       
       return {
         solved: prev.solved + 1,
         correct: prev.correct + (isCorrect ? 1 : 0),
-        streak: isCorrect ? prev.streak + 1 : 0,
+        streak: newStreak,
         mastered: prev.mastered,
-        xp: prev.xp + xpGain,
+        stars: prev.stars + starsEarned + milestoneBonus,
+        totalCorrect: newTotalCorrect,
+        maxStreak: Math.max(prev.maxStreak, newStreak),
       };
     });
 
@@ -356,7 +370,7 @@ export const useQuizStore = () => {
       setSessionStats(prev => ({
         ...prev,
         mastered: prev.mastered + 1,
-        xp: prev.xp + XP_LEVEL_UP,
+        stars: prev.stars + 100, // Bonus stars for level mastery
       }));
       
       return 'passed';
