@@ -68,6 +68,51 @@ export type Database = {
         }
         Relationships: []
       }
+      practice_schedules: {
+        Row: {
+          created_at: string
+          ease_factor: number
+          id: string
+          interval_days: number
+          last_performance: number | null
+          last_practiced: string | null
+          next_practice_date: string
+          review_count: number
+          subject: string
+          topic_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          last_performance?: number | null
+          last_practiced?: string | null
+          next_practice_date?: string
+          review_count?: number
+          subject: string
+          topic_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          last_performance?: number | null
+          last_practiced?: string | null
+          next_practice_date?: string
+          review_count?: number
+          subject?: string
+          topic_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
