@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      adaptive_challenge_results: {
+        Row: {
+          average_time_per_question: number
+          correct_answers: number
+          created_at: string
+          duration_seconds: number
+          highest_level_reached: number
+          id: string
+          question_results: Json
+          session_id: string | null
+          skill_score: number
+          skill_tier: string
+          subject: string
+          topic_performance: Json
+          topics: string[]
+          total_questions: number
+          user_id: string | null
+        }
+        Insert: {
+          average_time_per_question: number
+          correct_answers: number
+          created_at?: string
+          duration_seconds: number
+          highest_level_reached: number
+          id?: string
+          question_results?: Json
+          session_id?: string | null
+          skill_score: number
+          skill_tier: string
+          subject: string
+          topic_performance?: Json
+          topics: string[]
+          total_questions: number
+          user_id?: string | null
+        }
+        Update: {
+          average_time_per_question?: number
+          correct_answers?: number
+          created_at?: string
+          duration_seconds?: number
+          highest_level_reached?: number
+          id?: string
+          question_results?: Json
+          session_id?: string | null
+          skill_score?: number
+          skill_tier?: string
+          subject?: string
+          topic_performance?: Json
+          topics?: string[]
+          total_questions?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

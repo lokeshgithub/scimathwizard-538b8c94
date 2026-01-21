@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -23,6 +23,7 @@ import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { AdaptiveQuizCard } from '@/components/adaptive/AdaptiveQuizCard';
 import { AdaptiveChallengeResults } from '@/components/adaptive/AdaptiveChallengeResults';
 import { SKILL_TIERS } from '@/types/adaptiveChallenge';
+import { saveAdaptiveChallengeResult, calculatePercentile } from '@/services/adaptiveResultsService';
 import type { Subject } from '@/types/quiz';
 
 const AdaptiveChallenge = () => {
@@ -35,6 +36,13 @@ const AdaptiveChallenge = () => {
   const [selectedSubject, setSelectedSubject] = useState<Subject>('math');
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [showInfo, setShowInfo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [percentileData, setPercentileData] = useState<{ percentile: number | null; totalResults: number } | null>(null);
+  const hasSavedResult = useRef(false);
+  
+  // Generate a session ID for guest users
+  const sessionId = useRef(`guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
   // Update available topics when subject changes
   useEffect(() => {
@@ -96,7 +104,44 @@ const AdaptiveChallenge = () => {
     }
   }, [adaptive.state.isComplete, sound, confetti]);
 
+  // Save results when challenge is complete
+  useEffect(() => {
+    const saveResults = async () => {
+      if (adaptive.state.isComplete && adaptive.state.skillTier && !hasSavedResult.current) {
+        hasSavedResult.current = true;
+        setIsSaving(true);
+        setSaveError(null);
+        
+        const maxLevel = adaptive.getMaxLevel(adaptive.state.subject, adaptive.state.selectedTopics);
+        
+        const result = await saveAdaptiveChallengeResult({
+          state: adaptive.state,
+          maxLevel,
+          sessionId: sessionId.current,
+        });
+        
+        if (!result.success) {
+          setSaveError(result.error || 'Failed to save results');
+        }
+        
+        // Calculate percentile if enough data exists
+        const percentile = await calculatePercentile(
+          adaptive.state.subject,
+          adaptive.state.finalScore
+        );
+        setPercentileData(percentile);
+        
+        setIsSaving(false);
+      }
+    };
+    
+    saveResults();
+  }, [adaptive.state.isComplete, adaptive.state.skillTier, adaptive]);
+
   const handleRetry = () => {
+    hasSavedResult.current = false;
+    setPercentileData(null);
+    setSaveError(null);
     adaptive.resetChallenge();
   };
 
@@ -326,6 +371,9 @@ const AdaptiveChallenge = () => {
             maxLevel={adaptive.getMaxLevel(adaptive.state.subject, adaptive.state.selectedTopics)}
             onRetry={handleRetry}
             onHome={handleHome}
+            isSaving={isSaving}
+            saveError={saveError}
+            percentileData={percentileData}
           />
         )}
       </main>

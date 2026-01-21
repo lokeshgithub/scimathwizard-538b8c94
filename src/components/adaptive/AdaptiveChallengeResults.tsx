@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { 
   Trophy, Target, Clock, Zap, TrendingUp, Award, ChevronRight, 
   RotateCcw, Home, AlertTriangle, BookOpen, Lightbulb, ChevronDown,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, Loader2, Cloud, Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AdaptiveState, TopicPerformance, StudyRecommendation } from '@/types/adaptiveChallenge';
@@ -14,6 +14,9 @@ interface AdaptiveChallengeResultsProps {
   maxLevel: number;
   onRetry: () => void;
   onHome: () => void;
+  isSaving?: boolean;
+  saveError?: string | null;
+  percentileData?: { percentile: number | null; totalResults: number } | null;
 }
 
 export const AdaptiveChallengeResults = ({
@@ -21,6 +24,9 @@ export const AdaptiveChallengeResults = ({
   maxLevel,
   onRetry,
   onHome,
+  isSaving = false,
+  saveError = null,
+  percentileData = null,
 }: AdaptiveChallengeResultsProps) => {
   const [expandedRecommendation, setExpandedRecommendation] = useState<number | null>(0);
   
@@ -133,15 +139,69 @@ export const AdaptiveChallengeResults = ({
 
           {/* Score badge */}
           <motion.div
-            className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1"
+            className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
           >
+            {isSaving && <Loader2 className="w-3 h-3 text-white animate-spin" />}
+            {!isSaving && <Cloud className="w-3 h-3 text-white" />}
             <span className="text-white font-bold">{state.finalScore}</span>
             <span className="text-white/80 text-sm"> / 100</span>
           </motion.div>
         </div>
+
+        {/* Save status */}
+        {(isSaving || saveError) && (
+          <div className={`px-4 py-2 text-sm text-center ${
+            saveError ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+          }`}>
+            {isSaving && (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving your results...
+              </span>
+            )}
+            {saveError && (
+              <span className="flex items-center justify-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {saveError}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Percentile info (when available) */}
+        {percentileData && percentileData.percentile !== null && (
+          <motion.div
+            className="mx-6 mt-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 text-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Users className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Based on {percentileData.totalResults.toLocaleString()} students</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">
+              You scored better than <span className="text-primary">{percentileData.percentile}%</span> of students!
+            </p>
+          </motion.div>
+        )}
+
+        {/* Not enough data message */}
+        {percentileData && percentileData.percentile === null && percentileData.totalResults > 0 && (
+          <motion.div
+            className="mx-6 mt-4 bg-muted/50 rounded-xl p-3 text-center text-sm text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            {percentileData.totalResults} students have taken this challenge. 
+            Percentile rankings unlock after 50 results!
+          </motion.div>
+        )}
 
         {/* Content */}
         <div className="p-6 space-y-6">
