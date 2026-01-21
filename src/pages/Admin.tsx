@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, ExcelSheet } from '@/services/questionService';
+import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, fetchAllQuestionsForAdmin, exportQuestionBankToExcel } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -26,10 +28,13 @@ const Admin = () => {
   const [subject, setSubject] = useState('Math');
   const [topicName, setTopicName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'append' | 'replace'>('append');
+  const [isDownloading, setIsDownloading] = useState(false);
   const [uploadResults, setUploadResults] = useState<Array<{
     topic: string;
     success: boolean;
     count?: number;
+    skipped?: number;
     error?: string;
   }>>([]);
 
@@ -156,6 +161,39 @@ const Admin = () => {
     return 'Math';
   };
 
+  const handleDownloadQuestionBank = async () => {
+    setIsDownloading(true);
+    try {
+      const data = await fetchAllQuestionsForAdmin();
+      
+      if (data.subjects.length === 0) {
+        toast.error('No questions found in the database');
+        return;
+      }
+
+      const blob = exportQuestionBankToExcel(data);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `question-bank-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      const totalQuestions = data.subjects.reduce(
+        (acc, s) => acc + s.topics.reduce((t, topic) => t + topic.questions.length, 0),
+        0
+      );
+      toast.success(`Downloaded ${totalQuestions} questions across ${data.subjects.length} subject(s)`);
+    } catch (error) {
+      toast.error('Failed to download question bank');
+      console.error(error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -169,7 +207,6 @@ const Admin = () => {
       const isExcel = /\.(xlsx|xls)$/i.test(file.name);
       
       if (isExcel) {
-        // Handle Excel files with multiple sheets
         try {
           const buffer = await file.arrayBuffer();
           const sheets = parseExcelFile(buffer);
@@ -183,17 +220,22 @@ const Admin = () => {
             continue;
           }
           
-          // Upload each sheet as a separate topic
           for (const sheet of sheets) {
             const sheetTopicName = topicName || sheet.name || fileName;
             const detectedSubject = detectSubjectFromName(sheetTopicName) || subject;
             
-            const result = await uploadQuestionsFromCSV(detectedSubject, sheetTopicName, sheet.questions);
+            const result = await uploadQuestionsFromCSV(
+              detectedSubject, 
+              sheetTopicName, 
+              sheet.questions,
+              { replaceExisting: uploadMode === 'replace' }
+            );
             
             results.push({
               topic: `${fileName} → ${sheet.name}`,
               success: result.success,
               count: result.count,
+              skipped: result.skipped,
               error: result.error,
             });
           }
@@ -205,7 +247,6 @@ const Admin = () => {
           });
         }
       } else {
-        // Handle CSV/TSV files
         const content = await file.text();
         const detectedSubject = topicName ? subject : detectSubjectFromName(fileName);
         const finalTopicName = topicName || fileName;
@@ -221,12 +262,18 @@ const Admin = () => {
           continue;
         }
 
-        const result = await uploadQuestionsFromCSV(detectedSubject, finalTopicName, questions);
+        const result = await uploadQuestionsFromCSV(
+          detectedSubject, 
+          finalTopicName, 
+          questions,
+          { replaceExisting: uploadMode === 'replace' }
+        );
         
         results.push({
           topic: finalTopicName,
           success: result.success,
           count: result.count,
+          skipped: result.skipped,
           error: result.error,
         });
       }
@@ -238,10 +285,17 @@ const Admin = () => {
     event.target.value = '';
 
     const successCount = results.filter(r => r.success).length;
+    const totalInserted = results.reduce((acc, r) => acc + (r.count || 0), 0);
+    const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
+    
     if (successCount > 0) {
-      toast.success(`Successfully uploaded ${successCount} topic(s)!`);
+      let message = `Uploaded ${totalInserted} question(s)`;
+      if (totalSkipped > 0) {
+        message += `, skipped ${totalSkipped} duplicate(s)`;
+      }
+      toast.success(message);
     }
-  }, [subject, topicName]);
+  }, [subject, topicName, uploadMode]);
 
   // Loading state
   if (isLoading) {
@@ -415,51 +469,79 @@ const Admin = () => {
               </div>
             </div>
 
-            <label className="block cursor-pointer">
-              <input
-                type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={isUploading}
-              />
-              <motion.div 
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                  isUploading 
-                    ? 'border-muted bg-muted/20' 
-                    : 'border-border hover:border-primary hover:bg-primary/5'
-                }`}
-                whileHover={!isUploading ? { scale: 1.01 } : {}}
-                whileTap={!isUploading ? { scale: 0.99 } : {}}
-              >
-                {isUploading ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    <p className="font-medium">Uploading questions...</p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-3 block">Upload Mode</label>
+                <RadioGroup
+                  value={uploadMode}
+                  onValueChange={(value) => setUploadMode(value as 'append' | 'replace')}
+                  className="flex gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="append" id="append" />
+                    <Label htmlFor="append" className="cursor-pointer">
+                      <span className="font-medium">Append</span>
+                      <span className="text-muted-foreground text-sm ml-1">(skip duplicates)</span>
+                    </Label>
                   </div>
-                ) : (
-                  <>
-                    <motion.div 
-                      className="inline-flex p-4 bg-primary/10 rounded-full mb-4"
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <FileText className="w-8 h-8 text-primary" />
-                    </motion.div>
-                    <p className="font-semibold text-foreground mb-1">
-                      Click to upload question files
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Supports: CSV, TSV, Excel (.xlsx, .xls)
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Excel files with tabs will create separate topics for each sheet
-                    </p>
-                  </>
-                )}
-              </motion.div>
-            </label>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="replace" id="replace" />
+                    <Label htmlFor="replace" className="cursor-pointer">
+                      <span className="font-medium">Replace</span>
+                      <span className="text-muted-foreground text-sm ml-1">(delete existing first)</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <label className="block cursor-pointer">
+                <input
+                  type="file"
+                  accept=".csv,.tsv,.txt,.xlsx,.xls"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+                <motion.div 
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                    isUploading 
+                      ? 'border-muted bg-muted/20' 
+                      : 'border-border hover:border-primary hover:bg-primary/5'
+                  }`}
+                  whileHover={!isUploading ? { scale: 1.01 } : {}}
+                  whileTap={!isUploading ? { scale: 0.99 } : {}}
+                >
+                  {isUploading ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      <p className="font-medium">Uploading questions...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <motion.div 
+                        className="inline-flex p-4 bg-primary/10 rounded-full mb-4"
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <FileText className="w-8 h-8 text-primary" />
+                      </motion.div>
+                      <p className="font-semibold text-foreground mb-1">
+                        Click to upload question files
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Supports: CSV, TSV, Excel (.xlsx, .xls)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {uploadMode === 'append' 
+                          ? 'Duplicate questions will be automatically skipped'
+                          : 'All existing questions in the topic will be deleted first'}
+                      </p>
+                    </>
+                  )}
+                </motion.div>
+              </label>
+            </div>
           </CardContent>
         </Card>
 
@@ -474,7 +556,7 @@ const Admin = () => {
                   <motion.div
                     key={index}
                     className={`flex items-center gap-3 p-3 rounded-lg ${
-                      result.success ? 'bg-green-500/10' : 'bg-red-500/10'
+                      result.success ? 'bg-primary/10' : 'bg-destructive/10'
                     }`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -490,6 +572,11 @@ const Admin = () => {
                       {result.success ? (
                         <p className="text-sm text-muted-foreground">
                           {result.count} questions uploaded
+                          {result.skipped && result.skipped > 0 && (
+                            <span className="text-muted-foreground/70 ml-1">
+                              ({result.skipped} duplicates skipped)
+                            </span>
+                          )}
                         </p>
                       ) : (
                         <p className="text-sm text-destructive">{result.error}</p>
@@ -501,6 +588,37 @@ const Admin = () => {
             </CardContent>
           </Card>
         )}
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Download Question Bank
+            </CardTitle>
+            <CardDescription>
+              Download all questions as an Excel file with each topic on a separate sheet
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleDownloadQuestionBank}
+              disabled={isDownloading}
+              className="w-full sm:w-auto"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Preparing download...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download All Questions (.xlsx)
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
         <div className="mt-8 text-center">
           <a 

@@ -118,6 +118,41 @@ export async function validateAnswer(
   return data;
 }
 
+// Check for duplicate questions in a topic
+export async function checkDuplicateQuestions(
+  topicId: string,
+  questions: Array<{ question: string }>
+): Promise<Set<string>> {
+  // Fetch existing questions for this topic (admin can access via RLS)
+  const { data: existingQuestions } = await supabase
+    .from('questions')
+    .select('question')
+    .eq('topic_id', topicId);
+
+  const existingSet = new Set(
+    (existingQuestions || []).map(q => q.question.trim().toLowerCase())
+  );
+
+  return existingSet;
+}
+
+// Delete all questions for a topic
+export async function deleteTopicQuestions(topicId: string): Promise<{ success: boolean; error?: string; count?: number }> {
+  try {
+    const { data, error } = await supabase
+      .from('questions')
+      .delete()
+      .eq('topic_id', topicId)
+      .select('id');
+
+    if (error) throw new Error(`Failed to delete questions: ${error.message}`);
+    
+    return { success: true, count: data?.length || 0 };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
 // Admin function to upload questions from CSV
 export async function uploadQuestionsFromCSV(
   subjectName: string,
@@ -131,8 +166,9 @@ export async function uploadQuestionsFromCSV(
     optionD: string;
     correctAnswer: string;
     explanation: string;
-  }>
-): Promise<{ success: boolean; error?: string; count?: number }> {
+  }>,
+  options: { replaceExisting?: boolean } = {}
+): Promise<{ success: boolean; error?: string; count?: number; skipped?: number }> {
   try {
     // Get or create subject
     let { data: subject } = await supabase
@@ -171,8 +207,40 @@ export async function uploadQuestionsFromCSV(
       topic = newTopic;
     }
 
-    // Validate and sanitize questions before insert
-    const questionsToInsert = questions.map((q, index) => {
+    // If replaceExisting is true, delete all existing questions first
+    if (options.replaceExisting) {
+      await deleteTopicQuestions(topic.id);
+    }
+
+    // Check for duplicates (only if not replacing)
+    let existingQuestions = new Set<string>();
+    if (!options.replaceExisting) {
+      existingQuestions = await checkDuplicateQuestions(topic.id, questions);
+    }
+
+    // Filter out duplicates and prepare questions for insert
+    let skippedCount = 0;
+    const questionsToInsert: Array<{
+      topic_id: string;
+      level: number;
+      question: string;
+      option_a: string;
+      option_b: string;
+      option_c: string;
+      option_d: string;
+      correct_answer: string;
+      explanation: string | null;
+    }> = [];
+
+    for (let index = 0; index < questions.length; index++) {
+      const q = questions[index];
+      
+      // Check for duplicate
+      if (existingQuestions.has(q.question.trim().toLowerCase())) {
+        skippedCount++;
+        continue;
+      }
+
       // Ensure correct_answer is a valid uppercase letter A-D
       const answer = q.correctAnswer.trim().toUpperCase();
       const validAnswer = ['A', 'B', 'C', 'D'].includes(answer) ? answer : 'A';
@@ -183,10 +251,9 @@ export async function uploadQuestionsFromCSV(
       // Sanitize and validate text fields with length limits
       const sanitizeText = (text: string, maxLength: number): string => {
         if (!text) return '';
-        // Remove any potential script tags and trim
         return text
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-          .replace(/<[^>]*>/g, '') // Remove all HTML tags
+          .replace(/<[^>]*>/g, '')
           .trim()
           .slice(0, maxLength);
       };
@@ -198,12 +265,11 @@ export async function uploadQuestionsFromCSV(
       const optionD = sanitizeText(q.optionD, 500);
       const explanation = sanitizeText(q.explanation, 5000);
       
-      // Validate required fields
       if (!questionText || !optionA || !optionB || !optionC || !optionD) {
         throw new Error(`Question ${index + 1} is missing required fields`);
       }
       
-      return {
+      questionsToInsert.push({
         topic_id: topic!.id,
         level: validLevel,
         question: questionText,
@@ -213,19 +279,149 @@ export async function uploadQuestionsFromCSV(
         option_d: optionD,
         correct_answer: validAnswer,
         explanation: explanation || null,
-      };
-    });
+      });
+    }
 
-    const { error: insertError } = await supabase
-      .from('questions')
-      .insert(questionsToInsert);
+    if (questionsToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('questions')
+        .insert(questionsToInsert);
 
-    if (insertError) throw new Error(`Failed to insert questions: ${insertError.message}`);
+      if (insertError) throw new Error(`Failed to insert questions: ${insertError.message}`);
+    }
 
-    return { success: true, count: questions.length };
+    return { 
+      success: true, 
+      count: questionsToInsert.length,
+      skipped: skippedCount
+    };
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }
+}
+
+// Fetch all questions for admin (with correct answers for export)
+export async function fetchAllQuestionsForAdmin(): Promise<{
+  subjects: Array<{
+    name: string;
+    topics: Array<{
+      name: string;
+      questions: Array<{
+        level: number;
+        question: string;
+        optionA: string;
+        optionB: string;
+        optionC: string;
+        optionD: string;
+        correctAnswer: string;
+        explanation: string;
+      }>;
+    }>;
+  }>;
+}> {
+  const { data: subjects } = await supabase.from('subjects').select('*');
+  const { data: topics } = await supabase.from('topics').select('*');
+  const { data: questions } = await supabase.from('questions').select('*');
+
+  if (!subjects || !topics || !questions) {
+    return { subjects: [] };
+  }
+
+  const result: Array<{
+    name: string;
+    topics: Array<{
+      name: string;
+      questions: Array<{
+        level: number;
+        question: string;
+        optionA: string;
+        optionB: string;
+        optionC: string;
+        optionD: string;
+        correctAnswer: string;
+        explanation: string;
+      }>;
+    }>;
+  }> = [];
+
+  for (const subject of subjects) {
+    const subjectTopics = topics.filter(t => t.subject_id === subject.id);
+    const topicsWithQuestions = subjectTopics.map(topic => {
+      const topicQuestions = questions
+        .filter(q => q.topic_id === topic.id)
+        .map(q => ({
+          level: q.level,
+          question: q.question,
+          optionA: q.option_a,
+          optionB: q.option_b,
+          optionC: q.option_c,
+          optionD: q.option_d,
+          correctAnswer: q.correct_answer,
+          explanation: q.explanation || '',
+        }));
+
+      return {
+        name: topic.name,
+        questions: topicQuestions,
+      };
+    }).filter(t => t.questions.length > 0);
+
+    if (topicsWithQuestions.length > 0) {
+      result.push({
+        name: subject.name,
+        topics: topicsWithQuestions,
+      });
+    }
+  }
+
+  return { subjects: result };
+}
+
+// Export question bank to Excel workbook
+export function exportQuestionBankToExcel(data: Awaited<ReturnType<typeof fetchAllQuestionsForAdmin>>): Blob {
+  const workbook = XLSX.utils.book_new();
+
+  for (const subject of data.subjects) {
+    for (const topic of subject.topics) {
+      // Create sheet data with headers
+      const sheetData = [
+        ['#', 'Level', 'Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Answer', 'Explanation'],
+        ...topic.questions.map((q, index) => [
+          index + 1,
+          q.level,
+          q.question,
+          q.optionA,
+          q.optionB,
+          q.optionC,
+          q.optionD,
+          q.correctAnswer,
+          q.explanation,
+        ]),
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+      
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 5 },   // #
+        { wch: 6 },   // Level
+        { wch: 50 },  // Question
+        { wch: 25 },  // Option A
+        { wch: 25 },  // Option B
+        { wch: 25 },  // Option C
+        { wch: 25 },  // Option D
+        { wch: 15 },  // Correct Answer
+        { wch: 40 },  // Explanation
+      ];
+
+      // Sheet name: Subject - Topic (max 31 chars for Excel)
+      const sheetName = `${subject.name}-${topic.name}`.slice(0, 31);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    }
+  }
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 // Parse CSV/TSV content - auto-detects delimiter
