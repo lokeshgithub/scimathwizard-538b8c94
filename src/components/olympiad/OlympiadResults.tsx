@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Trophy, Target, Clock, BarChart3, 
-  TrendingUp, Award, ArrowRight, Home,
-  CheckCircle, XCircle, ChevronDown, ChevronUp, FileText
+  TrendingUp, Home, CheckCircle, XCircle, 
+  ChevronDown, ChevronUp, FileText, Brain,
+  Lightbulb, Footprints, ShieldCheck, AlertTriangle, Key, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { OlympiadQuestionResult } from '@/hooks/useOlympiadTest';
@@ -47,8 +48,63 @@ const getExamTypeLabel = (type: string) => {
   }
 };
 
+// Section icons for structured explanations
+const sectionIcons: Record<string, React.ReactNode> = {
+  'UNDERSTANDING': <Brain className="w-4 h-4" />,
+  'WHY THIS WORKS': <Lightbulb className="w-4 h-4" />,
+  'STEP-BY-STEP': <Footprints className="w-4 h-4" />,
+  'VERIFICATION': <ShieldCheck className="w-4 h-4" />,
+  'COMMON ERRORS': <AlertTriangle className="w-4 h-4" />,
+  'KEY CONCEPT': <Key className="w-4 h-4" />,
+};
+
+// Section colors for structured explanations
+const sectionColors: Record<string, string> = {
+  'UNDERSTANDING': 'text-blue-600',
+  'WHY THIS WORKS': 'text-amber-600',
+  'STEP-BY-STEP': 'text-emerald-600',
+  'VERIFICATION': 'text-green-600',
+  'COMMON ERRORS': 'text-red-500',
+  'KEY CONCEPT': 'text-purple-600',
+};
+
+// Parse structured explanations
+const formatExplanation = (explanation: string) => {
+  const regex = /【([^】]+)】\s*([\s\S]*?)(?=【|$)/g;
+  const formatted: { title: string; content: string }[] = [];
+  let match;
+  
+  while ((match = regex.exec(explanation)) !== null) {
+    const title = match[1].trim();
+    const content = match[2].trim();
+    if (content) {
+      formatted.push({ title, content });
+    }
+  }
+  
+  // Fallback if no sections found
+  if (formatted.length === 0 && explanation.trim()) {
+    formatted.push({ title: 'Explanation', content: explanation.trim() });
+  }
+  
+  return formatted;
+};
+
 export function OlympiadResults({ results, questionResults, strictMode, onRetry, onHome }: OlympiadResultsProps) {
   const [showReview, setShowReview] = useState(false);
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  
+  const toggleExplanation = (index: number) => {
+    setExpandedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
   
   const difficultyColors = {
     easy: 'text-success bg-success/10',
@@ -212,53 +268,111 @@ export function OlympiadResults({ results, questionResults, strictMode, onRetry,
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="px-5 pb-5 space-y-3 max-h-96 overflow-y-auto">
-                  {questionResults.map((result, index) => (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg border ${
-                        result.isCorrect 
-                          ? 'border-success/30 bg-success/5' 
-                          : 'border-destructive/30 bg-destructive/5'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
+                <div className="px-5 pb-5 space-y-3 max-h-[32rem] overflow-y-auto">
+                  {questionResults.map((result, index) => {
+                    const hasExplanation = result.question.explanation && result.question.explanation.trim().length > 0;
+                    const isExpanded = expandedQuestions.has(index);
+                    const explanationSections = hasExplanation ? formatExplanation(result.question.explanation) : [];
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`rounded-lg border overflow-hidden ${
                           result.isCorrect 
-                            ? 'bg-success text-white' 
-                            : 'bg-destructive text-white'
-                        }`}>
-                          {index + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground mb-2 line-clamp-2">
-                            {result.question.question}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className={`px-2 py-0.5 rounded ${difficultyColors[result.difficulty]}`}>
-                              {result.difficulty}
+                            ? 'border-success/30 bg-success/5' 
+                            : 'border-destructive/30 bg-destructive/5'
+                        }`}
+                      >
+                        {/* Question Header */}
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                              result.isCorrect 
+                                ? 'bg-success text-white' 
+                                : 'bg-destructive text-white'
+                            }`}>
+                              {index + 1}
                             </span>
-                            <span className="text-muted-foreground">
-                              Your answer: <strong>{String.fromCharCode(65 + result.selectedAnswer)}</strong>
-                            </span>
-                            {!result.isCorrect && (
-                              <span className="text-success">
-                                Correct: <strong>{String.fromCharCode(65 + result.correctAnswer)}</strong>
-                              </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground mb-2">
+                                {result.question.question}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs">
+                                <span className={`px-2 py-0.5 rounded ${difficultyColors[result.difficulty]}`}>
+                                  {result.difficulty}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  Your answer: <strong>{String.fromCharCode(65 + result.selectedAnswer)}</strong>
+                                  {!result.isCorrect && (
+                                    <span className="text-destructive ml-1">
+                                      ({result.question.options[result.selectedAnswer]?.substring(0, 30)}...)
+                                    </span>
+                                  )}
+                                </span>
+                                {!result.isCorrect && (
+                                  <span className="text-success">
+                                    Correct: <strong>{String.fromCharCode(65 + result.correctAnswer)}</strong>
+                                    <span className="ml-1">
+                                      ({result.question.options[result.correctAnswer]?.substring(0, 30)}...)
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {result.isCorrect ? (
+                              <CheckCircle className="w-5 h-5 text-success shrink-0" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-destructive shrink-0" />
                             )}
-                            <span className="text-muted-foreground">
-                              {result.timeSpent.toFixed(1)}s
-                            </span>
                           </div>
+                          
+                          {/* Show Explanation Button for wrong answers */}
+                          {!result.isCorrect && hasExplanation && (
+                            <button
+                              onClick={() => toggleExplanation(index)}
+                              className="mt-3 w-full py-2 px-3 bg-muted hover:bg-muted/80 rounded-lg text-sm font-medium text-foreground flex items-center justify-center gap-2 transition-colors"
+                            >
+                              <Lightbulb className="w-4 h-4 text-amber-500" />
+                              {isExpanded ? 'Hide Explanation' : 'View Explanation'}
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                         </div>
-                        {result.isCorrect ? (
-                          <CheckCircle className="w-5 h-5 text-success shrink-0" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-destructive shrink-0" />
-                        )}
+                        
+                        {/* Expandable Explanation */}
+                        <AnimatePresence>
+                          {isExpanded && hasExplanation && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-4 pb-4 pt-0">
+                                <div className="bg-background rounded-lg p-4 border border-border space-y-4">
+                                  {explanationSections.map((section, sIdx) => (
+                                    <div key={sIdx}>
+                                      <h5 className={`font-semibold mb-2 flex items-center gap-2 text-sm ${sectionColors[section.title] || 'text-primary'}`}>
+                                        {sectionIcons[section.title] || <Sparkles className="w-4 h-4" />}
+                                        {section.title}
+                                      </h5>
+                                      <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm">
+                                        {section.content}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
