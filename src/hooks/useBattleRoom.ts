@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { BattleRoom, BattlePresence, generateRoomCode, generatePlayerId, getRandomPlayerName } from '@/types/battle';
 import { Question, QuestionBank } from '@/types/quiz';
+import { validateAnswer as validateAnswerAPI } from '@/services/questionService';
 
 const PLAYER_ID_KEY = 'battle-player-id';
 const PLAYER_NAME_KEY = 'battle-player-name';
@@ -34,7 +35,9 @@ interface BattleState {
   opponentPresent: boolean;
   currentQuestion: Question | null;
   myAnswer: number | null;
+  myAnswerCorrect: boolean | null;
   opponentAnswer: number | null;
+  opponentAnswerCorrect: boolean | null;
   roundResult: 'waiting' | 'correct' | 'wrong' | 'tie' | null;
   battleQuestions: Question[];
   isLoading: boolean;
@@ -51,7 +54,9 @@ export const useBattleRoom = (banks: QuestionBank) => {
     opponentPresent: false,
     currentQuestion: null,
     myAnswer: null,
+    myAnswerCorrect: null,
     opponentAnswer: null,
+    opponentAnswerCorrect: null,
     roundResult: null,
     battleQuestions: [],
     isLoading: false,
@@ -61,14 +66,19 @@ export const useBattleRoom = (banks: QuestionBank) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const questionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate battle questions from a topic
+  // Generate battle questions from a topic (strips correct answers for security)
   const generateBattleQuestions = useCallback((subject: string, topic: string, count: number): Question[] => {
     const questions = banks[subject]?.[topic] || [];
     if (questions.length === 0) return [];
 
     // Shuffle and pick random questions
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(count, shuffled.length));
+    
+    // Strip correct answers - will be validated server-side
+    return shuffled.slice(0, Math.min(count, shuffled.length)).map(q => ({
+      ...q,
+      correct: -1, // Will be validated server-side
+    }));
   }, [banks]);
 
   // Create a new battle room
@@ -227,13 +237,19 @@ export const useBattleRoom = (banks: QuestionBank) => {
           room: prev.room ? { ...prev.room, status: 'playing', currentQuestion: 0 } : null,
           currentQuestion: questions[0] || null,
           myAnswer: null,
+          myAnswerCorrect: null,
           opponentAnswer: null,
+          opponentAnswerCorrect: null,
           roundResult: null,
         }));
       })
       .on('broadcast', { event: 'answer' }, ({ payload }) => {
         if (payload.playerId !== state.playerId) {
-          setState(prev => ({ ...prev, opponentAnswer: payload.answerIndex }));
+          setState(prev => ({ 
+            ...prev, 
+            opponentAnswer: payload.answerIndex,
+            opponentAnswerCorrect: payload.isCorrect, // Use server-validated result
+          }));
         }
       })
       .on('broadcast', { event: 'next_question' }, ({ payload }) => {
@@ -243,7 +259,9 @@ export const useBattleRoom = (banks: QuestionBank) => {
           room: prev.room ? { ...prev.room, currentQuestion: nextIndex, hostScore: payload.hostScore, guestScore: payload.guestScore } : null,
           currentQuestion: questions[nextIndex] || null,
           myAnswer: null,
+          myAnswerCorrect: null,
           opponentAnswer: null,
+          opponentAnswerCorrect: null,
           roundResult: null,
         }));
       })
@@ -291,24 +309,53 @@ export const useBattleRoom = (banks: QuestionBank) => {
     }));
   }, [state.room, state.isHost, state.battleQuestions]);
 
-  // Submit answer
+  // Submit answer with server-side validation
   const submitAnswer = useCallback(async (answerIndex: number) => {
-    if (!state.room || !channelRef.current || state.myAnswer !== null) return;
+    if (!state.room || !channelRef.current || state.myAnswer !== null || !state.currentQuestion) return;
 
+    // Immediately record the answer locally
     setState(prev => ({ ...prev, myAnswer: answerIndex }));
 
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'answer',
-      payload: { playerId: state.playerId, answerIndex },
-    });
-  }, [state.room, state.playerId, state.myAnswer]);
+    try {
+      // Validate answer server-side
+      const validation = await validateAnswerAPI(state.currentQuestion.id, answerIndex);
+      
+      setState(prev => ({ ...prev, myAnswerCorrect: validation.isCorrect }));
 
-  // Process round result when both players have answered
+      // Broadcast answer with server-validated result
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'answer',
+        payload: { 
+          playerId: state.playerId, 
+          answerIndex,
+          isCorrect: validation.isCorrect, // Server-validated result
+        },
+      });
+    } catch (error) {
+      console.error('Failed to validate answer:', error);
+      // Fallback: assume incorrect if validation fails
+      setState(prev => ({ ...prev, myAnswerCorrect: false }));
+      
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'answer',
+        payload: { 
+          playerId: state.playerId, 
+          answerIndex,
+          isCorrect: false,
+        },
+      });
+    }
+  }, [state.room, state.playerId, state.myAnswer, state.currentQuestion]);
+
+  // Process round result when both players have answered (using server-validated results)
   useEffect(() => {
-    if (state.myAnswer !== null && state.opponentAnswer !== null && state.currentQuestion) {
-      const isMyAnswerCorrect = state.myAnswer === state.currentQuestion.correct;
-      const isOpponentCorrect = state.opponentAnswer === state.currentQuestion.correct;
+    if (state.myAnswer !== null && state.opponentAnswer !== null && 
+        state.myAnswerCorrect !== null && state.opponentAnswerCorrect !== null) {
+      // Use server-validated results instead of client-side comparison
+      const isMyAnswerCorrect = state.myAnswerCorrect;
+      const isOpponentCorrect = state.opponentAnswerCorrect;
 
       let result: 'correct' | 'wrong' | 'tie';
       if (isMyAnswerCorrect && !isOpponentCorrect) {
@@ -358,7 +405,7 @@ export const useBattleRoom = (banks: QuestionBank) => {
         }, 2500);
       }
     }
-  }, [state.myAnswer, state.opponentAnswer, state.currentQuestion, state.isHost, state.room, state.battleQuestions]);
+  }, [state.myAnswer, state.opponentAnswer, state.myAnswerCorrect, state.opponentAnswerCorrect, state.isHost, state.room, state.battleQuestions]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -387,7 +434,9 @@ export const useBattleRoom = (banks: QuestionBank) => {
       opponentPresent: false,
       currentQuestion: null,
       myAnswer: null,
+      myAnswerCorrect: null,
       opponentAnswer: null,
+      opponentAnswerCorrect: null,
       roundResult: null,
       battleQuestions: [],
       isLoading: false,
