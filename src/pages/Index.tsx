@@ -6,10 +6,9 @@ import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
-import { TopicGrid } from '@/components/quiz/TopicGrid';
+import { TopicDashboard } from '@/components/quiz/TopicDashboard';
 import { MasteryPanel } from '@/components/quiz/MasteryPanel';
 import { QuizCard } from '@/components/quiz/QuizCard';
-import { WelcomeScreen } from '@/components/quiz/WelcomeScreen';
 import { LevelCompleteModal } from '@/components/quiz/LevelCompleteModal';
 import { SessionSummary } from '@/components/quiz/SessionSummary';
 import { AchievementsPanel } from '@/components/quiz/AchievementsPanel';
@@ -149,16 +148,18 @@ const Index = () => {
           </motion.div>
         ) : (
           <>
-            <TopicGrid 
-              topics={topics}
-              currentTopic={quiz.topic}
-              getProgress={quiz.getTopicProgress}
-              onSelectTopic={quiz.selectTopic}
-              onStartMixedQuiz={quiz.startMixedQuiz}
-              isMixedMode={quiz.mixedTopics !== null && quiz.mixedTopics.length > 0}
-              getTopicLevels={quiz.getTopicLevels}
-              isAdmin={false}
-            />
+            {/* Show Dashboard when not in a quiz */}
+            {!quiz.currentQuestion && (
+              <TopicDashboard 
+                topics={topics}
+                currentTopic={quiz.topic}
+                getProgress={quiz.getTopicProgress}
+                onSelectTopic={quiz.selectTopic}
+                onStartMixedQuiz={quiz.startMixedQuiz}
+                getTopicLevels={quiz.getTopicLevels}
+                isAdmin={false}
+              />
+            )}
 
             {!hasTopics && (
               <motion.div 
@@ -171,7 +172,7 @@ const Index = () => {
               </motion.div>
             )}
 
-            {quiz.topic && (
+            {quiz.topic && quiz.currentQuestion && (
               <MasteryPanel
                 topicName={quiz.topic}
                 currentLevel={quiz.level}
@@ -182,7 +183,7 @@ const Index = () => {
               />
             )}
 
-            {quiz.mixedTopics && quiz.mixedTopics.length > 0 && (
+            {quiz.mixedTopics && quiz.mixedTopics.length > 0 && quiz.currentQuestion && (
               <motion.div 
                 className="bg-gradient-magical text-white p-4 rounded-xl mb-4"
                 initial={{ opacity: 0, y: -10 }}
@@ -195,7 +196,7 @@ const Index = () => {
               </motion.div>
             )}
 
-            {quiz.currentQuestion ? (
+            {quiz.currentQuestion && (
               <QuizCard
                 question={quiz.currentQuestion}
                 level={quiz.level}
@@ -205,8 +206,6 @@ const Index = () => {
                 onNext={handleNext}
                 onSolutionViewed={quiz.markSolutionViewed}
               />
-            ) : (
-              <WelcomeScreen />
             )}
           </>
         )}
