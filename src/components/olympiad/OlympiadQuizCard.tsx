@@ -82,6 +82,8 @@ export function OlympiadQuizCard({
             const isCorrectAnswer = correctIndex === index;
             const showCorrect = showFeedback && isAnswered && isCorrectAnswer;
             const showWrong = showFeedback && isAnswered && isSelected && !isCorrect;
+            // In strict mode, just highlight the selected answer without revealing correctness
+            const showSelectedInStrictMode = !showFeedback && isAnswered && isSelected;
 
             return (
               <motion.button
@@ -94,8 +96,9 @@ export function OlympiadQuizCard({
                   ${!isAnswered && !isValidating ? 'hover:bg-muted hover:scale-[1.01] cursor-pointer' : 'cursor-default'}
                   ${showCorrect ? 'bg-success/20 ring-2 ring-success' : ''}
                   ${showWrong ? 'bg-destructive/20 ring-2 ring-destructive' : ''}
+                  ${showSelectedInStrictMode ? 'bg-primary/20 ring-2 ring-primary' : ''}
                   ${!isAnswered && isSelected ? 'bg-primary/20 ring-2 ring-primary' : ''}
-                  ${isAnswered && !showCorrect && !showWrong ? 'opacity-50' : ''}
+                  ${isAnswered && !showCorrect && !showWrong && !showSelectedInStrictMode ? 'opacity-50' : ''}
                   ${isValidating && isSelected ? 'bg-primary/20 ring-2 ring-primary animate-pulse' : ''}
                   bg-muted/50
                 `}
@@ -107,8 +110,9 @@ export function OlympiadQuizCard({
                     w-8 h-8 rounded-full flex items-center justify-center font-semibold
                     ${showCorrect ? 'bg-success text-white' : ''}
                     ${showWrong ? 'bg-destructive text-white' : ''}
+                    ${showSelectedInStrictMode ? 'bg-primary text-primary-foreground' : ''}
                     ${!isAnswered ? 'bg-muted-foreground/20 text-muted-foreground' : ''}
-                    ${isAnswered && !showCorrect && !showWrong ? 'bg-muted-foreground/20 text-muted-foreground' : ''}
+                    ${isAnswered && !showCorrect && !showWrong && !showSelectedInStrictMode ? 'bg-muted-foreground/20 text-muted-foreground' : ''}
                   `}
                 >
                   {String.fromCharCode(65 + index)}
@@ -130,11 +134,15 @@ export function OlympiadQuizCard({
               exit={{ opacity: 0, height: 0 }}
               className="mt-6"
             >
-              {showFeedback && (
+              {showFeedback ? (
                 <div className={`p-3 rounded-lg mb-4 ${isCorrect ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
                   <span className="font-medium">
                     {isCorrect ? '✓ Correct!' : '✗ Incorrect'}
                   </span>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg mb-4 bg-muted text-muted-foreground">
+                  <span className="font-medium">✓ Answer recorded</span>
                 </div>
               )}
 

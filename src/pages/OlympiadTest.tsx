@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Trophy, Info, Loader2, Clock, 
-  AlertTriangle, Play, BookOpen, Medal
+  AlertTriangle, Play, BookOpen, Medal, Eye, EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQuizStore } from '@/hooks/useQuizStore';
@@ -49,6 +49,7 @@ export default function OlympiadTest() {
   const [selectedExamType, setSelectedExamType] = useState<'foundation' | 'regional' | 'national'>('foundation');
   const [showInfo, setShowInfo] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [strictMode, setStrictMode] = useState(false);
 
   // Timer for active test
   useEffect(() => {
@@ -97,10 +98,13 @@ export default function OlympiadTest() {
 
   const handleAnswer = async (selectedIndex: number) => {
     const result = await olympiad.answerQuestion(selectedIndex);
-    if (result.isCorrect) {
-      sound.playCorrect();
-    } else {
-      sound.playIncorrect();
+    // Only play sounds if not in strict mode
+    if (!strictMode) {
+      if (result.isCorrect) {
+        sound.playCorrect();
+      } else {
+        sound.playIncorrect();
+      }
     }
     return result;
   };
@@ -269,12 +273,54 @@ export default function OlympiadTest() {
                 )}
               </div>
 
+              {/* Strict Mode Toggle */}
+              <div className="bg-card rounded-xl p-5 shadow-card">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {strictMode ? (
+                      <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <EyeOff className="w-5 h-5 text-destructive" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-success" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-foreground">Strict Exam Mode</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {strictMode 
+                          ? "No feedback until test ends — just like real exams" 
+                          : "See correct/incorrect after each question"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setStrictMode(!strictMode)}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${
+                      strictMode ? 'bg-destructive' : 'bg-muted'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                        strictMode ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               {/* Warning */}
               <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                 <div className="text-sm text-foreground">
                   <strong>Note:</strong> Once you start, you cannot pause the test. 
                   Make sure you have enough time to complete it in one sitting.
+                  {strictMode && (
+                    <span className="block mt-1 text-destructive">
+                      Strict mode is ON — you won't see answers until the test ends.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -299,6 +345,8 @@ export default function OlympiadTest() {
             >
               <OlympiadResults
                 results={olympiad.getResults}
+                questionResults={olympiad.state.questionResults}
+                strictMode={strictMode}
                 onRetry={handleRetry}
                 onHome={handleHome}
               />
@@ -335,7 +383,7 @@ export default function OlympiadTest() {
                 totalQuestions={olympiad.state.questions.length}
                 onAnswer={handleAnswer}
                 onNext={handleNext}
-                showFeedback={true}
+                showFeedback={!strictMode}
               />
             </motion.div>
           ) : null}

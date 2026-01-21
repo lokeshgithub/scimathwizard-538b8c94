@@ -1,10 +1,12 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Trophy, Target, Clock, BarChart3, 
   TrendingUp, Award, ArrowRight, Home,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, ChevronDown, ChevronUp, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { OlympiadQuestionResult } from '@/hooks/useOlympiadTest';
 
 interface OlympiadResultsProps {
   results: {
@@ -24,6 +26,8 @@ interface OlympiadResultsProps {
     medalEmoji: string;
     examType: string;
   };
+  questionResults?: OlympiadQuestionResult[];
+  strictMode?: boolean;
   onRetry: () => void;
   onHome: () => void;
 }
@@ -43,7 +47,9 @@ const getExamTypeLabel = (type: string) => {
   }
 };
 
-export function OlympiadResults({ results, onRetry, onHome }: OlympiadResultsProps) {
+export function OlympiadResults({ results, questionResults, strictMode, onRetry, onHome }: OlympiadResultsProps) {
+  const [showReview, setShowReview] = useState(false);
+  
   const difficultyColors = {
     easy: 'text-success bg-success/10',
     medium: 'text-warning bg-warning/10',
@@ -174,6 +180,91 @@ export function OlympiadResults({ results, onRetry, onHome }: OlympiadResultsPro
           </div>
         </div>
       </div>
+
+      {/* Question Review (especially useful for strict mode) */}
+      {questionResults && questionResults.length > 0 && (
+        <div className="bg-card rounded-xl shadow-card overflow-hidden">
+          <button
+            onClick={() => setShowReview(!showReview)}
+            className="w-full p-5 flex items-center justify-between hover:bg-muted/50 transition-colors"
+          >
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Review Your Answers
+              {strictMode && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  Strict Mode
+                </span>
+              )}
+            </h3>
+            {showReview ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {showReview && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-5 pb-5 space-y-3 max-h-96 overflow-y-auto">
+                  {questionResults.map((result, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border ${
+                        result.isCorrect 
+                          ? 'border-success/30 bg-success/5' 
+                          : 'border-destructive/30 bg-destructive/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
+                          result.isCorrect 
+                            ? 'bg-success text-white' 
+                            : 'bg-destructive text-white'
+                        }`}>
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground mb-2 line-clamp-2">
+                            {result.question.question}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className={`px-2 py-0.5 rounded ${difficultyColors[result.difficulty]}`}>
+                              {result.difficulty}
+                            </span>
+                            <span className="text-muted-foreground">
+                              Your answer: <strong>{String.fromCharCode(65 + result.selectedAnswer)}</strong>
+                            </span>
+                            {!result.isCorrect && (
+                              <span className="text-success">
+                                Correct: <strong>{String.fromCharCode(65 + result.correctAnswer)}</strong>
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              {result.timeSpent.toFixed(1)}s
+                            </span>
+                          </div>
+                        </div>
+                        {result.isCorrect ? (
+                          <CheckCircle className="w-5 h-5 text-success shrink-0" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-destructive shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3">
