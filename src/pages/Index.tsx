@@ -25,6 +25,7 @@ import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -167,40 +168,64 @@ const Index = () => {
             
             <div className="flex items-center gap-2">
               {/* Practice Mode Button - Active on home page */}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-white/20 text-white border-2 border-white/40 hover:bg-white/30 cursor-default"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span className="hidden sm:inline ml-1">Practice</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white/20 text-white border-2 border-white/40 hover:bg-white/30 cursor-default"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span className="hidden sm:inline ml-1">Practice</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[200px] text-center">
+                  <p className="font-semibold">Practice Mode</p>
+                  <p className="text-xs text-muted-foreground">Pick topics & master each level step by step</p>
+                </TooltipContent>
+              </Tooltip>
 
               {/* Adaptive Challenge Button */}
-              <Button
-                variant="secondary"
-                size="sm"
-                asChild
-                className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-violet-500 hover:to-purple-500 hover:text-white border-0"
-              >
-                <Link to="/adaptive" className="flex items-center gap-1">
-                  <Brain className="w-4 h-4" />
-                  <span className="hidden sm:inline">Adaptive</span>
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    asChild
+                    className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-violet-500 hover:to-purple-500 hover:text-white border-0"
+                  >
+                    <Link to="/adaptive" className="flex items-center gap-1">
+                      <Brain className="w-4 h-4" />
+                      <span className="hidden sm:inline">Adaptive</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[200px] text-center">
+                  <p className="font-semibold">Adaptive Challenge</p>
+                  <p className="text-xs text-muted-foreground">AI adjusts difficulty based on your performance</p>
+                </TooltipContent>
+              </Tooltip>
 
               {/* Olympiad Test Button */}
-              <Button
-                variant="secondary"
-                size="sm"
-                asChild
-                className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-amber-500 hover:to-orange-500 hover:text-white border-0"
-              >
-                <Link to="/olympiad" className="flex items-center gap-1">
-                  <Trophy className="w-4 h-4" />
-                  <span className="hidden sm:inline">Olympiad</span>
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    asChild
+                    className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-amber-500 hover:to-orange-500 hover:text-white border-0"
+                  >
+                    <Link to="/olympiad" className="flex items-center gap-1">
+                      <Trophy className="w-4 h-4" />
+                      <span className="hidden sm:inline">Olympiad</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[200px] text-center">
+                  <p className="font-semibold">Olympiad Test</p>
+                  <p className="text-xs text-muted-foreground">Timed exam prep with competition-style questions</p>
+                </TooltipContent>
+              </Tooltip>
               
               {/* Sound Toggle */}
               <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
