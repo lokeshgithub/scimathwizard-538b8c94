@@ -166,19 +166,6 @@ const Index = () => {
             </motion.div>
             
             <div className="flex items-center gap-2">
-              {/* Olympiad Test Button */}
-              <Button
-                variant="secondary"
-                size="sm"
-                asChild
-                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 border-0"
-              >
-                <Link to="/olympiad" className="flex items-center gap-1">
-                  <Trophy className="w-4 h-4" />
-                  <span className="hidden sm:inline">Olympiad</span>
-                </Link>
-              </Button>
-
               {/* Adaptive Challenge Button */}
               <Button
                 variant="secondary"
@@ -189,6 +176,19 @@ const Index = () => {
                 <Link to="/adaptive" className="flex items-center gap-1">
                   <Brain className="w-4 h-4" />
                   <span className="hidden sm:inline">Adaptive</span>
+                </Link>
+              </Button>
+
+              {/* Olympiad Test Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                asChild
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 border-0"
+              >
+                <Link to="/olympiad" className="flex items-center gap-1">
+                  <Trophy className="w-4 h-4" />
+                  <span className="hidden sm:inline">Olympiad</span>
                 </Link>
               </Button>
               

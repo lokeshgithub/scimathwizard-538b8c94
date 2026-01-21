@@ -93,29 +93,32 @@ export const QuizCard = ({
   const handleAnswer = useCallback(async (index: number) => {
     if (isAnswered || isValidating) return;
 
+    // Immediate optimistic feedback - show selection instantly
     setSelectedAnswer(index);
     setIsValidating(true);
 
+    // Pre-load character for instant display after validation
+    const char = getRandomCharacter(level);
+    const fun = getRandomFunElement(level);
+
     try {
       const result = await onAnswer(index);
+      
+      // Update state immediately after validation returns
       setIsAnswered(true);
       setIsCorrect(result.isCorrect);
       setCorrectIndex(result.correctIndex);
+      setIsValidating(false);
 
-      // Get character and message
-      const char = getRandomCharacter(level);
+      // Show pre-loaded character and fun element
       setCharacter(char);
       setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
-
-      // Get a fun element for surprise
-      const fun = getRandomFunElement(level);
       setFunElement(fun);
 
       // Track consecutive correct answers for milestones
       if (result.isCorrect) {
         const newConsecutive = consecutiveCorrect + 1;
         setConsecutiveCorrect(newConsecutive);
-        // Check for streak or total correct milestones
         const newTotalCorrect = sessionStats.totalCorrect + 1;
         const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
         if (milestoneAnim) {
@@ -126,8 +129,8 @@ export const QuizCard = ({
       }
     } catch (error) {
       console.error('Error validating answer:', error);
-    } finally {
       setIsValidating(false);
+      setSelectedAnswer(null); // Reset on error
     }
   }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect]);
 
@@ -243,9 +246,9 @@ export const QuizCard = ({
                 onClick={() => handleAnswer(index)}
                 disabled={isAnswered || isValidating}
                 className={`
-                  w-full p-4 rounded-xl text-left transition-all flex items-center gap-3
+                  w-full p-4 rounded-xl text-left transition-colors duration-150 flex items-center gap-3
                   ${isValidating && isSelected
-                    ? 'bg-primary/20 ring-2 ring-primary animate-pulse'
+                    ? 'bg-primary/30 ring-2 ring-primary'
                     : !isAnswered 
                       ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30' 
                       : showAsCorrect 
@@ -256,8 +259,15 @@ export const QuizCard = ({
                   }
                 `}
                 initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * index }}
+                animate={{ 
+                  opacity: 1, 
+                  x: 0,
+                  scale: isValidating && isSelected ? [1, 1.01, 1] : 1
+                }}
+                transition={{ 
+                  delay: 0.1 * index,
+                  scale: { duration: 0.3, repeat: isValidating && isSelected ? Infinity : 0 }
+                }}
                 whileHover={!isAnswered && !isValidating ? { scale: 1.01 } : undefined}
                 whileTap={!isAnswered && !isValidating ? { scale: 0.99 } : undefined}
               >
