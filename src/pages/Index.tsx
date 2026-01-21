@@ -319,6 +319,7 @@ const Index = () => {
                 onAnswer={handleAnswer}
                 onNext={handleNext}
                 onSolutionViewed={quiz.markSolutionViewed}
+                onPrefetchNext={quiz.prefetchNextQuestion}
               />
             )}
           </>

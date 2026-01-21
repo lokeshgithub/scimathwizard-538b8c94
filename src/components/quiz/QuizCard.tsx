@@ -17,6 +17,7 @@ interface QuizCardProps {
   onAnswer: (selectedIndex: number) => Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null; timeSpent?: number }>;
   onNext: () => void;
   onSolutionViewed: (questionId: string) => void;
+  onPrefetchNext?: () => void;
 }
 
 export const QuizCard = ({ 
@@ -26,7 +27,8 @@ export const QuizCard = ({
   sessionStats,
   onAnswer, 
   onNext,
-  onSolutionViewed 
+  onSolutionViewed,
+  onPrefetchNext
 }: QuizCardProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -110,6 +112,10 @@ export const QuizCard = ({
       setCorrectIndex(result.correctIndex);
       setIsValidating(false);
 
+      // Prefetch next question immediately after answer is validated
+      // This happens while user sees feedback, before they click explanation
+      onPrefetchNext?.();
+
       // Show pre-loaded character and fun element
       setCharacter(char);
       setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
@@ -132,12 +138,14 @@ export const QuizCard = ({
       setIsValidating(false);
       setSelectedAnswer(null); // Reset on error
     }
-  }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect]);
+  }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect, onPrefetchNext]);
 
   const handleShowExplanation = useCallback(() => {
     setShowExplanation(true);
     onSolutionViewed(question.id);
-  }, [onSolutionViewed, question.id]);
+    // Prefetch next question while user reads explanation
+    onPrefetchNext?.();
+  }, [onSolutionViewed, question.id, onPrefetchNext]);
 
   const handleNext = useCallback(() => {
     onNext();
