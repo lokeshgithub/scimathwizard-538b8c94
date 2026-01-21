@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, Trophy, Info, Loader2, Clock, 
-  AlertTriangle, Play, BookOpen, Medal, Eye, EyeOff
+  Trophy, Info, Loader2, Clock, 
+  AlertTriangle, Play, Medal, Eye, EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useOlympiadTest } from '@/hooks/useOlympiadTest';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -147,23 +148,21 @@ export default function OlympiadTest() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-4 px-4 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
             <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" />
-              <h1 className="font-bold text-lg text-foreground">Olympiad Test</h1>
+              <Trophy className="w-6 h-6" />
+              <h1 className="font-bold text-xl text-white">Olympiad Test</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Pathway Navigation */}
+            <PathwayNav />
+            
             {olympiad.state.isActive && !olympiad.state.isComplete && (
               <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                timeRemaining < 5 ? 'bg-destructive/20 text-destructive animate-pulse' : 'bg-muted text-foreground'
+                timeRemaining < 5 ? 'bg-white/20 text-white animate-pulse' : 'bg-white/10 text-white'
               }`}>
                 <Clock className="w-4 h-4" />
                 {formatTimeRemaining(timeRemaining)}
