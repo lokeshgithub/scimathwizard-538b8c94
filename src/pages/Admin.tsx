@@ -307,112 +307,7 @@ const Admin = () => {
     );
   }
 
-  // Not authenticated - show login/signup
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <motion.div
-                className="mx-auto mb-4 p-4 bg-primary/10 rounded-full w-fit"
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Lock className="w-8 h-8 text-primary" />
-              </motion.div>
-              <CardTitle>{isSignUp ? 'Create Account' : 'Admin Login'}</CardTitle>
-              <CardDescription>
-                {isSignUp 
-                  ? 'Create an account to request admin access' 
-                  : 'Sign in with your admin account'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (isSignUp ? handleSignUp() : handleSignIn())}
-              />
-              <Button 
-                className="w-full" 
-                onClick={isSignUp ? handleSignUp : handleSignIn}
-                disabled={authLoading}
-              >
-                {authLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : isSignUp ? (
-                  <UserPlus className="w-4 h-4 mr-2" />
-                ) : null}
-                {isSignUp ? 'Create Account' : 'Sign In'}
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full" 
-                onClick={() => setIsSignUp(!isSignUp)}
-              >
-                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Authenticated but not admin
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <motion.div
-                className="mx-auto mb-4 p-4 bg-destructive/10 rounded-full w-fit"
-              >
-                <AlertCircle className="w-8 h-8 text-destructive" />
-              </motion.div>
-              <CardTitle>Access Denied</CardTitle>
-              <CardDescription>
-                You don't have admin privileges. Contact an administrator to request access.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">
-                Signed in as: {user.email}
-              </p>
-              <Button variant="outline" className="w-full" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-              <a 
-                href="/" 
-                className="block text-center text-primary hover:underline"
-              >
-                ← Back to Quiz App
-              </a>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Authenticated admin - show upload interface
+  // Show upload interface directly (no auth required)
   return (
     <div className="min-h-screen bg-background">
       <motion.header 
@@ -424,13 +319,14 @@ const Admin = () => {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">📚 Admin - Question Bank Manager</h1>
             <p className="text-white/80 text-sm mt-1">
-              Signed in as: {user.email}
+              Upload and manage quiz questions
             </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          <a href="/">
+            <Button variant="secondary" size="sm">
+              ← Back to Quiz
+            </Button>
+          </a>
         </div>
       </motion.header>
 
