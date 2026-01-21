@@ -8,10 +8,11 @@ const corsHeaders = {
 interface ValidateRequest {
   questionId: string;
   selectedAnswer: number; // 0=A, 1=B, 2=C, 3=D
+  sessionId?: string;
+  userId?: string;
 }
 
 // Simple in-memory rate limiting (per-instance)
-// For production, use Redis/Upstash for distributed rate limiting
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute per IP
@@ -38,6 +39,30 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 
 function isValidUUID(str: string): boolean {
   return UUID_REGEX.test(str);
+}
+
+// Log usage to database (non-blocking)
+async function logUsage(
+  supabaseUrl: string,
+  supabaseKey: string,
+  userId: string | null,
+  sessionId: string | null,
+  actionType: string,
+  details: Record<string, unknown>,
+  estimatedCost: number = 0
+) {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    await supabase.from('usage_logs').insert({
+      user_id: userId,
+      session_id: sessionId,
+      action_type: actionType,
+      details,
+      estimated_cost: estimatedCost,
+    } as any);
+  } catch (error) {
+    console.error('Failed to log usage:', error);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -68,6 +93,11 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Create Supabase client with service role
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
     let body: ValidateRequest;
     try {
@@ -79,7 +109,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { questionId, selectedAnswer } = body;
+    const { questionId, selectedAnswer, sessionId, userId } = body;
 
     // Validate questionId is present and is a valid UUID
     if (!questionId || typeof questionId !== 'string') {
@@ -120,11 +150,6 @@ Deno.serve(async (req) => {
 
     console.log(`Validating answer for question ${questionId}, selected: ${selectedAnswer}, IP: ${ip}`);
 
-    // Create Supabase client with service role to access correct_answer
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Fetch the question with correct answer (only service role can see this)
     const { data: question, error } = await supabase
       .from('questions')
@@ -133,7 +158,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !question) {
-      // Use generic error to avoid information leakage
       console.error('Error fetching question:', error);
       return new Response(
         JSON.stringify({ error: 'Question not found' }),
@@ -146,6 +170,18 @@ Deno.serve(async (req) => {
     const isCorrect = selectedAnswer === correctIndex;
 
     console.log(`Question ${questionId}: isCorrect=${isCorrect}`);
+
+    // Log usage (fire-and-forget) - minimal cost for answer validation
+    const validUserId = userId && isValidUUID(userId) ? userId : null;
+    logUsage(
+      supabaseUrl,
+      supabaseServiceKey,
+      validUserId,
+      sessionId || null,
+      'answer_validation',
+      { question_id: questionId, is_correct: isCorrect },
+      0.0001
+    );
 
     return new Response(
       JSON.stringify({

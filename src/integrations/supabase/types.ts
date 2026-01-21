@@ -207,6 +207,36 @@ export type Database = {
           },
         ]
       }
+      usage_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json | null
+          estimated_cost: number | null
+          id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details?: Json | null
+          estimated_cost?: number | null
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json | null
+          estimated_cost?: number | null
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

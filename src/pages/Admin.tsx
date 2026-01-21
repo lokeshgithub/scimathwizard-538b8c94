@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, fetchAllQuestionsForAdmin, exportQuestionBankToExcel } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { UsageDashboard } from '@/components/admin/UsageDashboard';
 
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -619,6 +620,10 @@ const Admin = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <UsageDashboard />
+        </div>
 
         <div className="mt-8 text-center">
           <a 
