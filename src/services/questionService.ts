@@ -172,8 +172,8 @@ export async function uploadQuestionsFromCSV(
       topic = newTopic;
     }
 
-    // Insert questions
-    const questionsToInsert = questions.map(q => {
+    // Validate and sanitize questions before insert
+    const questionsToInsert = questions.map((q, index) => {
       // Ensure correct_answer is a valid uppercase letter A-D
       const answer = q.correctAnswer.trim().toUpperCase();
       const validAnswer = ['A', 'B', 'C', 'D'].includes(answer) ? answer : 'A';
@@ -181,16 +181,39 @@ export async function uploadQuestionsFromCSV(
       // Ensure level is between 1-5
       const validLevel = Math.min(5, Math.max(1, q.level || 1));
       
+      // Sanitize and validate text fields with length limits
+      const sanitizeText = (text: string, maxLength: number): string => {
+        if (!text) return '';
+        // Remove any potential script tags and trim
+        return text
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/<[^>]*>/g, '') // Remove all HTML tags
+          .trim()
+          .slice(0, maxLength);
+      };
+      
+      const questionText = sanitizeText(q.question, 2000);
+      const optionA = sanitizeText(q.optionA, 500);
+      const optionB = sanitizeText(q.optionB, 500);
+      const optionC = sanitizeText(q.optionC, 500);
+      const optionD = sanitizeText(q.optionD, 500);
+      const explanation = sanitizeText(q.explanation, 5000);
+      
+      // Validate required fields
+      if (!questionText || !optionA || !optionB || !optionC || !optionD) {
+        throw new Error(`Question ${index + 1} is missing required fields`);
+      }
+      
       return {
         topic_id: topic!.id,
         level: validLevel,
-        question: q.question,
-        option_a: q.optionA,
-        option_b: q.optionB,
-        option_c: q.optionC,
-        option_d: q.optionD,
+        question: questionText,
+        option_a: optionA,
+        option_b: optionB,
+        option_c: optionC,
+        option_d: optionD,
         correct_answer: validAnswer,
-        explanation: q.explanation,
+        explanation: explanation || null,
       };
     });
 
