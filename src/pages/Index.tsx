@@ -166,6 +166,7 @@ const Index = () => {
                 onStartMixedQuiz={quiz.startMixedQuiz}
                 getTopicLevels={quiz.getTopicLevels}
                 isAdmin={false}
+                currentSubject={quiz.subject}
               />
             )}
 

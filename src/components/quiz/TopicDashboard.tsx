@@ -6,6 +6,7 @@ import {
   ChevronRight, Zap, Award, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ContinueSession, saveLastSession } from './ContinueSession';
 
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
@@ -15,6 +16,7 @@ interface TopicDashboardProps {
   onStartMixedQuiz?: (topics: string[]) => void;
   getTopicLevels?: (topic: string) => number[];
   isAdmin?: boolean;
+  currentSubject?: string;
 }
 
 const formatName = (name: string) => {
@@ -92,7 +94,8 @@ export const TopicDashboard = ({
   onSelectTopic,
   onStartMixedQuiz,
   getTopicLevels,
-  isAdmin = false
+  isAdmin = false,
+  currentSubject = 'math'
 }: TopicDashboardProps) => {
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
   const topicEntries = Object.entries(topics);
@@ -157,8 +160,34 @@ export const TopicDashboard = ({
     );
   }
 
+  // Wrapper to save last session when selecting a topic
+  const handleSelectTopic = (topicName: string) => {
+    const progress = getProgress(topicName);
+    const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
+    const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
+    saveLastSession(currentSubject, topicName, currentLevel);
+    onSelectTopic(topicName);
+  };
+
+  // Get progress info for continue session
+  const getTopicProgressInfo = (topicName: string) => {
+    const progress = getProgress(topicName);
+    const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
+    const masteredCount = levels.filter(l => progress[l]?.mastered).length;
+    const percentage = (masteredCount / levels.length) * 100;
+    const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
+    return { percentage, currentLevel, maxLevel: levels.length };
+  };
+
   return (
     <div className="space-y-6 mb-6">
+      {/* Continue Session Button */}
+      <ContinueSession 
+        currentSubject={currentSubject}
+        onContinue={handleSelectTopic}
+        getTopicProgress={getTopicProgressInfo}
+      />
+
       {/* Quick Start - Mix All Button */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -281,7 +310,7 @@ export const TopicDashboard = ({
         {topicStats.map((topic, index) => (
           <motion.button
             key={topic.name}
-            onClick={() => onSelectTopic(topic.name)}
+            onClick={() => handleSelectTopic(topic.name)}
             onMouseEnter={() => setHoveredTopic(topic.name)}
             onMouseLeave={() => setHoveredTopic(null)}
             className={`
