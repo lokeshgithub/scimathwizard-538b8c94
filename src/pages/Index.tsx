@@ -24,6 +24,7 @@ import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
+import { PathwayProgress } from '@/components/quiz/PathwayProgress';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { Button } from '@/components/ui/button';
@@ -233,6 +234,14 @@ const Index = () => {
         </div>
         
         <StatsBar stats={quiz.sessionStats} />
+        
+        {/* Pathway Progress - Journey visualization */}
+        <PathwayProgress 
+          topics={topics}
+          getProgress={quiz.getTopicProgress}
+          getTopicLevels={quiz.getTopicLevels}
+        />
+        
         <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
         
         {quiz.isLoading ? (
