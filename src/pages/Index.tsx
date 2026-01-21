@@ -13,6 +13,7 @@ import { LevelCompleteModal } from '@/components/quiz/LevelCompleteModal';
 import { SessionSummary } from '@/components/quiz/SessionSummary';
 import { AchievementsPanel } from '@/components/quiz/AchievementsPanel';
 import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
+import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Button } from '@/components/ui/button';
@@ -134,7 +135,11 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <StatsBar stats={quiz.sessionStats} />
+        {/* Daily Goal & Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-6">
+          <StatsBar stats={quiz.sessionStats} />
+          <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
+        </div>
         <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
         
         {quiz.isLoading ? (
