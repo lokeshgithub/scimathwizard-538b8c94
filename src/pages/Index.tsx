@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3 } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
@@ -9,6 +9,8 @@ import { MasteryPanel } from '@/components/quiz/MasteryPanel';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { WelcomeScreen } from '@/components/quiz/WelcomeScreen';
 import { LevelCompleteModal } from '@/components/quiz/LevelCompleteModal';
+import { SessionSummary } from '@/components/quiz/SessionSummary';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -46,6 +48,7 @@ const Index = () => {
 
   const topics = quiz.banks[quiz.subject] || {};
   const hasTopics = Object.keys(topics).length > 0;
+  const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,17 +58,31 @@ const Index = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            className="inline-flex items-center gap-2 mb-2"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Sparkles className="w-8 h-8" />
-            <h1 className="text-2xl md:text-3xl font-bold">Magic Mastery Quiz</h1>
-            <Sparkles className="w-8 h-8" />
-          </motion.div>
-          <p className="text-white/80 text-sm">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between">
+            <motion.div
+              className="flex items-center gap-2"
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Sparkles className="w-8 h-8" />
+              <h1 className="text-2xl md:text-3xl font-bold">Magic Mastery Quiz</h1>
+              <Sparkles className="w-8 h-8" />
+            </motion.div>
+            
+            {hasAnsweredQuestions && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={quiz.endSession}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                View Summary
+              </Button>
+            )}
+          </div>
+          <p className="text-white/80 text-sm mt-2">
             Master each level (80% accuracy) with your magical friends! ✨
           </p>
         </div>
@@ -94,6 +111,8 @@ const Index = () => {
               onSelectTopic={quiz.selectTopic}
               onStartMixedQuiz={quiz.startMixedQuiz}
               isMixedMode={quiz.mixedTopics !== null && quiz.mixedTopics.length > 0}
+              getTopicLevels={quiz.getTopicLevels}
+              isAdmin={false}
             />
 
             {!hasTopics && (
@@ -114,6 +133,7 @@ const Index = () => {
                 progress={quiz.getTopicProgress(quiz.topic)}
                 levelStats={quiz.levelStats}
                 perLevel={quiz.PER_LEVEL}
+                topicLevels={quiz.getTopicLevels(quiz.topic)}
               />
             )}
 
@@ -156,6 +176,18 @@ const Index = () => {
         onAdvance={handleModalAction}
         onRetry={handleModalAction}
       />
+
+      {/* Session Summary Modal */}
+      {quiz.showSessionSummary && (
+        <SessionSummary
+          analysis={quiz.calculateSessionAnalysis()}
+          subject={quiz.subject}
+          onClose={() => {
+            quiz.setShowSessionSummary(false);
+            quiz.resetSession();
+          }}
+        />
+      )}
     </div>
   );
 };

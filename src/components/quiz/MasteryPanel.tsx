@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { TopicProgress } from '@/types/quiz';
 import { themeLevels } from '@/data/characters';
-import { Lock, CheckCircle, Circle, Sparkles } from 'lucide-react';
+import { TopicProgress } from '@/types/quiz';
+import { CheckCircle, Lock, Circle, Sparkles } from 'lucide-react';
 
 interface MasteryPanelProps {
   topicName: string;
@@ -9,6 +9,7 @@ interface MasteryPanelProps {
   progress: TopicProgress;
   levelStats: { correct: number; total: number };
   perLevel: number;
+  topicLevels?: number[];
 }
 
 const formatName = (name: string) => {
@@ -17,57 +18,76 @@ const formatName = (name: string) => {
     .replace(/\b\w/g, l => l.toUpperCase());
 };
 
+// Extended theme levels for levels 6 and 7
+const getThemeForLevel = (level: number) => {
+  // Use predefined themes for levels 1-5
+  const existing = themeLevels.find(t => t.level === level);
+  if (existing) return existing;
+
+  // Extended themes for levels 6 and 7
+  const extendedThemes = [
+    {
+      level: 6,
+      theme: 'Order of the Phoenix',
+      bgClass: 'from-red-500 to-orange-500',
+      accentColor: 'hsl(var(--level-1))',
+    },
+    {
+      level: 7,
+      theme: 'Deathly Hallows Master',
+      bgClass: 'from-slate-600 to-slate-800',
+      accentColor: 'hsl(var(--level-2))',
+    },
+  ];
+
+  return extendedThemes.find(t => t.level === level) || themeLevels[0];
+};
+
 export const MasteryPanel = ({ 
   topicName, 
   currentLevel, 
   progress, 
-  levelStats,
-  perLevel 
+  levelStats, 
+  perLevel,
+  topicLevels = [1, 2, 3, 4, 5]
 }: MasteryPanelProps) => {
-  const accuracy = levelStats.total > 0 
-    ? Math.round((levelStats.correct / levelStats.total) * 100) 
+  const currentTheme = getThemeForLevel(currentLevel);
+  const progressPercent = levelStats.total > 0 
+    ? Math.round((levelStats.correct / perLevel) * 100)
     : 0;
-  const remaining = Math.max(0, perLevel - levelStats.total);
-  const currentTheme = themeLevels.find(t => t.level === currentLevel);
+  const accuracy = levelStats.total > 0 
+    ? Math.round((levelStats.correct / levelStats.total) * 100)
+    : 0;
 
   return (
-    <motion.div 
-      className="bg-card rounded-xl p-6 shadow-card mb-6"
-      initial={{ opacity: 0, y: 20 }}
+    <motion.div
+      className="bg-card rounded-xl shadow-card p-5 mb-6"
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div 
-          className="text-3xl"
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          ✨
-        </motion.div>
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-bold text-lg text-foreground">
-            {formatName(topicName)}
-          </h3>
+          <h3 className="font-bold text-foreground text-lg">{formatName(topicName)}</h3>
           <p className="text-sm text-muted-foreground">
-            {currentTheme?.theme || 'Adventure Zone'}
+            {currentTheme?.theme || `Level ${currentLevel}`}
           </p>
         </div>
       </div>
 
-      {/* Level Badges */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {[1, 2, 3, 4, 5].map(level => {
+      {/* Level badges - dynamic based on topic */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+        {topicLevels.map(level => {
           const levelData = progress[level];
           const isMastered = levelData?.mastered;
           const isCurrent = level === currentLevel;
           const isLocked = level > currentLevel && !progress[level - 1]?.mastered;
-          const theme = themeLevels.find(t => t.level === level);
+          const theme = getThemeForLevel(level);
 
           return (
             <motion.div
               key={level}
               className={`
-                relative px-4 py-3 rounded-xl text-center min-w-[70px]
+                relative px-4 py-3 rounded-xl text-center min-w-[70px] flex-shrink-0
                 ${isMastered 
                   ? `bg-gradient-to-br ${theme?.bgClass} text-white` 
                   : isLocked 
@@ -108,24 +128,25 @@ export const MasteryPanel = ({
         })}
       </div>
 
-      {/* Progress Bar */}
+      {/* Current level progress */}
       <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Level {currentLevel} Progress</span>
+          <span className="font-semibold text-foreground">
+            {levelStats.correct}/{perLevel} needed
+          </span>
+        </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-magical"
+            className={`h-full bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'}`}
             initial={{ width: 0 }}
-            animate={{ width: `${(levelStats.total / perLevel) * 100}%` }}
+            animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.5 }}
           />
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">
-            Level {currentLevel}: {remaining > 0 ? `${remaining} more questions` : 'Evaluating...'}
-            {' '}(need 80%)
-          </span>
-          <span className="font-semibold text-foreground">
-            {levelStats.correct}/{levelStats.total} ({accuracy}%)
-          </span>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{levelStats.correct} correct of {levelStats.total} answered</span>
+          <span>Accuracy: {accuracy}%</span>
         </div>
       </div>
     </motion.div>
