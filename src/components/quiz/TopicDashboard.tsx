@@ -66,12 +66,22 @@ const getTopicIcon = (name: string): string => {
   const lower = name.toLowerCase();
   if (lower.includes('decimal')) return '🔢';
   if (lower.includes('fraction')) return '🍕';
-  if (lower.includes('ratio') || lower.includes('proportion')) return '⚖️';
-  if (lower.includes('exponent') || lower.includes('power')) return '📐';
-  if (lower.includes('rational')) return '🎲';
+  if (lower.includes('ratio') && lower.includes('proportion')) return '⚖️';
+  if (lower.includes('ratio')) return '🔗';
+  if (lower.includes('proportion')) return '📊';
+  if (lower.includes('exponent') || lower.includes('power')) return '⚡';
+  if (lower.includes('rational')) return '➗';
   if (lower.includes('algebra')) return '🔤';
-  if (lower.includes('geometry')) return '📏';
+  if (lower.includes('geometry')) return '📐';
   if (lower.includes('percent')) return '💯';
+  if (lower.includes('integer')) return '🔟';
+  if (lower.includes('linear') || lower.includes('equation')) return '📈';
+  if (lower.includes('triangle')) return '📐';
+  if (lower.includes('circle')) return '⭕';
+  if (lower.includes('quadrilateral')) return '🔷';
+  if (lower.includes('statistic')) return '📊';
+  if (lower.includes('probability')) return '🎲';
+  if (lower.includes('number')) return '🔢';
   return '📚';
 };
 
