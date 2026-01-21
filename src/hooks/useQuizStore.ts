@@ -21,6 +21,7 @@ interface QuizState {
   banks: QuestionBank;
   subject: Subject;
   topic: string | null;
+  mixedTopics: string[] | null; // For mixed mode
   level: number;
   progress: Progress;
   questionTracking: QuestionTracking;
@@ -75,6 +76,7 @@ export const useQuizStore = () => {
   const [banks, setBanks] = useState<QuestionBank>(stored.banks || {});
   const [subject, setSubject] = useState<Subject>('math');
   const [topic, setTopic] = useState<string | null>(null);
+  const [mixedTopics, setMixedTopics] = useState<string[] | null>(null);
   const [level, setLevel] = useState(1);
   const [progress, setProgress] = useState<Progress>(stored.progress || {});
   const [questionTracking, setQuestionTracking] = useState<QuestionTracking>(
@@ -228,6 +230,7 @@ export const useQuizStore = () => {
 
   const selectTopic = useCallback((topicName: string) => {
     setTopic(topicName);
+    setMixedTopics(null); // Clear mixed mode
     const prog = getTopicProgress(topicName);
     
     // Find the current level (first non-mastered level)
@@ -256,6 +259,26 @@ export const useQuizStore = () => {
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
   }, [getTopicProgress, getAvailableQuestions, banks, subject]);
+
+  // Start a mixed topics quiz
+  const startMixedQuiz = useCallback((selectedTopics: string[]) => {
+    setTopic(null);
+    setMixedTopics(selectedTopics);
+    setLevel(1);
+    setLevelStats({ correct: 0, total: 0 });
+    
+    // Gather all questions from selected topics
+    const allQuestions: Question[] = [];
+    for (const topicName of selectedTopics) {
+      const topicQuestions = banks[subject]?.[topicName] || [];
+      allQuestions.push(...topicQuestions);
+    }
+    
+    // Shuffle all questions
+    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+    setCurrentQuestions(shuffled);
+    setQuestionIndex(0);
+  }, [banks, subject]);
 
   const markQuestionAnswered = useCallback((questionId: string, correct: boolean) => {
     setQuestionTracking(prev => ({
@@ -392,6 +415,7 @@ export const useQuizStore = () => {
     banks,
     subject,
     topic,
+    mixedTopics,
     level,
     progress,
     sessionStats,
@@ -407,6 +431,7 @@ export const useQuizStore = () => {
     // Actions
     setSubject,
     selectTopic,
+    startMixedQuiz,
     answerQuestion,
     checkMastery,
     advanceLevel,

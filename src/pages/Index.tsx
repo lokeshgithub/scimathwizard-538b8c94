@@ -92,6 +92,8 @@ const Index = () => {
               currentTopic={quiz.topic}
               getProgress={quiz.getTopicProgress}
               onSelectTopic={quiz.selectTopic}
+              onStartMixedQuiz={quiz.startMixedQuiz}
+              isMixedMode={quiz.mixedTopics !== null && quiz.mixedTopics.length > 0}
             />
 
             {!hasTopics && (
@@ -113,6 +115,19 @@ const Index = () => {
                 levelStats={quiz.levelStats}
                 perLevel={quiz.PER_LEVEL}
               />
+            )}
+
+            {quiz.mixedTopics && quiz.mixedTopics.length > 0 && (
+              <motion.div 
+                className="bg-gradient-magical text-white p-4 rounded-xl mb-4"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-center gap-2 font-medium">
+                  <span>🎲 Mixed Mode:</span>
+                  <span>{quiz.mixedTopics.length} topics selected</span>
+                </div>
+              </motion.div>
             )}
 
             {quiz.currentQuestion ? (
