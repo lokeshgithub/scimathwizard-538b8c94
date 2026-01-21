@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, Brain } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -24,6 +24,7 @@ import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { Button } from '@/components/ui/button';
+
 const Index = () => {
   const quiz = useQuizStore();
   const achievements = useAchievements();
@@ -164,6 +165,19 @@ const Index = () => {
             </motion.div>
             
             <div className="flex items-center gap-2">
+              {/* Adaptive Challenge Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                asChild
+                className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 border-0"
+              >
+                <Link to="/adaptive" className="flex items-center gap-1">
+                  <Brain className="w-4 h-4" />
+                  <span className="hidden sm:inline">Adaptive</span>
+                </Link>
+              </Button>
+              
               {/* Sound Toggle */}
               <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
               
