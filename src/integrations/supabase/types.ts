@@ -64,6 +64,57 @@ export type Database = {
           },
         ]
       }
+      quiz_battles: {
+        Row: {
+          created_at: string
+          current_question: number
+          finished_at: string | null
+          guest_id: string | null
+          guest_score: number
+          host_id: string
+          host_score: number
+          id: string
+          room_code: string
+          status: string
+          subject: string
+          topic: string
+          total_questions: number
+          winner: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_question?: number
+          finished_at?: string | null
+          guest_id?: string | null
+          guest_score?: number
+          host_id: string
+          host_score?: number
+          id?: string
+          room_code: string
+          status?: string
+          subject: string
+          topic: string
+          total_questions?: number
+          winner?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_question?: number
+          finished_at?: string | null
+          guest_id?: string | null
+          guest_score?: number
+          host_id?: string
+          host_score?: number
+          id?: string
+          room_code?: string
+          status?: string
+          subject?: string
+          topic?: string
+          total_questions?: number
+          winner?: string | null
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           created_at: string

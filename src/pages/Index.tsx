@@ -15,6 +15,7 @@ import { SessionSummary } from '@/components/quiz/SessionSummary';
 import { AchievementsPanel } from '@/components/quiz/AchievementsPanel';
 import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
+import { BattleMode } from '@/components/quiz/BattleMode';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -244,6 +245,9 @@ const Index = () => {
         onClearBonus={dailyChallenge.clearBonusStars}
         onAddStars={handleAddStars}
       />
+
+      {/* Battle Mode */}
+      <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />
 
       {/* Achievements Panel */}
       <AchievementsPanel 
