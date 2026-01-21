@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, 
-  Target, Clock, Calendar, Loader2, BarChart3, Zap
+  Target, Clock, Calendar, Loader2, BarChart3, Zap,
+  BookOpen, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getUserAdaptiveResults } from '@/services/adaptiveResultsService';
@@ -12,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, AreaChart, Area
+  Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell
 } from 'recharts';
 
 interface HistoryEntry {
@@ -45,6 +46,8 @@ export default function AdaptiveHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [showTopicCharts, setShowTopicCharts] = useState(true);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -126,6 +129,86 @@ export default function AdaptiveHistory() {
     return { bestScore, avgScore: Math.round(avgScore), avgAccuracy: Math.round(avgAccuracy), highestLevel, totalChallenges };
   }, [filteredResults]);
 
+  // Aggregate topic performance data
+  const topicStats = useMemo(() => {
+    const topicMap = new Map<string, {
+      accuracyHistory: { date: string; accuracy: number; attempts: number }[];
+      totalAttempts: number;
+      totalCorrect: number;
+      latestAccuracy: number;
+      trend: number;
+    }>();
+
+    // Process results in reverse order (oldest first) for chart data
+    const sortedResults = [...filteredResults].reverse();
+    
+    for (const result of sortedResults) {
+      const performances = (result.topic_performance || []) as TopicPerformance[];
+      const dateStr = format(parseISO(result.created_at), 'MMM d');
+      
+      for (const perf of performances) {
+        const existing = topicMap.get(perf.topicName) || {
+          accuracyHistory: [],
+          totalAttempts: 0,
+          totalCorrect: 0,
+          latestAccuracy: 0,
+          trend: 0,
+        };
+        
+        existing.accuracyHistory.push({
+          date: dateStr,
+          accuracy: perf.accuracy,
+          attempts: perf.questionsAttempted,
+        });
+        existing.totalAttempts += perf.questionsAttempted;
+        existing.totalCorrect += perf.correctAnswers;
+        existing.latestAccuracy = perf.accuracy;
+        
+        topicMap.set(perf.topicName, existing);
+      }
+    }
+
+    // Calculate trends for each topic
+    for (const [, data] of topicMap) {
+      if (data.accuracyHistory.length >= 2) {
+        const recent = data.accuracyHistory.slice(-3);
+        const older = data.accuracyHistory.slice(0, Math.max(1, data.accuracyHistory.length - 3));
+        const avgRecent = recent.reduce((sum, r) => sum + r.accuracy, 0) / recent.length;
+        const avgOlder = older.reduce((sum, r) => sum + r.accuracy, 0) / older.length;
+        data.trend = avgRecent - avgOlder;
+      }
+    }
+
+    // Convert to array and sort by total attempts
+    const topicsArray = Array.from(topicMap.entries())
+      .map(([name, data]) => ({
+        name,
+        ...data,
+        avgAccuracy: data.totalAttempts > 0 
+          ? Math.round((data.totalCorrect / data.totalAttempts) * 100)
+          : 0,
+      }))
+      .sort((a, b) => b.totalAttempts - a.totalAttempts);
+
+    return topicsArray;
+  }, [filteredResults]);
+
+  // Get data for selected topic's chart
+  const selectedTopicData = useMemo(() => {
+    if (!selectedTopic) return null;
+    return topicStats.find(t => t.name === selectedTopic);
+  }, [selectedTopic, topicStats]);
+
+  // Bar chart data for topic overview
+  const topicBarData = useMemo(() => {
+    return topicStats.slice(0, 10).map(t => ({
+      name: t.name.length > 12 ? t.name.slice(0, 12) + '...' : t.name,
+      fullName: t.name,
+      accuracy: t.avgAccuracy,
+      attempts: t.totalAttempts,
+    }));
+  }, [topicStats]);
+
   const getTierInfo = (tierId: string) => {
     return SKILL_TIERS.find(t => t.id === tierId) || SKILL_TIERS[0];
   };
@@ -134,6 +217,12 @@ export default function AdaptiveHistory() {
     if (diff > 2) return <TrendingUp className="w-4 h-4 text-success" />;
     if (diff < -2) return <TrendingDown className="w-4 h-4 text-destructive" />;
     return <Minus className="w-4 h-4 text-muted-foreground" />;
+  };
+
+  const getAccuracyColor = (accuracy: number) => {
+    if (accuracy >= 70) return 'hsl(var(--success))';
+    if (accuracy >= 50) return 'hsl(var(--warning))';
+    return 'hsl(var(--destructive))';
   };
 
   if (authLoading || isLoading) {
@@ -333,6 +422,221 @@ export default function AdaptiveHistory() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Topic Performance Section */}
+            {topicStats.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="bg-card rounded-xl shadow-card overflow-hidden"
+              >
+                <button
+                  onClick={() => setShowTopicCharts(!showTopicCharts)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                >
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    Topic Performance
+                  </h3>
+                  {showTopicCharts ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showTopicCharts && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 pt-0 space-y-4">
+                        {/* Topic Overview Bar Chart */}
+                        {topicBarData.length > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              Average accuracy by topic (click a bar to see trends)
+                            </p>
+                            <div className="h-48">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={topicBarData} layout="vertical">
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis 
+                                    type="number" 
+                                    domain={[0, 100]}
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                                  />
+                                  <YAxis 
+                                    type="category" 
+                                    dataKey="name" 
+                                    width={100}
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                                  />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: 'hsl(var(--card))',
+                                      border: '1px solid hsl(var(--border))',
+                                      borderRadius: '8px',
+                                    }}
+                                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                                    formatter={(value: number, name: string, props: any) => [
+                                      `${value}% (${props.payload.attempts} questions)`,
+                                      'Accuracy'
+                                    ]}
+                                    labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                                  />
+                                  <Bar 
+                                    dataKey="accuracy" 
+                                    radius={[0, 4, 4, 0]}
+                                    onClick={(data) => setSelectedTopic(data.fullName)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    {topicBarData.map((entry, index) => (
+                                      <Cell 
+                                        key={`cell-${index}`} 
+                                        fill={getAccuracyColor(entry.accuracy)}
+                                        opacity={selectedTopic === entry.fullName ? 1 : 0.7}
+                                      />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Selected Topic Trend Chart */}
+                        {selectedTopicData && selectedTopicData.accuracyHistory.length > 1 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="border-t border-border pt-4"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h4 className="font-medium text-foreground">{selectedTopic}</h4>
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                  <span>{selectedTopicData.totalAttempts} questions</span>
+                                  <span className="flex items-center gap-1">
+                                    {getTrendIcon(selectedTopicData.trend)}
+                                    {selectedTopicData.trend > 0 ? '+' : ''}{Math.round(selectedTopicData.trend)}%
+                                  </span>
+                                </div>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => setSelectedTopic(null)}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                            <div className="h-40">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={selectedTopicData.accuracyHistory}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis 
+                                    dataKey="date"
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                                  />
+                                  <YAxis 
+                                    domain={[0, 100]}
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                                  />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: 'hsl(var(--card))',
+                                      border: '1px solid hsl(var(--border))',
+                                      borderRadius: '8px',
+                                    }}
+                                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                                    formatter={(value: number, name: string, props: any) => [
+                                      `${value}% (${props.payload.attempts} questions)`,
+                                      'Accuracy'
+                                    ]}
+                                  />
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey="accuracy" 
+                                    stroke="hsl(var(--primary))"
+                                    strokeWidth={2}
+                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
+                                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Topic List with Trends */}
+                        <div className="border-t border-border pt-4">
+                          <p className="text-sm text-muted-foreground mb-3">All topics</p>
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {topicStats.map((topic, idx) => (
+                              <motion.button
+                                key={topic.name}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.02 }}
+                                onClick={() => setSelectedTopic(topic.name)}
+                                className={`flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
+                                  selectedTopic === topic.name 
+                                    ? 'bg-primary/10 border border-primary/30' 
+                                    : 'bg-muted/50 hover:bg-muted'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className="w-2 h-8 rounded-full"
+                                    style={{ backgroundColor: getAccuracyColor(topic.avgAccuracy) }}
+                                  />
+                                  <div>
+                                    <span className="font-medium text-foreground text-sm">
+                                      {topic.name}
+                                    </span>
+                                    <div className="text-xs text-muted-foreground">
+                                      {topic.totalAttempts} questions
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`font-semibold ${
+                                    topic.avgAccuracy >= 70 ? 'text-success' :
+                                    topic.avgAccuracy >= 50 ? 'text-warning' : 'text-destructive'
+                                  }`}>
+                                    {topic.avgAccuracy}%
+                                  </div>
+                                  {topic.accuracyHistory.length >= 2 && (
+                                    <div className={`text-xs flex items-center gap-1 justify-end ${
+                                      topic.trend > 0 ? 'text-success' : 
+                                      topic.trend < 0 ? 'text-destructive' : 'text-muted-foreground'
+                                    }`}>
+                                      {topic.trend > 2 && <TrendingUp className="w-3 h-3" />}
+                                      {topic.trend < -2 && <TrendingDown className="w-3 h-3" />}
+                                      {topic.trend > 0 ? '+' : ''}{Math.round(topic.trend)}%
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 
