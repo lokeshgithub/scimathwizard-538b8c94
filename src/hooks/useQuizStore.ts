@@ -111,6 +111,7 @@ export const useQuizStore = () => {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
+  const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Timer tracking
@@ -508,6 +509,16 @@ export const useQuizStore = () => {
     setQuestionStartTime(Date.now());
   }, [level, topic, getAvailableQuestions, banks, subject]);
 
+  // Prefetch next question index (call this when showing explanation)
+  const prefetchNextQuestion = useCallback(() => {
+    if (questionIndex + 1 >= currentQuestions.length) {
+      // Will need to reshuffle - prepare the first index of reshuffled array
+      setPrefetchedNextIndex(0);
+    } else {
+      setPrefetchedNextIndex(questionIndex + 1);
+    }
+  }, [questionIndex, currentQuestions.length]);
+
   const nextQuestion = useCallback(() => {
     if (questionIndex + 1 >= currentQuestions.length) {
       // Reshuffle and start over
@@ -517,6 +528,7 @@ export const useQuizStore = () => {
     } else {
       setQuestionIndex(prev => prev + 1);
     }
+    setPrefetchedNextIndex(null);
     setQuestionStartTime(Date.now());
   }, [questionIndex, currentQuestions]);
 
@@ -632,6 +644,9 @@ export const useQuizStore = () => {
     sessionStats,
     levelStats,
     currentQuestion: getCurrentQuestion(),
+    peekNextQuestion: prefetchedNextIndex !== null 
+      ? currentQuestions[prefetchedNextIndex] 
+      : currentQuestions[questionIndex + 1] || null,
     isLoading,
     sessionPerformance,
     showSessionSummary,
@@ -655,6 +670,7 @@ export const useQuizStore = () => {
     advanceLevel,
     retryLevel,
     nextQuestion,
+    prefetchNextQuestion,
     markSolutionViewed,
     getTopicProgress,
     calculateSessionAnalysis,
