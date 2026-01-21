@@ -137,50 +137,7 @@ export type Database = {
       }
     }
     Views: {
-      questions_public: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          level: number | null
-          option_a: string | null
-          option_b: string | null
-          option_c: string | null
-          option_d: string | null
-          question: string | null
-          topic_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          level?: number | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          question?: string | null
-          topic_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          level?: number | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          question?: string | null
-          topic_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_topic_id_fkey"
-            columns: ["topic_id"]
-            isOneToOne: false
-            referencedRelation: "topics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       get_public_questions: {
