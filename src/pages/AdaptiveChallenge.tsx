@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, 
   Sparkles, 
-  ArrowLeft, 
   Play, 
   Target,
   Zap,
@@ -15,6 +14,7 @@ import {
   Crosshair
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAdaptiveChallenge } from '@/hooks/useAdaptiveChallenge';
@@ -176,18 +176,15 @@ const AdaptiveChallenge = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                  <ArrowLeft className="w-4 h-4 mr-1" />
-                  Back
-                </Button>
-              </Link>
               <div className="flex items-center gap-2">
                 <Brain className="w-8 h-8" />
                 <h1 className="text-2xl md:text-3xl font-bold">Adaptive Challenge</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Pathway Navigation */}
+              <PathwayNav />
+              
               <Link to="/adaptive/focus">
                 <Button 
                   variant="ghost" 
@@ -195,7 +192,7 @@ const AdaptiveChallenge = () => {
                   className="text-white hover:bg-white/20"
                 >
                   <Crosshair className="w-4 h-4 mr-1" />
-                  Focus
+                  <span className="hidden sm:inline">Focus</span>
                 </Button>
               </Link>
               <Link to="/adaptive/history">
@@ -205,7 +202,7 @@ const AdaptiveChallenge = () => {
                   className="text-white hover:bg-white/20"
                 >
                   <History className="w-4 h-4 mr-1" />
-                  History
+                  <span className="hidden sm:inline">History</span>
                 </Button>
               </Link>
               <Button 
@@ -215,7 +212,7 @@ const AdaptiveChallenge = () => {
                 onClick={() => setShowLeaderboard(true)}
               >
                 <Trophy className="w-4 h-4 mr-1" />
-                Leaderboard
+                <span className="hidden sm:inline">Leaderboard</span>
               </Button>
               <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
             </div>
