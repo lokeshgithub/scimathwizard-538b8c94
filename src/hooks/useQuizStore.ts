@@ -382,11 +382,20 @@ export const useQuizStore = () => {
     const timeSpent = (Date.now() - questionStartTime) / 1000;
 
     try {
-      // Validate answer via secure edge function
-      const { isCorrect, correctIndex, explanation } = await validateAnswerAPI(currentQ.id, selectedIndex);
+      // Convert shuffled index to original index for server validation
+      const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
       
-      // Update the question with correct answer and explanation from server
-      currentQ.correct = correctIndex;
+      // Validate answer via secure edge function (using original index)
+      const { isCorrect, correctIndex: originalCorrectIndex, explanation } = await validateAnswerAPI(currentQ.id, originalSelectedIndex);
+      
+      // Convert server's original correct index back to shuffled index for display
+      let shuffledCorrectIndex = originalCorrectIndex;
+      if (currentQ.shuffleMap) {
+        shuffledCorrectIndex = currentQ.shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+      }
+      
+      // Update the question with shuffled correct answer and explanation from server
+      currentQ.correct = shuffledCorrectIndex;
       if (explanation) currentQ.explanation = explanation;
 
       // Record timing for this question
@@ -431,7 +440,7 @@ export const useQuizStore = () => {
       // Mark question as answered
       markQuestionAnswered(currentQ.id, isCorrect);
 
-      return { isCorrect, correctIndex, question: currentQ, timeSpent };
+      return { isCorrect, correctIndex: shuffledCorrectIndex, question: currentQ, timeSpent };
     } catch (error) {
       console.error('Error validating answer:', error);
       return { isCorrect: false, correctIndex: -1, question: currentQ, timeSpent: 0 };

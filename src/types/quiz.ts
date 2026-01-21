@@ -6,6 +6,9 @@ export interface Question {
   correct: number;
   explanation: string;
   concepts: string[];
+  // Maps shuffled index to original index: shuffleMap[shuffledIdx] = originalIdx
+  // e.g., if shuffleMap = [2, 0, 3, 1], shuffled option 0 was originally option 2
+  shuffleMap?: number[];
 }
 
 export interface QuestionBank {

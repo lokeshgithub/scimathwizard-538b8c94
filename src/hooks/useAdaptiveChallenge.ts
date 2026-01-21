@@ -152,17 +152,28 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
     const timeSpent = (Date.now() - questionStartTime) / 1000;
     
     try {
-      const { isCorrect, correctIndex } = await validateAnswerAPI(
+      // Convert shuffled index to original index for server validation
+      const originalSelectedIndex = state.currentQuestion.shuffleMap 
+        ? state.currentQuestion.shuffleMap[selectedIndex] 
+        : selectedIndex;
+      
+      const { isCorrect, correctIndex: originalCorrectIndex } = await validateAnswerAPI(
         state.currentQuestion.id, 
-        selectedIndex
+        originalSelectedIndex
       );
+
+      // Convert server's original correct index back to shuffled index for display
+      let shuffledCorrectIndex = originalCorrectIndex;
+      if (state.currentQuestion.shuffleMap) {
+        shuffledCorrectIndex = state.currentQuestion.shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+      }
 
       const topicName = getQuestionTopic(state.currentQuestion.id, state.subject, state.selectedTopics);
 
       const result: AdaptiveQuestionResult = {
         question: state.currentQuestion,
         selectedAnswer: selectedIndex,
-        correctAnswer: correctIndex,
+        correctAnswer: shuffledCorrectIndex,
         isCorrect,
         timeSpent,
         levelAtTime: state.currentLevel,
@@ -266,7 +277,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
         setQuestionStartTime(Date.now());
       }
 
-      return { isCorrect, correctIndex };
+      return { isCorrect, correctIndex: shuffledCorrectIndex };
     } catch (error) {
       console.error('Error validating answer:', error);
       return { isCorrect: false, correctIndex: -1 };
