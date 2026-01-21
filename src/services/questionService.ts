@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
+import * as XLSX from 'xlsx';
 
 interface DBSubject {
   id: string;
@@ -319,4 +320,80 @@ export function parseCSVContent(text: string): Array<{
   }
 
   return questions;
+}
+
+// Parse question data from a single row (used by both CSV/TSV and Excel parsers)
+function parseQuestionRow(values: string[]): {
+  level: number;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  explanation: string;
+} | null {
+  if (values.length < 9) return null;
+  
+  const level = parseInt(values[1]) || 1;
+  const question = values[2]?.trim();
+  const optionA = values[3]?.trim();
+  const optionB = values[4]?.trim();
+  const optionC = values[5]?.trim();
+  const optionD = values[6]?.trim();
+  const correctAnswer = values[7]?.trim();
+  const explanation = values[8]?.trim() || '';
+  
+  if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+    return null;
+  }
+  
+  return { level, question, optionA, optionB, optionC, optionD, correctAnswer, explanation };
+}
+
+// Parse Excel file and return sheets with their questions
+export interface ExcelSheet {
+  name: string;
+  questions: Array<{
+    level: number;
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: string;
+    explanation: string;
+  }>;
+}
+
+export function parseExcelFile(buffer: ArrayBuffer): ExcelSheet[] {
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const sheets: ExcelSheet[] = [];
+  
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+    
+    const questions: ExcelSheet['questions'] = [];
+    
+    // Skip header row (index 0)
+    for (let i = 1; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      if (!row || row.length === 0) continue;
+      
+      // Convert all values to strings
+      const values = row.map(cell => String(cell ?? ''));
+      const parsed = parseQuestionRow(values);
+      
+      if (parsed) {
+        questions.push(parsed);
+      }
+    }
+    
+    if (questions.length > 0) {
+      sheets.push({ name: sheetName, questions });
+    }
+  }
+  
+  return sheets;
 }

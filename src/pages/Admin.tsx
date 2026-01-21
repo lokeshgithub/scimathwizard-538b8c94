@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { uploadQuestionsFromCSV, parseCSVContent } from '@/services/questionService';
+import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, ExcelSheet } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -165,30 +165,71 @@ const Admin = () => {
     const results: typeof uploadResults = [];
 
     for (const file of Array.from(files)) {
-      const content = await file.text();
-      const fileName = file.name.replace(/\.(csv|tsv)$/i, '');
-      const detectedSubject = topicName ? subject : detectSubjectFromName(fileName);
-      const finalTopicName = topicName || fileName;
-
-      const questions = parseCSVContent(content);
+      const fileName = file.name.replace(/\.(csv|tsv|txt|xlsx|xls)$/i, '');
+      const isExcel = /\.(xlsx|xls)$/i.test(file.name);
       
-      if (questions.length === 0) {
+      if (isExcel) {
+        // Handle Excel files with multiple sheets
+        try {
+          const buffer = await file.arrayBuffer();
+          const sheets = parseExcelFile(buffer);
+          
+          if (sheets.length === 0) {
+            results.push({
+              topic: fileName,
+              success: false,
+              error: 'No valid questions found in Excel file',
+            });
+            continue;
+          }
+          
+          // Upload each sheet as a separate topic
+          for (const sheet of sheets) {
+            const sheetTopicName = topicName || sheet.name || fileName;
+            const detectedSubject = detectSubjectFromName(sheetTopicName) || subject;
+            
+            const result = await uploadQuestionsFromCSV(detectedSubject, sheetTopicName, sheet.questions);
+            
+            results.push({
+              topic: `${fileName} → ${sheet.name}`,
+              success: result.success,
+              count: result.count,
+              error: result.error,
+            });
+          }
+        } catch (error) {
+          results.push({
+            topic: fileName,
+            success: false,
+            error: `Excel parsing error: ${(error as Error).message}`,
+          });
+        }
+      } else {
+        // Handle CSV/TSV files
+        const content = await file.text();
+        const detectedSubject = topicName ? subject : detectSubjectFromName(fileName);
+        const finalTopicName = topicName || fileName;
+
+        const questions = parseCSVContent(content);
+        
+        if (questions.length === 0) {
+          results.push({
+            topic: finalTopicName,
+            success: false,
+            error: 'No valid questions found in file',
+          });
+          continue;
+        }
+
+        const result = await uploadQuestionsFromCSV(detectedSubject, finalTopicName, questions);
+        
         results.push({
           topic: finalTopicName,
-          success: false,
-          error: 'No valid questions found in CSV',
+          success: result.success,
+          count: result.count,
+          error: result.error,
         });
-        continue;
       }
-
-      const result = await uploadQuestionsFromCSV(detectedSubject, finalTopicName, questions);
-      
-      results.push({
-        topic: finalTopicName,
-        success: result.success,
-        count: result.count,
-        error: result.error,
-      });
     }
 
     setUploadResults(results);
@@ -346,7 +387,7 @@ const Admin = () => {
               Upload Question Bank
             </CardTitle>
             <CardDescription>
-              Upload CSV or TSV files with questions. Each file will create a topic under the selected subject.
+              Upload CSV, TSV, or Excel files with questions. Excel files with multiple sheets will create one topic per sheet.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -377,7 +418,7 @@ const Admin = () => {
             <label className="block cursor-pointer">
               <input
                 type="file"
-                accept=".csv,.tsv,.txt"
+                accept=".csv,.tsv,.txt,.xlsx,.xls"
                 multiple
                 onChange={handleFileChange}
                 className="hidden"
@@ -407,13 +448,13 @@ const Admin = () => {
                       <FileText className="w-8 h-8 text-primary" />
                     </motion.div>
                     <p className="font-semibold text-foreground mb-1">
-                      Click to upload CSV or TSV files
+                      Click to upload question files
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Format: ID, Level, Question, A, B, C, D, Answer, Explanation
+                      Supports: CSV, TSV, Excel (.xlsx, .xls)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Supports both comma (CSV) and tab (TSV) separated files
+                      Excel files with tabs will create separate topics for each sheet
                     </p>
                   </>
                 )}
