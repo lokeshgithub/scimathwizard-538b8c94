@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          current_streak: number
+          display_name: string
+          id: string
+          longest_streak: number
+          questions_answered: number
+          topics_mastered: number
+          total_stars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          current_streak?: number
+          display_name: string
+          id?: string
+          longest_streak?: number
+          questions_answered?: number
+          topics_mastered?: number
+          total_stars?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          current_streak?: number
+          display_name?: string
+          id?: string
+          longest_streak?: number
+          questions_answered?: number
+          topics_mastered?: number
+          total_stars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           correct_answer: string

@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3 } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
+import { useAuth } from '@/hooks/useAuth';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
 import { TopicDashboard } from '@/components/quiz/TopicDashboard';
@@ -17,16 +19,35 @@ import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
 import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { BattleMode } from '@/components/quiz/BattleMode';
+import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const quiz = useQuizStore();
   const achievements = useAchievements();
   const dailyChallenge = useDailyChallenge(quiz.banks);
+  const { user, profile, signOut, updateStats } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
   const [wasRetrying, setWasRetrying] = useState(false);
+
+  // Sync stats to database when session stats change
+  useEffect(() => {
+    if (user && profile && quiz.sessionStats.solved > 0) {
+      const newTotalStars = (profile.total_stars || 0) + quiz.sessionStats.stars;
+      const newQuestionsAnswered = (profile.questions_answered || 0) + quiz.sessionStats.solved;
+      
+      // Only update if there are new answers
+      if (quiz.sessionStats.solved > 0) {
+        updateStats({
+          total_stars: newTotalStars,
+          questions_answered: newQuestionsAnswered,
+          topics_mastered: quiz.sessionStats.mastered,
+        });
+      }
+    }
+  }, [quiz.showSessionSummary]); // Sync when session ends
 
   // Helper to add stars from daily challenge
   const handleAddStars = useCallback((stars: number) => {
@@ -116,17 +137,50 @@ const Index = () => {
               <Sparkles className="w-8 h-8" />
             </motion.div>
             
-            {hasAnsweredQuestions && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={quiz.endSession}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                View Summary
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {hasAnsweredQuestions && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={quiz.endSession}
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">View Summary</span>
+                </Button>
+              )}
+              
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="hidden sm:flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1">
+                    <User className="w-4 h-4" />
+                    <span className="text-sm font-medium truncate max-w-[100px]">
+                      {profile?.display_name || 'Student'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={signOut}
+                    className="flex items-center gap-1"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  asChild
+                >
+                  <Link to="/auth" className="flex items-center gap-1">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
           <p className="text-white/80 text-sm mt-2">
             Master each level (80% accuracy) with your magical friends! ✨
@@ -256,6 +310,9 @@ const Index = () => {
 
       {/* Battle Mode */}
       <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />
+
+      {/* Leaderboard */}
+      <Leaderboard currentUserId={user?.id} />
 
       {/* Achievements Panel */}
       <AchievementsPanel 
