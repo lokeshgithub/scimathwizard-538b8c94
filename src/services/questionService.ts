@@ -50,11 +50,9 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
 
-  // Fetch questions from secure view (without correct_answer)
-  // Use raw query since view isn't in generated types
+  // Fetch questions via secure function (excludes correct_answer)
   const { data: questions, error: questionsError } = await supabase
-    .from('questions_public')
-    .select('id, topic_id, level, question, option_a, option_b, option_c, option_d, explanation, created_at') as { data: DBQuestionPublic[] | null; error: any };
+    .rpc('get_public_questions') as { data: DBQuestionPublic[] | null; error: any };
 
   if (questionsError || !questions) {
     console.error('Error fetching questions:', questionsError);

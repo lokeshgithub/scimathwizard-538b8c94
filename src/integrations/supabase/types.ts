@@ -183,6 +183,21 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_questions: {
+        Args: never
+        Returns: {
+          created_at: string
+          explanation: string
+          id: string
+          level: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          topic_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
