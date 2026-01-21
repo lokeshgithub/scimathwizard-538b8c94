@@ -140,7 +140,6 @@ export type Database = {
       questions_public: {
         Row: {
           created_at: string | null
-          explanation: string | null
           id: string | null
           level: number | null
           option_a: string | null
@@ -152,7 +151,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          explanation?: string | null
           id?: string | null
           level?: number | null
           option_a?: string | null
@@ -164,7 +162,6 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          explanation?: string | null
           id?: string | null
           level?: number | null
           option_a?: string | null
