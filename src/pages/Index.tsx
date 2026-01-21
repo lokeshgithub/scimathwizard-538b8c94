@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, Brain } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, Brain, Trophy } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -166,6 +166,19 @@ const Index = () => {
             </motion.div>
             
             <div className="flex items-center gap-2">
+              {/* Olympiad Test Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                asChild
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 border-0"
+              >
+                <Link to="/olympiad" className="flex items-center gap-1">
+                  <Trophy className="w-4 h-4" />
+                  <span className="hidden sm:inline">Olympiad</span>
+                </Link>
+              </Button>
+
               {/* Adaptive Challenge Button */}
               <Button
                 variant="secondary"

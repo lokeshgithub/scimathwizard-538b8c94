@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import AdaptiveChallenge from "./pages/AdaptiveChallenge";
 import AdaptiveHistory from "./pages/AdaptiveHistory";
 import FocusedPractice from "./pages/FocusedPractice";
+import OlympiadTest from "./pages/OlympiadTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/adaptive" element={<AdaptiveChallenge />} />
           <Route path="/adaptive/history" element={<AdaptiveHistory />} />
           <Route path="/adaptive/focus" element={<FocusedPractice />} />
+          <Route path="/olympiad" element={<OlympiadTest />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
