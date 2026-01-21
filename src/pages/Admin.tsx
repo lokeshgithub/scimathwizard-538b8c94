@@ -12,6 +12,7 @@ import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, fetchAllQuesti
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { UsageDashboard } from '@/components/admin/UsageDashboard';
+import { QuestionBankSummary } from '@/components/admin/QuestionBankSummary';
 
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -620,6 +621,10 @@ const Admin = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <QuestionBankSummary />
+        </div>
 
         <div className="mt-6">
           <UsageDashboard />
