@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, Brain, Trophy } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, Brain, Trophy, BookOpen } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -166,12 +166,22 @@ const Index = () => {
             </motion.div>
             
             <div className="flex items-center gap-2">
+              {/* Practice Mode Button - Active on home page */}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 text-white border-2 border-white/40 hover:bg-white/30 cursor-default"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span className="hidden sm:inline ml-1">Practice</span>
+              </Button>
+
               {/* Adaptive Challenge Button */}
               <Button
                 variant="secondary"
                 size="sm"
                 asChild
-                className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 border-0"
+                className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-violet-500 hover:to-purple-500 hover:text-white border-0"
               >
                 <Link to="/adaptive" className="flex items-center gap-1">
                   <Brain className="w-4 h-4" />
@@ -184,7 +194,7 @@ const Index = () => {
                 variant="secondary"
                 size="sm"
                 asChild
-                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 border-0"
+                className="bg-white/10 text-white/80 hover:bg-gradient-to-r hover:from-amber-500 hover:to-orange-500 hover:text-white border-0"
               >
                 <Link to="/olympiad" className="flex items-center gap-1">
                   <Trophy className="w-4 h-4" />
