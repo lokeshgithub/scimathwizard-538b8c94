@@ -42,7 +42,16 @@ export interface SessionStats {
   correct: number;
   streak: number;
   mastered: number;
-  xp: number;
+  stars: number;
+  totalCorrect: number; // Lifetime correct answers for milestones
+  maxStreak: number; // Best streak ever
+}
+
+export interface Milestone {
+  type: 'streak' | 'total' | 'mastery';
+  value: number;
+  message: string;
+  emoji: string;
 }
 
 export interface Character {

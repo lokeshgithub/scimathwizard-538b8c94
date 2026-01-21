@@ -135,6 +135,7 @@ const Index = () => {
                 question={quiz.currentQuestion}
                 level={quiz.level}
                 levelStats={quiz.levelStats}
+                sessionStats={quiz.sessionStats}
                 onAnswer={handleAnswer}
                 onNext={handleNext}
                 onSolutionViewed={quiz.markSolutionViewed}
