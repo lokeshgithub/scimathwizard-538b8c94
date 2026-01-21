@@ -129,12 +129,17 @@ export const TopicDashboard = ({
     return { totalMastered, totalLevels, completedTopics, percentage: totalLevels > 0 ? (totalMastered / totalLevels) * 100 : 0 };
   }, [topicStats]);
 
-  // Weakest topics (for recommendations)
+  // Topics that need improvement (started but not mastered)
   const weakestTopics = useMemo(() => {
     return [...topicStats]
-      .filter(t => t.percentage < 100)
+      .filter(t => t.percentage > 0 && t.percentage < 100) // Only started topics
       .sort((a, b) => a.percentage - b.percentage)
       .slice(0, 3);
+  }, [topicStats]);
+
+  // Topics not yet started
+  const notStartedTopics = useMemo(() => {
+    return topicStats.filter(t => t.percentage === 0);
   }, [topicStats]);
 
   if (topicEntries.length === 0) {
@@ -240,8 +245,8 @@ export const TopicDashboard = ({
           </div>
         </div>
 
-        {/* Weak areas suggestion */}
-        {weakestTopics.length > 0 && weakestTopics[0].percentage < 100 && (
+        {/* Weak areas suggestion - only for started topics */}
+        {weakestTopics.length > 0 && (
           <motion.div 
             className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 p-3 rounded-xl"
             initial={{ opacity: 0 }}
@@ -251,6 +256,21 @@ export const TopicDashboard = ({
             <Flame className="w-4 h-4 flex-shrink-0" />
             <span>
               <strong>Focus area:</strong> {formatName(weakestTopics[0].name)} needs more practice
+            </span>
+          </motion.div>
+        )}
+
+        {/* Suggestion for not started topics */}
+        {weakestTopics.length === 0 && notStartedTopics.length > 0 && (
+          <motion.div 
+            className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 p-3 rounded-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Zap className="w-4 h-4 flex-shrink-0" />
+            <span>
+              <strong>Get started:</strong> Try {formatName(notStartedTopics[0].name)} to begin your journey!
             </span>
           </motion.div>
         )}
