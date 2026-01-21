@@ -10,7 +10,8 @@ import {
   Zap,
   Trophy,
   Info,
-  Loader2
+  Loader2,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -186,6 +187,16 @@ const AdaptiveChallenge = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Link to="/adaptive/history">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white hover:bg-white/20"
+                >
+                  <History className="w-4 h-4 mr-1" />
+                  History
+                </Button>
+              </Link>
               <Button 
                 variant="ghost" 
                 size="sm" 

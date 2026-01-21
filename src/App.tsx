@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import AdaptiveChallenge from "./pages/AdaptiveChallenge";
+import AdaptiveHistory from "./pages/AdaptiveHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/adaptive" element={<AdaptiveChallenge />} />
+          <Route path="/adaptive/history" element={<AdaptiveHistory />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
