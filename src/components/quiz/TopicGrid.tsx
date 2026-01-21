@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
-import { BookOpen, CheckCircle, Star } from 'lucide-react';
+import { BookOpen, CheckCircle, Star, Shuffle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MixTopicsModal } from './MixTopicsModal';
 
 interface TopicGridProps {
   topics: { [name: string]: any[] };
   currentTopic: string | null;
   getProgress: (topic: string) => TopicProgress;
   onSelectTopic: (topic: string) => void;
+  onStartMixedQuiz?: (topics: string[]) => void;
+  isMixedMode?: boolean;
 }
 
 const formatName = (name: string) => {
@@ -15,7 +20,15 @@ const formatName = (name: string) => {
     .replace(/\b\w/g, l => l.toUpperCase());
 };
 
-export const TopicGrid = ({ topics, currentTopic, getProgress, onSelectTopic }: TopicGridProps) => {
+export const TopicGrid = ({ 
+  topics, 
+  currentTopic, 
+  getProgress, 
+  onSelectTopic,
+  onStartMixedQuiz,
+  isMixedMode 
+}: TopicGridProps) => {
+  const [showMixModal, setShowMixModal] = useState(false);
   const topicEntries = Object.entries(topics);
 
   if (topicEntries.length === 0) {
@@ -29,7 +42,7 @@ export const TopicGrid = ({ topics, currentTopic, getProgress, onSelectTopic }: 
           📚
         </motion.div>
         <p className="text-muted-foreground">
-          Upload CSV files to see your magical topics appear here!
+          No topics available yet. Check back soon!
         </p>
       </div>
     );
@@ -118,6 +131,43 @@ export const TopicGrid = ({ topics, currentTopic, getProgress, onSelectTopic }: 
           </motion.button>
         );
       })}
+
+      {/* Mix Topics Button */}
+      {topicEntries.length > 1 && onStartMixedQuiz && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: topicEntries.length * 0.05 }}
+        >
+          <Button
+            onClick={() => setShowMixModal(true)}
+            variant={isMixedMode ? "default" : "outline"}
+            className={`
+              w-full h-full min-h-[140px] rounded-xl flex flex-col items-center justify-center gap-3
+              ${isMixedMode 
+                ? 'bg-gradient-magical text-white shadow-magical' 
+                : 'border-2 border-dashed hover:border-primary hover:bg-primary/5'
+              }
+            `}
+          >
+            <motion.div
+              animate={{ rotate: [0, 180, 360] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+            >
+              <Shuffle className="w-8 h-8" />
+            </motion.div>
+            <span className="font-semibold">Mix Topics</span>
+            <span className="text-xs opacity-70">Practice from multiple topics</span>
+          </Button>
+        </motion.div>
+      )}
+
+      <MixTopicsModal
+        isOpen={showMixModal}
+        topics={topicEntries.map(([name]) => name)}
+        onClose={() => setShowMixModal(false)}
+        onStartMix={onStartMixedQuiz || (() => {})}
+      />
     </div>
   );
 };
