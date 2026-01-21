@@ -391,6 +391,15 @@ export type Database = {
           topic_id: string
         }[]
       }
+      get_question_summary: {
+        Args: never
+        Returns: {
+          question_count: number
+          subject_name: string
+          topic_id: string
+          topic_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

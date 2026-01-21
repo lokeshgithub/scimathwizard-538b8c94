@@ -28,58 +28,35 @@ export function QuestionBankSummary() {
     setError(null);
 
     try {
-      // Fetch subjects
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select('id, name')
-        .order('name');
+      // Use the efficient server-side RPC that counts questions per topic
+      const { data, error: rpcError } = await supabase.rpc('get_question_summary');
 
-      if (subjectsError) throw subjectsError;
+      if (rpcError) throw rpcError;
 
-      // Fetch topics with question counts
-      const { data: topicsData, error: topicsError } = await supabase
-        .from('topics')
-        .select('id, name, subject_id');
-
-      if (topicsError) throw topicsError;
-
-      // Fetch question counts per topic using RPC to bypass RLS
-      const { data: questionsData, error: questionsError } = await supabase
-        .rpc('get_public_questions');
-
-      if (questionsError) throw questionsError;
-
-      // Count questions per topic
-      const topicQuestionCounts = new Map<string, number>();
-      for (const q of questionsData || []) {
-        const count = topicQuestionCounts.get(q.topic_id) || 0;
-        topicQuestionCounts.set(q.topic_id, count + 1);
-      }
-
-      // Build summary
+      // Build summary from the RPC results
       const summaryMap = new Map<string, SubjectSummary>();
 
-      for (const subject of subjectsData || []) {
-        summaryMap.set(subject.id, {
-          name: subject.name,
-          topicCount: 0,
-          questionCount: 0,
-          topics: [],
-        });
-      }
-
-      for (const topic of topicsData || []) {
-        const subject = summaryMap.get(topic.subject_id);
-        if (subject) {
-          const questionCount = topicQuestionCounts.get(topic.id) || 0;
-          subject.topics.push({
-            subject: subject.name,
-            topic: topic.name,
-            questionCount,
-          });
-          subject.topicCount++;
-          subject.questionCount += questionCount;
+      for (const row of data || []) {
+        if (!row.topic_name) continue; // Skip subjects with no topics
+        
+        let subject = summaryMap.get(row.subject_name);
+        if (!subject) {
+          subject = {
+            name: row.subject_name,
+            topicCount: 0,
+            questionCount: 0,
+            topics: [],
+          };
+          summaryMap.set(row.subject_name, subject);
         }
+
+        subject.topics.push({
+          subject: row.subject_name,
+          topic: row.topic_name,
+          questionCount: Number(row.question_count) || 0,
+        });
+        subject.topicCount++;
+        subject.questionCount += Number(row.question_count) || 0;
       }
 
       // Sort topics within each subject
