@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Target, Loader2, AlertTriangle, TrendingUp, 
-  Clock, Zap, Play, CheckCircle, BookOpen, RefreshCw
+  Clock, Zap, Play, CheckCircle, BookOpen, RefreshCw, Bell, Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getWeakTopics, type WeakTopic } from '@/services/adaptiveResultsService';
+import { getDueTopics, updatePracticeSchedule, type DueTopic } from '@/services/spacedRepetitionService';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -14,7 +15,7 @@ import { useConfetti } from '@/hooks/useConfetti';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { MasteryPanel } from '@/components/quiz/MasteryPanel';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { formatDistanceToNow, parseISO, format } from 'date-fns';
 import type { Subject } from '@/types/quiz';
 
 const formatTopicName = (name: string) => {
@@ -40,6 +41,7 @@ export default function FocusedPractice() {
   const confetti = useConfetti();
   
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
+  const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<WeakTopic | null>(null);
@@ -47,27 +49,43 @@ export default function FocusedPractice() {
   const [answered, setAnswered] = useState(false);
   const [lastResult, setLastResult] = useState<{ isCorrect: boolean; correctIndex: number } | null>(null);
   const [practiceStats, setPracticeStats] = useState({ correct: 0, total: 0 });
+  const [activeTab, setActiveTab] = useState<'due' | 'weak'>('due');
 
   useEffect(() => {
-    const fetchWeakTopics = async () => {
+    const fetchData = async () => {
       if (!user) {
         setIsLoading(false);
         return;
       }
       
       setIsLoading(true);
-      const { data, error } = await getWeakTopics();
       
-      if (error) {
-        setError(error);
+      // Fetch both weak topics and due topics in parallel
+      const [weakResult, dueResult] = await Promise.all([
+        getWeakTopics(),
+        getDueTopics(),
+      ]);
+      
+      if (weakResult.error) {
+        setError(weakResult.error);
       } else {
-        setWeakTopics(data || []);
+        setWeakTopics(weakResult.data || []);
       }
+      
+      setDueTopics(dueResult.data || []);
+      
+      // Default to due tab if there are due topics, otherwise weak
+      if ((dueResult.data?.length || 0) > 0) {
+        setActiveTab('due');
+      } else {
+        setActiveTab('weak');
+      }
+      
       setIsLoading(false);
     };
 
     if (!authLoading) {
-      fetchWeakTopics();
+      fetchData();
     }
   }, [user, authLoading]);
 
@@ -85,6 +103,20 @@ export default function FocusedPractice() {
     }, 100);
   }, [quiz]);
 
+  const startPracticeFromDue = useCallback((dueTopic: DueTopic) => {
+    // Convert DueTopic to WeakTopic format for consistency
+    const asTopic: WeakTopic = {
+      topicName: dueTopic.topic_name,
+      subject: dueTopic.subject,
+      accuracy: 50, // Default, will be updated after practice
+      questionsAttempted: 0,
+      highestLevel: 1,
+      averageTime: 0,
+      lastPracticed: dueTopic.due_date,
+      improvementNeeded: dueTopic.urgency,
+    };
+    startPractice(asTopic);
+  }, [startPractice]);
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     if (answered) return;
     
@@ -121,18 +153,28 @@ export default function FocusedPractice() {
     quiz.nextQuestion();
   }, [quiz, confetti]);
 
-  const endPractice = useCallback(() => {
+  const endPractice = useCallback(async () => {
+    // Update spaced repetition schedule based on practice performance
+    if (selectedTopic && practiceStats.total > 0) {
+      const accuracy = Math.round((practiceStats.correct / practiceStats.total) * 100);
+      await updatePracticeSchedule(selectedTopic.topicName, selectedTopic.subject, accuracy);
+    }
+    
     setIsPracticing(false);
     setSelectedTopic(null);
     setAnswered(false);
     setLastResult(null);
-    // Refresh weak topics to see if improvement was made
+    
+    // Refresh data
     if (user) {
-      getWeakTopics().then(result => {
-        if (result.data) setWeakTopics(result.data);
-      });
+      const [weakResult, dueResult] = await Promise.all([
+        getWeakTopics(),
+        getDueTopics(),
+      ]);
+      if (weakResult.data) setWeakTopics(weakResult.data);
+      setDueTopics(dueResult.data || []);
     }
-  }, [user]);
+  }, [user, selectedTopic, practiceStats]);
 
   const getImprovementColor = (level: 'high' | 'medium' | 'low') => {
     switch (level) {
@@ -217,12 +259,12 @@ export default function FocusedPractice() {
                 </div>
               )}
 
-              {weakTopics.length === 0 ? (
+              {weakTopics.length === 0 && dueTopics.length === 0 ? (
                 <div className="text-center py-16">
                   <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
                   <h2 className="text-xl font-bold text-foreground mb-2">Great Job!</h2>
                   <p className="text-muted-foreground mb-6">
-                    No weak topics found. Complete more adaptive challenges to get personalized recommendations.
+                    No topics need practice right now. Complete more adaptive challenges to get personalized recommendations.
                   </p>
                   <Link to="/adaptive">
                     <Button>Take an Adaptive Challenge</Button>
@@ -230,82 +272,193 @@ export default function FocusedPractice() {
                 </div>
               ) : (
                 <>
-                  <div className="bg-card rounded-xl p-4 shadow-card">
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Zap className="w-4 h-4 text-primary" />
-                      <span>Based on your adaptive challenge performance, focus on these topics:</span>
-                    </div>
+                  {/* Tab Selection */}
+                  <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                    <button
+                      onClick={() => setActiveTab('due')}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        activeTab === 'due' 
+                          ? 'bg-card text-foreground shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Bell className="w-4 h-4" />
+                      Due for Review
+                      {dueTopics.length > 0 && (
+                        <span className="px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
+                          {dueTopics.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('weak')}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        activeTab === 'weak' 
+                          ? 'bg-card text-foreground shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      Weak Topics
+                      {weakTopics.length > 0 && (
+                        <span className="px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded-full">
+                          {weakTopics.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
-                  <div className="grid gap-4">
-                    {weakTopics.map((topic, index) => (
-                      <motion.div
-                        key={`${topic.subject}-${topic.topicName}`}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="bg-card rounded-xl p-4 shadow-card border border-border hover:border-primary/30 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getImprovementColor(topic.improvementNeeded)}`}>
-                                {getImprovementIcon(topic.improvementNeeded)}
-                              </span>
-                              <h3 className="font-semibold text-foreground">
-                                {formatTopicName(topic.topicName)}
-                              </h3>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
-                              <span className="bg-muted px-2 py-0.5 rounded text-xs">
-                                {formatSubjectName(topic.subject)}
-                              </span>
-                              <span>Level {topic.highestLevel}</span>
-                              <span>{topic.questionsAttempted} questions attempted</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-muted-foreground" />
-                                <span className={topic.accuracy < 50 ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                                  {topic.accuracy}% accuracy
-                                </span>
+                  {/* Due Topics Tab */}
+                  {activeTab === 'due' && (
+                    <>
+                      {dueTopics.length === 0 ? (
+                        <div className="text-center py-12 bg-card rounded-xl">
+                          <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <h3 className="font-semibold text-foreground mb-1">No Topics Due</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Practice some weak topics to build your review schedule.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid gap-3">
+                          {dueTopics.map((topic, index) => (
+                            <motion.div
+                              key={`${topic.subject}-${topic.topic_name}`}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className="bg-card rounded-xl p-4 shadow-card border border-border"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${getImprovementColor(topic.urgency)}`}>
+                                      {getImprovementIcon(topic.urgency)}
+                                      {topic.urgency === 'high' ? 'Urgent' : topic.urgency === 'medium' ? 'Due' : 'Ready'}
+                                    </span>
+                                    <h3 className="font-semibold text-foreground">
+                                      {formatTopicName(topic.topic_name)}
+                                    </h3>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                    <span className="bg-muted px-2 py-0.5 rounded text-xs">
+                                      {formatSubjectName(topic.subject)}
+                                    </span>
+                                    <span>Review #{topic.review_count + 1}</span>
+                                    {topic.is_overdue && (
+                                      <span className="text-destructive">
+                                        {topic.days_overdue}d overdue
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <Button onClick={() => startPracticeFromDue(topic)}>
+                                  <Play className="w-4 h-4 mr-1" />
+                                  Review
+                                </Button>
                               </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="w-3 h-3" />
-                                {topic.averageTime}s avg
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Last practiced {formatDistanceToNow(parseISO(topic.lastPracticed), { addSuffix: true })}
-                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Weak Topics Tab */}
+                  {activeTab === 'weak' && (
+                    <>
+                      {weakTopics.length === 0 ? (
+                        <div className="text-center py-12 bg-card rounded-xl">
+                          <CheckCircle className="w-12 h-12 text-success mx-auto mb-3" />
+                          <h3 className="font-semibold text-foreground mb-1">No Weak Topics</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Complete more adaptive challenges to identify areas for improvement.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="bg-card rounded-xl p-4 shadow-card">
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                              <Zap className="w-4 h-4 text-primary" />
+                              <span>Based on your adaptive challenge performance:</span>
                             </div>
                           </div>
-                          
-                          <Button
-                            onClick={() => startPractice(topic)}
-                            className="shrink-0"
-                          >
-                            <Play className="w-4 h-4 mr-1" />
-                            Practice
-                          </Button>
-                        </div>
-                        
-                        {/* Accuracy bar */}
-                        <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full ${
-                              topic.accuracy < 40 ? 'bg-destructive' :
-                              topic.accuracy < 60 ? 'bg-warning' : 'bg-success'
-                            }`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${topic.accuracy}%` }}
-                            transition={{ duration: 0.5, delay: index * 0.05 }}
-                          />
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+
+                          <div className="grid gap-4">
+                            {weakTopics.map((topic, index) => (
+                              <motion.div
+                                key={`${topic.subject}-${topic.topicName}`}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="bg-card rounded-xl p-4 shadow-card border border-border hover:border-primary/30 transition-colors"
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getImprovementColor(topic.improvementNeeded)}`}>
+                                        {getImprovementIcon(topic.improvementNeeded)}
+                                      </span>
+                                      <h3 className="font-semibold text-foreground">
+                                        {formatTopicName(topic.topicName)}
+                                      </h3>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
+                                      <span className="bg-muted px-2 py-0.5 rounded text-xs">
+                                        {formatSubjectName(topic.subject)}
+                                      </span>
+                                      <span>Level {topic.highestLevel}</span>
+                                      <span>{topic.questionsAttempted} questions attempted</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4 text-sm">
+                                      <div className="flex items-center gap-1">
+                                        <Target className="w-3 h-3 text-muted-foreground" />
+                                        <span className={topic.accuracy < 50 ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                                          {topic.accuracy}% accuracy
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 text-muted-foreground">
+                                        <Clock className="w-3 h-3" />
+                                        {topic.averageTime}s avg
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Last practiced {formatDistanceToNow(parseISO(topic.lastPracticed), { addSuffix: true })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <Button
+                                    onClick={() => startPractice(topic)}
+                                    className="shrink-0"
+                                  >
+                                    <Play className="w-4 h-4 mr-1" />
+                                    Practice
+                                  </Button>
+                                </div>
+                                
+                                {/* Accuracy bar */}
+                                <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                                  <motion.div
+                                    className={`h-full ${
+                                      topic.accuracy < 40 ? 'bg-destructive' :
+                                      topic.accuracy < 60 ? 'bg-warning' : 'bg-success'
+                                    }`}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${topic.accuracy}%` }}
+                                    transition={{ duration: 0.5, delay: index * 0.05 }}
+                                  />
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </>
               )}
             </motion.div>

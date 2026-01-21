@@ -23,6 +23,7 @@ import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
+import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -255,17 +256,22 @@ const Index = () => {
           <>
             {/* Show Dashboard when not in a quiz */}
             {!quiz.currentQuestion && (
-              <TopicDashboard 
-                topics={topics}
-                currentTopic={quiz.topic}
-                getProgress={quiz.getTopicProgress}
-                onSelectTopic={quiz.selectTopic}
-                onStartMixedQuiz={quiz.startMixedQuiz}
-                getTopicLevels={quiz.getTopicLevels}
-                isAdmin={false}
-                currentSubject={quiz.subject}
-                isLoggedIn={!!user}
-              />
+              <>
+                <TopicDashboard 
+                  topics={topics}
+                  currentTopic={quiz.topic}
+                  getProgress={quiz.getTopicProgress}
+                  onSelectTopic={quiz.selectTopic}
+                  onStartMixedQuiz={quiz.startMixedQuiz}
+                  getTopicLevels={quiz.getTopicLevels}
+                  isAdmin={false}
+                  currentSubject={quiz.subject}
+                  isLoggedIn={!!user}
+                />
+
+                {/* Spaced Repetition Card - show when logged in */}
+                {user && <SpacedRepetitionCard />}
+              </>
             )}
 
             {!hasTopics && (
