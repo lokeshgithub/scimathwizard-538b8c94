@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,12 +25,47 @@ interface AnalysisRequest {
   overallAccuracy: number;
   totalQuestions: number;
   averageTimePerQuestion: number;
+  sessionId?: string;
+  userId?: string;
 }
 
-serve(async (req) => {
+// Log usage to database (fire-and-forget)
+async function logUsage(
+  supabaseUrl: string,
+  supabaseKey: string,
+  userId: string | null,
+  sessionId: string | null,
+  actionType: string,
+  details: Record<string, unknown>,
+  estimatedCost: number = 0
+) {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    await supabase.from('usage_logs').insert({
+      user_id: userId,
+      session_id: sessionId,
+      action_type: actionType,
+      details,
+      estimated_cost: estimatedCost,
+    } as any);
+  } catch (error) {
+    console.error('Failed to log usage:', error);
+  }
+}
+
+// UUID validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUUID(str: string): boolean {
+  return UUID_REGEX.test(str);
+}
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -49,6 +84,8 @@ serve(async (req) => {
       overallAccuracy,
       totalQuestions,
       averageTimePerQuestion,
+      sessionId,
+      userId,
     } = body;
 
     // Build a detailed prompt for the AI
@@ -76,6 +113,9 @@ Please provide:
 
 Format your response in a friendly, student-appropriate tone. Use emojis sparingly to keep it engaging. Keep the total response under 400 words.`;
 
+    const startTime = Date.now();
+    const validUserId = userId && isValidUUID(userId) ? userId : null;
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -95,7 +135,25 @@ Format your response in a friendly, student-appropriate tone. Use emojis sparing
       }),
     });
 
+    const responseTime = Date.now() - startTime;
+
     if (!response.ok) {
+      // Log failed AI request (fire-and-forget)
+      logUsage(
+        supabaseUrl,
+        supabaseServiceKey,
+        validUserId,
+        sessionId || null,
+        'ai_analysis_failed',
+        {
+          subject,
+          total_questions: totalQuestions,
+          error_status: response.status,
+          response_time_ms: responseTime,
+        },
+        0
+      );
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
           status: 429,
@@ -115,6 +173,38 @@ Format your response in a friendly, student-appropriate tone. Use emojis sparing
 
     const data = await response.json();
     const recommendations = data.choices?.[0]?.message?.content || "Keep practicing! Every question you solve makes you stronger.";
+    
+    // Estimate tokens used (rough estimate: ~4 chars per token)
+    const promptTokens = Math.ceil(prompt.length / 4);
+    const responseTokens = Math.ceil(recommendations.length / 4);
+    const totalTokens = promptTokens + responseTokens;
+    
+    // Estimated cost for AI usage (gemini-flash is very cost-effective)
+    // Rough estimate: $0.00001 per token for flash models
+    const estimatedCost = totalTokens * 0.00001;
+
+    // Log successful AI usage (fire-and-forget)
+    logUsage(
+      supabaseUrl,
+      supabaseServiceKey,
+      validUserId,
+      sessionId || null,
+      'ai_session_analysis',
+      {
+        subject,
+        total_questions: totalQuestions,
+        overall_accuracy: overallAccuracy,
+        topics_analyzed: topicAnalyses.length,
+        prompt_tokens: promptTokens,
+        response_tokens: responseTokens,
+        total_tokens: totalTokens,
+        response_time_ms: responseTime,
+        model: 'google/gemini-3-flash-preview',
+      },
+      estimatedCost
+    );
+
+    console.log(`AI analysis completed: ${totalTokens} tokens, ${responseTime}ms, est cost: $${estimatedCost.toFixed(6)}`);
 
     return new Response(
       JSON.stringify({ recommendations }),
