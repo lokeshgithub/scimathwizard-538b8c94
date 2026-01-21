@@ -221,6 +221,7 @@ const Index = () => {
                 getTopicLevels={quiz.getTopicLevels}
                 isAdmin={false}
                 currentSubject={quiz.subject}
+                isLoggedIn={!!user}
               />
             )}
 

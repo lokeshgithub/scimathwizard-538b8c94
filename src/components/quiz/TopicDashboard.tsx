@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
 import { 
   Sparkles, Flame, Target, TrendingUp, Play, 
-  ChevronRight, Zap, Award, BookOpen
+  ChevronRight, Zap, Award, BookOpen, Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
+import { SignUpPrompt } from './SignUpPrompt';
+import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
 
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
@@ -17,6 +19,7 @@ interface TopicDashboardProps {
   getTopicLevels?: (topic: string) => number[];
   isAdmin?: boolean;
   currentSubject?: string;
+  isLoggedIn?: boolean;
 }
 
 const formatName = (name: string) => {
@@ -95,9 +98,12 @@ export const TopicDashboard = ({
   onStartMixedQuiz,
   getTopicLevels,
   isAdmin = false,
-  currentSubject = 'math'
+  currentSubject = 'math',
+  isLoggedIn = false
 }: TopicDashboardProps) => {
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
+  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
+  const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
 
   // Calculate topic stats
@@ -162,6 +168,15 @@ export const TopicDashboard = ({
 
   // Wrapper to save last session when selecting a topic
   const handleSelectTopic = (topicName: string) => {
+    // Check guest limits
+    if (!guestLimits.canAccessTopic(topicName)) {
+      setShowSignUpPrompt(true);
+      return;
+    }
+    
+    // Record topic access for guests
+    guestLimits.recordTopicAccess(topicName);
+    
     const progress = getProgress(topicName);
     const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
     const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
@@ -180,9 +195,55 @@ export const TopicDashboard = ({
   };
 
   return (
-    <div className="space-y-6 mb-6">
-      {/* Continue Session Button */}
-      <ContinueSession 
+    <>
+      <div className="space-y-6 mb-6">
+        {/* Guest Limit Banner */}
+        {!isLoggedIn && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-3 rounded-xl border flex items-center justify-between ${
+              guestLimits.isLimitReached 
+                ? 'bg-destructive/10 border-destructive/20' 
+                : 'bg-muted/50 border-border'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {guestLimits.isLimitReached ? (
+                <Lock className="w-4 h-4 text-destructive" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-primary" />
+              )}
+              <span className="text-sm">
+                {guestLimits.isLimitReached ? (
+                  <span className="text-destructive font-medium">
+                    Guest limit reached! Sign up for unlimited access.
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">Guest mode: </span>
+                    <span className="font-medium text-foreground">
+                      {guestLimits.remainingTopics} of {GUEST_TOPIC_LIMIT_COUNT} topics remaining
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+            {!guestLimits.isLimitReached && guestLimits.topicsUsed.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowSignUpPrompt(true)}
+                className="text-xs"
+              >
+                Sign up for more
+              </Button>
+            )}
+          </motion.div>
+        )}
+
+        {/* Continue Session Button */}
+        <ContinueSession
         currentSubject={currentSubject}
         onContinue={handleSelectTopic}
         getTopicProgress={getTopicProgressInfo}
@@ -449,6 +510,14 @@ export const TopicDashboard = ({
           <span>New</span>
         </div>
       </motion.div>
-    </div>
+      </div>
+
+      {/* Sign Up Prompt Modal */}
+      <SignUpPrompt 
+        isOpen={showSignUpPrompt}
+        onClose={() => setShowSignUpPrompt(false)}
+        topicsUsed={guestLimits.topicsUsed.length}
+      />
+    </>
   );
 };
