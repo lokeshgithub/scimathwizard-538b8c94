@@ -15,7 +15,7 @@ const pathways = [
     title: 'Practice Mode',
     subtitle: 'Master the Basics',
     description: 'Pick topics and work through 4-7 levels per topic. Each level requires 90% accuracy to advance. Perfect for structured learning.',
-    color: 'from-emerald-500 to-teal-500',
+    colorClass: 'bg-success',
     features: ['Topic-by-topic progression', 'Level-based mastery', 'Detailed explanations'],
   },
   {
@@ -26,7 +26,7 @@ const pathways = [
     title: 'Adaptive Challenge',
     subtitle: 'Find Your True Level',
     description: 'AI adjusts difficulty in real-time based on your performance. Discover your skill tier from Novice to Grandmaster.',
-    color: 'from-violet-500 to-purple-500',
+    colorClass: 'bg-primary',
     features: ['AI-powered difficulty', 'Skill tier ranking', 'Performance insights'],
   },
   {
@@ -37,7 +37,7 @@ const pathways = [
     title: 'Olympiad Test',
     subtitle: 'Competition Ready',
     description: 'Timed exams with mixed-difficulty questions, just like real Olympiads. Choose Foundation, Regional, or National level.',
-    color: 'from-amber-500 to-orange-500',
+    colorClass: 'bg-accent',
     features: ['Timed exams', 'Competition format', 'Strict mode option'],
   },
 ];
@@ -92,7 +92,7 @@ export const WelcomeModal = () => {
             </button>
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 p-6 text-white text-center">
+            <div className="bg-gradient-magical p-6 text-primary-foreground text-center">
               <motion.div
                 className="flex justify-center mb-3"
                 animate={{ rotate: [0, 10, -10, 0] }}
@@ -101,7 +101,7 @@ export const WelcomeModal = () => {
                 <Sparkles className="w-12 h-12" />
               </motion.div>
               <h2 className="text-2xl font-bold mb-2">Welcome to Magic Mastery Quiz! ✨</h2>
-              <p className="text-white/80 text-sm">
+              <p className="text-primary-foreground/80 text-sm">
                 Choose your learning path and start your journey to mastery
               </p>
             </div>
@@ -128,30 +128,30 @@ export const WelcomeModal = () => {
                         onClick={() => setSelectedPathway(isSelected ? null : pathway.id)}
                         className={`w-full p-4 rounded-2xl text-left transition-all ${
                           isSelected
-                            ? `bg-gradient-to-r ${pathway.color} text-white shadow-lg`
+                            ? `${pathway.colorClass} text-primary-foreground shadow-lg`
                             : 'bg-muted hover:bg-muted/80'
                         }`}
                       >
                         <div className="flex items-start gap-4">
                           <div
                             className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                              isSelected ? 'bg-white/20' : `bg-gradient-to-br ${pathway.color} text-white`
+                              isSelected ? 'bg-primary-foreground/20' : `${pathway.colorClass} text-primary-foreground`
                             }`}
                           >
                             {pathway.emoji}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className={`font-bold ${isSelected ? 'text-white' : 'text-foreground'}`}>
+                              <h3 className={`font-bold ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
                                 {pathway.title}
                               </h3>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                isSelected ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                                isSelected ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
                               }`}>
                                 {pathway.subtitle}
                               </span>
                             </div>
-                            <p className={`text-sm mt-1 ${isSelected ? 'text-white/90' : 'text-muted-foreground'}`}>
+                            <p className={`text-sm mt-1 ${isSelected ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
                               {pathway.description}
                             </p>
                             
@@ -161,13 +161,13 @@ export const WelcomeModal = () => {
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  className="mt-3 pt-3 border-t border-white/20"
+                                  className="mt-3 pt-3 border-t border-primary-foreground/20"
                                 >
                                   <div className="flex flex-wrap gap-2 mb-3">
                                     {pathway.features.map((feature, i) => (
                                       <span
                                         key={i}
-                                        className="text-xs px-2 py-1 bg-white/20 rounded-full"
+                                        className="text-xs px-2 py-1 bg-primary-foreground/20 rounded-full"
                                       >
                                         ✓ {feature}
                                       </span>
@@ -198,7 +198,7 @@ export const WelcomeModal = () => {
               <Button
                 onClick={handleGetStarted}
                 size="lg"
-                className="px-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                className="px-8 bg-gradient-magical hover:opacity-90 text-primary-foreground"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Get Started
