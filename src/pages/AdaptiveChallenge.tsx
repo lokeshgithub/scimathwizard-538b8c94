@@ -218,7 +218,7 @@ const AdaptiveChallenge = () => {
             </div>
           </div>
           <p className="text-white/80 text-sm mt-2 ml-2">
-            Discover your true skill level with AI-powered adaptive testing ✨
+            📋 Take this 20-question assessment to discover your skill level and get a score out of 100
           </p>
         </div>
       </motion.header>
@@ -257,9 +257,9 @@ const AdaptiveChallenge = () => {
                 </div>
                 <div className="bg-muted rounded-xl p-4 text-center">
                   <Zap className="w-8 h-8 mx-auto mb-2 text-amber-500" />
-                  <h3 className="font-semibold text-foreground mb-1">25 Questions</h3>
+                  <h3 className="font-semibold text-foreground mb-1">20 Questions</h3>
                   <p className="text-sm text-muted-foreground">
-                    Complete the challenge to discover your skill rating
+                    Get a score out of 100 with your percentile ranking
                   </p>
                 </div>
                 <div className="bg-muted rounded-xl p-4 text-center">
