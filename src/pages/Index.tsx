@@ -214,12 +214,14 @@ const Index = () => {
               
               {user ? (
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1">
-                    <User className="w-4 h-4" />
-                    <span className="text-sm font-medium truncate max-w-[100px]">
-                      {profile?.display_name || 'Student'}
-                    </span>
-                  </div>
+                  <Link to="/profile">
+                    <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-full px-3 py-1 cursor-pointer">
+                      <User className="w-4 h-4" />
+                      <span className="text-sm font-medium truncate max-w-[100px]">
+                        {profile?.display_name || 'Student'}
+                      </span>
+                    </div>
+                  </Link>
                   <Button
                     variant="secondary"
                     size="sm"
