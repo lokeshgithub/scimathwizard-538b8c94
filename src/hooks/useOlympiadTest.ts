@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
-import { validateAnswer as validateAnswerAPI } from '@/services/questionService';
+import { logAnswerToServer } from '@/services/questionService';
 
 export interface OlympiadQuestionResult {
   question: Question;
@@ -238,54 +238,42 @@ export function useOlympiadTest(banks: QuestionBank) {
 
     const timeSpent = (Date.now() - questionStartTime) / 1000;
 
-    try {
-      // Convert shuffled index to original index for server validation
-      const originalSelectedIndex = currentQuestion.shuffleMap
-        ? currentQuestion.shuffleMap[selectedIndex]
-        : selectedIndex;
+    // INSTANT LOCAL VALIDATION - no network call needed!
+    // The correct answer is already loaded in memory
+    const isCorrect = selectedIndex === currentQuestion.correct;
+    const shuffledCorrectIndex = currentQuestion.correct;
 
-      const { isCorrect, correctIndex: originalCorrectIndex } = await validateAnswerAPI(
-        currentQuestion.id,
-        originalSelectedIndex
-      );
+    // Log to server in background (non-blocking, fire-and-forget)
+    const originalSelectedIndex = currentQuestion.shuffleMap
+      ? currentQuestion.shuffleMap[selectedIndex]
+      : selectedIndex;
+    logAnswerToServer(currentQuestion.id, originalSelectedIndex, isCorrect);
 
-      // Convert server's original correct index back to shuffled index for display
-      let shuffledCorrectIndex = originalCorrectIndex;
-      if (currentQuestion.shuffleMap) {
-        shuffledCorrectIndex = currentQuestion.shuffleMap.findIndex(
-          origIdx => origIdx === originalCorrectIndex
-        );
-      }
+    const difficulty = difficultyMapRef.current.get(currentQuestion.id) || 'medium';
+    const topicName = topicMapRef.current.get(currentQuestion.id) || 'Unknown';
 
-      const difficulty = difficultyMapRef.current.get(currentQuestion.id) || 'medium';
-      const topicName = topicMapRef.current.get(currentQuestion.id) || 'Unknown';
+    const result: OlympiadQuestionResult = {
+      question: currentQuestion,
+      selectedAnswer: selectedIndex,
+      correctAnswer: shuffledCorrectIndex,
+      isCorrect,
+      timeSpent,
+      difficulty,
+      topicName,
+    };
 
-      const result: OlympiadQuestionResult = {
-        question: currentQuestion,
-        selectedAnswer: selectedIndex,
-        correctAnswer: shuffledCorrectIndex,
-        isCorrect,
-        timeSpent,
-        difficulty,
-        topicName,
-      };
+    const newTotalCorrect = state.totalCorrect + (isCorrect ? 1 : 0);
+    const isLastQuestion = state.currentQuestionIndex >= state.questions.length - 1;
 
-      const newTotalCorrect = state.totalCorrect + (isCorrect ? 1 : 0);
-      const isLastQuestion = state.currentQuestionIndex >= state.questions.length - 1;
+    setState(prev => ({
+      ...prev,
+      questionResults: [...prev.questionResults, result],
+      totalCorrect: newTotalCorrect,
+      isComplete: isLastQuestion,
+      endTime: isLastQuestion ? Date.now() : null,
+    }));
 
-      setState(prev => ({
-        ...prev,
-        questionResults: [...prev.questionResults, result],
-        totalCorrect: newTotalCorrect,
-        isComplete: isLastQuestion,
-        endTime: isLastQuestion ? Date.now() : null,
-      }));
-
-      return { isCorrect, correctIndex: shuffledCorrectIndex };
-    } catch (error) {
-      console.error('Error validating answer:', error);
-      return { isCorrect: false, correctIndex: -1 };
-    }
+    return { isCorrect, correctIndex: shuffledCorrectIndex };
   }, [state.questions, state.currentQuestionIndex, state.totalCorrect, questionStartTime]);
 
   // Move to next question

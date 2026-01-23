@@ -11,7 +11,7 @@ import type {
   SessionAnalysis,
   TopicAnalysis
 } from '@/types/quiz';
-import { fetchAllQuestions, validateAnswer as validateAnswerAPI } from '@/services/questionService';
+import { fetchAllQuestions, logAnswerToServer } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
@@ -382,70 +382,58 @@ export const useQuizStore = () => {
     // Calculate time spent on this question
     const timeSpent = (Date.now() - questionStartTime) / 1000;
 
-    try {
-      // Convert shuffled index to original index for server validation
-      const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
-      
-      // Validate answer via secure edge function (using original index)
-      const { isCorrect, correctIndex: originalCorrectIndex, explanation } = await validateAnswerAPI(currentQ.id, originalSelectedIndex);
-      
-      // Convert server's original correct index back to shuffled index for display
-      let shuffledCorrectIndex = originalCorrectIndex;
-      if (currentQ.shuffleMap) {
-        shuffledCorrectIndex = currentQ.shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
-      }
-      
-      // Update the question with shuffled correct answer and explanation from server
-      currentQ.correct = shuffledCorrectIndex;
-      if (explanation) currentQ.explanation = explanation;
+    // INSTANT LOCAL VALIDATION - no network call needed!
+    // The correct answer is already loaded in memory from fetchAllQuestions
+    const isCorrect = selectedIndex === currentQ.correct;
+    const correctIndex = currentQ.correct;
 
-      // Record timing for this question
-      const timing: QuestionTiming = {
-        questionId: currentQ.id,
-        topic: topic || 'mixed',
-        level: currentQ.level,
-        timeSpentSeconds: timeSpent,
-        wasCorrect: isCorrect,
-        concepts: currentQ.concepts,
-      };
+    // Log to server in background (non-blocking, fire-and-forget)
+    const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
+    logAnswerToServer(currentQ.id, originalSelectedIndex, isCorrect);
 
-      setSessionPerformance(prev => ({
-        ...prev,
-        questionTimings: [...prev.questionTimings, timing],
-      }));
+    // Record timing for this question
+    const timing: QuestionTiming = {
+      questionId: currentQ.id,
+      topic: topic || 'mixed',
+      level: currentQ.level,
+      timeSpentSeconds: timeSpent,
+      wasCorrect: isCorrect,
+      concepts: currentQ.concepts,
+    };
+
+    setSessionPerformance(prev => ({
+      ...prev,
+      questionTimings: [...prev.questionTimings, timing],
+    }));
+    
+    // Update level stats
+    setLevelStats(prev => ({
+      correct: prev.correct + (isCorrect ? 1 : 0),
+      total: prev.total + 1,
+    }));
+
+    // Update session stats with streak-based stars
+    setSessionStats(prev => {
+      const newStreak = isCorrect ? prev.streak + 1 : 0;
+      const newTotalCorrect = prev.totalCorrect + (isCorrect ? 1 : 0);
+      const starsEarned = isCorrect ? getStreakStars(newStreak) : 0;
+      const milestoneBonus = isCorrect ? getMilestoneBonus(newStreak, newTotalCorrect) : 0;
       
-      // Update level stats
-      setLevelStats(prev => ({
+      return {
+        solved: prev.solved + 1,
         correct: prev.correct + (isCorrect ? 1 : 0),
-        total: prev.total + 1,
-      }));
+        streak: newStreak,
+        mastered: prev.mastered,
+        stars: prev.stars + starsEarned + milestoneBonus,
+        totalCorrect: newTotalCorrect,
+        maxStreak: Math.max(prev.maxStreak, newStreak),
+      };
+    });
 
-      // Update session stats with streak-based stars
-      setSessionStats(prev => {
-        const newStreak = isCorrect ? prev.streak + 1 : 0;
-        const newTotalCorrect = prev.totalCorrect + (isCorrect ? 1 : 0);
-        const starsEarned = isCorrect ? getStreakStars(newStreak) : 0;
-        const milestoneBonus = isCorrect ? getMilestoneBonus(newStreak, newTotalCorrect) : 0;
-        
-        return {
-          solved: prev.solved + 1,
-          correct: prev.correct + (isCorrect ? 1 : 0),
-          streak: newStreak,
-          mastered: prev.mastered,
-          stars: prev.stars + starsEarned + milestoneBonus,
-          totalCorrect: newTotalCorrect,
-          maxStreak: Math.max(prev.maxStreak, newStreak),
-        };
-      });
+    // Mark question as answered
+    markQuestionAnswered(currentQ.id, isCorrect);
 
-      // Mark question as answered
-      markQuestionAnswered(currentQ.id, isCorrect);
-
-      return { isCorrect, correctIndex: shuffledCorrectIndex, question: currentQ, timeSpent };
-    } catch (error) {
-      console.error('Error validating answer:', error);
-      return { isCorrect: false, correctIndex: -1, question: currentQ, timeSpent: 0 };
-    }
+    return { isCorrect, correctIndex, question: currentQ, timeSpent };
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
 
   const checkMastery = useCallback((): 'passed' | 'failed' | 'continue' => {
