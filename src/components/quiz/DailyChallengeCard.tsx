@@ -96,18 +96,18 @@ export const DailyChallengeCard = ({
 
   return (
     <>
-      {/* Floating Card */}
+      {/* Compact Floating Badge - positioned below pathway nav */}
       <motion.div
-        className="fixed top-20 right-4 z-30"
-        initial={{ x: 100, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        className="fixed bottom-4 right-4 z-30"
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3, type: 'spring' }}
       >
         <Card 
-          className={`p-4 cursor-pointer shadow-lg border-2 ${
+          className={`p-3 cursor-pointer shadow-lg border-2 backdrop-blur-sm ${
             isTodayCompleted 
-              ? 'border-success/50 bg-success/5' 
-              : 'border-primary/50 bg-primary/5 animate-pulse'
+              ? 'border-success/50 bg-success/10' 
+              : 'border-primary/50 bg-primary/10'
           }`}
           onClick={() => setIsOpen(true)}
         >

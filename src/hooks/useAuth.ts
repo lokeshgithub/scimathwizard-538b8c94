@@ -13,6 +13,7 @@ interface Profile {
   questions_answered: number;
   current_streak: number;
   longest_streak: number;
+  grade: number;
 }
 
 export const useAuth = () => {
@@ -39,12 +40,13 @@ export const useAuth = () => {
   }, []);
 
   // Create profile if it doesn't exist
-  const createProfile = useCallback(async (userId: string, displayName: string) => {
+  const createProfile = useCallback(async (userId: string, displayName: string, grade: number = 7) => {
     const { data, error } = await supabase
       .from('profiles')
       .insert({
         user_id: userId,
         display_name: displayName,
+        grade,
       })
       .select()
       .single();
@@ -57,6 +59,26 @@ export const useAuth = () => {
     setProfile(data);
     return data;
   }, []);
+
+  // Update profile grade
+  const updateGrade = useCallback(async (grade: number) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ grade })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error updating grade:', error);
+    } else {
+      setProfile(prev => prev ? { ...prev, grade } : null);
+      toast({
+        title: 'Grade updated! 🎓',
+        description: `You're now in Class ${grade}`,
+      });
+    }
+  }, [user, toast]);
 
   // Update profile stats
   const updateStats = useCallback(async (stats: {
@@ -113,7 +135,7 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  const signUp = async (email: string, password: string, displayName: string, grade: number = 7) => {
     const redirectUrl = `${window.location.origin}/`;
 
     const { data, error } = await supabase.auth.signUp({
@@ -133,14 +155,14 @@ export const useAuth = () => {
       return { error };
     }
 
-    // Create profile for new user
+    // Create profile for new user with grade
     if (data.user) {
-      await createProfile(data.user.id, displayName);
+      await createProfile(data.user.id, displayName, grade);
     }
 
     toast({
       title: 'Welcome! 🎉',
-      description: 'Account created successfully!',
+      description: `Account created for Class ${grade}!`,
     });
 
     return { error: null };
@@ -196,6 +218,7 @@ export const useAuth = () => {
     signIn,
     signOut,
     updateStats,
+    updateGrade,
     fetchProfile,
     createProfile,
   };

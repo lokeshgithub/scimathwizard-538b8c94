@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, User, Loader2, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 const displayNameSchema = z.string().min(2, 'Name must be at least 2 characters').max(20, 'Name must be under 20 characters');
+
+const AVAILABLE_GRADES = [6, 7, 8, 9, 10, 11, 12];
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,6 +22,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [grade, setGrade] = useState<number>(7);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
 
@@ -61,7 +65,7 @@ const Auth = () => {
     setIsSubmitting(true);
 
     if (isSignUp) {
-      const { error } = await signUp(email, password, displayName);
+      const { error } = await signUp(email, password, displayName, grade);
       if (!error) {
         navigate('/');
       }
@@ -121,23 +125,50 @@ const Auth = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="displayName"
-                      type="text"
-                      placeholder="Your wizard name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="pl-10"
-                    />
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="displayName"
+                        type="text"
+                        placeholder="Your wizard name"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {errors.displayName && (
+                      <p className="text-sm text-destructive">{errors.displayName}</p>
+                    )}
                   </div>
-                  {errors.displayName && (
-                    <p className="text-sm text-destructive">{errors.displayName}</p>
-                  )}
-                </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grade">Your Class/Grade</Label>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                      <Select
+                        value={String(grade)}
+                        onValueChange={(val) => setGrade(Number(val))}
+                      >
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Select your class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AVAILABLE_GRADES.map((g) => (
+                            <SelectItem key={g} value={String(g)}>
+                              Class {g}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select your current class to get appropriate questions
+                    </p>
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">
