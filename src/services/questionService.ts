@@ -77,15 +77,17 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
 
-  // Fetch ALL questions with correct answers for instant local validation
+  // Fetch ALL questions using the public RPC function (bypasses RLS for read access)
+  // This function is SECURITY DEFINER and allows all users to read questions
   const { data: questions, error: questionsError } = await supabase
-    .from('questions')
-    .select('*') as { data: DBQuestion[] | null; error: any };
+    .rpc('get_public_questions') as { data: DBQuestion[] | null; error: any };
 
   if (questionsError || !questions) {
     console.error('Error fetching questions:', questionsError);
     return bank;
   }
+  
+  console.log(`Fetched ${questions.length} questions from database`);
 
   // Build lookup maps
   const subjectMap = new Map<string, DBSubject>(
