@@ -28,6 +28,7 @@ import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { PathwayProgress } from '@/components/quiz/PathwayProgress';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
+import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -401,6 +402,16 @@ const Index = () => {
 
       {/* Battle Mode */}
       <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />
+
+      {/* Friends Panel */}
+      <FriendsPanel 
+        currentSubject={quiz.subject}
+        topics={Object.keys(quiz.banks[quiz.subject] || {})}
+        onJoinBattle={(roomCode) => {
+          // This will be handled by the BattleMode component's join functionality
+          console.log('Join battle with code:', roomCode);
+        }}
+      />
 
       {/* Leaderboard */}
       <Leaderboard currentUserId={user?.id} />

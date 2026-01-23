@@ -68,6 +68,69 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_challenges: {
+        Row: {
+          challenged_id: string
+          challenger_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          room_code: string | null
+          status: string
+          subject: string
+          topic: string
+        }
+        Insert: {
+          challenged_id: string
+          challenger_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          room_code?: string | null
+          status?: string
+          subject: string
+          topic: string
+        }
+        Update: {
+          challenged_id?: string
+          challenger_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          room_code?: string | null
+          status?: string
+          subject?: string
+          topic?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       practice_schedules: {
         Row: {
           created_at: string
