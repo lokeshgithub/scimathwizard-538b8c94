@@ -197,9 +197,25 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveConfig = {
   questionsToAdvance: 3, // 3 correct to advance
   questionsToStay: 2, // 2 wrong at a level triggers level down or stop
   minQuestionsPerLevel: 3,
-  maxQuestions: 25,
+  maxQuestions: 20, // Assessment mode: fixed 20 questions
   startLevel: 3, // Start at middle level
 };
+
+// Estimated percentile ranges based on score (for when DB data is insufficient)
+export const SCORE_PERCENTILE_MAP: { minScore: number; maxScore: number; percentile: number; message: string }[] = [
+  { minScore: 95, maxScore: 100, percentile: 99, message: 'You\'re in the top 1% of students in India!' },
+  { minScore: 85, maxScore: 94, percentile: 95, message: 'You\'re in the top 5% of students!' },
+  { minScore: 70, maxScore: 84, percentile: 90, message: 'You\'re in the top 10% of students!' },
+  { minScore: 55, maxScore: 69, percentile: 75, message: 'You\'re in the top 25% of students!' },
+  { minScore: 40, maxScore: 54, percentile: 50, message: 'You\'re performing above average!' },
+  { minScore: 20, maxScore: 39, percentile: 30, message: 'You\'re building a strong foundation!' },
+  { minScore: 0, maxScore: 19, percentile: 15, message: 'Keep practicing to improve your ranking!' },
+];
+
+export function getEstimatedPercentile(score: number): { percentile: number; message: string } {
+  const range = SCORE_PERCENTILE_MAP.find(r => score >= r.minScore && score <= r.maxScore);
+  return range || { percentile: 15, message: 'Keep practicing to improve your ranking!' };
+}
 
 // Calculate skill score based on adaptive performance
 export function calculateSkillScore(

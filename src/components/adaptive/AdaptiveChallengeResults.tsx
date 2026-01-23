@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { 
   Trophy, Target, Clock, Zap, TrendingUp, Award, ChevronRight, 
   RotateCcw, Home, AlertTriangle, BookOpen, Lightbulb, ChevronDown,
-  CheckCircle, XCircle, Loader2, Cloud, Users
+  CheckCircle, XCircle, Loader2, Cloud, Users, Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AdaptiveState, TopicPerformance, StudyRecommendation } from '@/types/adaptiveChallenge';
-import { SKILL_TIERS, analyzeTopicPerformance, generateRecommendations } from '@/types/adaptiveChallenge';
+import { SKILL_TIERS, analyzeTopicPerformance, generateRecommendations, getEstimatedPercentile } from '@/types/adaptiveChallenge';
 
 interface AdaptiveChallengeResultsProps {
   state: AdaptiveState;
@@ -49,6 +49,10 @@ export const AdaptiveChallengeResults = ({
   const nextTierIndex = SKILL_TIERS.findIndex(t => t.id === tier.id) + 1;
   const nextTier = nextTierIndex < SKILL_TIERS.length ? SKILL_TIERS[nextTierIndex] : null;
   const pointsToNextTier = nextTier ? nextTier.minScore - state.finalScore : 0;
+
+  // Get estimated percentile if DB data is insufficient
+  const estimatedPercentile = getEstimatedPercentile(state.finalScore);
+  const showEstimatedPercentile = !percentileData || percentileData.percentile === null;
 
   const getAccuracyColor = (acc: number) => {
     if (acc >= 80) return 'text-success';
@@ -106,7 +110,16 @@ export const AdaptiveChallengeResults = ({
             ))}
           </motion.div>
 
-          <div className="flex items-center justify-center gap-4">
+          {/* Assessment Badge */}
+          <motion.div
+            className="absolute top-4 left-4 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <span className="text-white text-sm font-medium">📋 Assessment Complete</span>
+          </motion.div>
+
+          <div className="flex items-center justify-center gap-4 mt-6">
             <motion.div
               className="text-5xl relative z-10"
               animate={{ 
@@ -137,18 +150,34 @@ export const AdaptiveChallengeResults = ({
             </div>
           </div>
 
-          {/* Score badge */}
+          {/* Large Score Display */}
           <motion.div
-            className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
+            className="mt-4 flex items-center justify-center gap-2"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, type: 'spring' }}
           >
-            {isSaving && <Loader2 className="w-3 h-3 text-white animate-spin" />}
-            {!isSaving && <Cloud className="w-3 h-3 text-white" />}
-            <span className="text-white font-bold">{state.finalScore}</span>
-            <span className="text-white/80 text-sm"> / 100</span>
+            <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 flex items-center gap-3">
+              <Star className="w-8 h-8 text-yellow-300 fill-yellow-300" />
+              <div className="text-center">
+                <div className="text-4xl font-bold text-white">{state.finalScore}</div>
+                <div className="text-white/80 text-sm">out of 100</div>
+              </div>
+              <Star className="w-8 h-8 text-yellow-300 fill-yellow-300" />
+            </div>
           </motion.div>
+
+          {/* Saving status indicator */}
+          {isSaving && (
+            <motion.div
+              className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <Loader2 className="w-3 h-3 text-white animate-spin" />
+              <span className="text-white text-sm">Saving...</span>
+            </motion.div>
+          )}
         </div>
 
         {/* Save status */}
@@ -171,37 +200,31 @@ export const AdaptiveChallengeResults = ({
           </div>
         )}
 
-        {/* Percentile info (when available) */}
-        {percentileData && percentileData.percentile !== null && (
-          <motion.div
-            className="mx-6 mt-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Users className="w-5 h-5 text-primary" />
+        {/* Percentile info - show real or estimated */}
+        <motion.div
+          className="mx-6 mt-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Trophy className="w-5 h-5 text-primary" />
+            {percentileData && percentileData.percentile !== null ? (
               <span className="text-sm text-muted-foreground">Based on {percentileData.totalResults.toLocaleString()} students</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">
-              You scored better than <span className="text-primary">{percentileData.percentile}%</span> of students!
-            </p>
-          </motion.div>
-        )}
-
-        {/* Not enough data message */}
-        {percentileData && percentileData.percentile === null && percentileData.totalResults > 0 && (
-          <motion.div
-            className="mx-6 mt-4 bg-muted/50 rounded-xl p-3 text-center text-sm text-muted-foreground"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Users className="w-4 h-4 inline mr-2" />
-            {percentileData.totalResults} students have taken this challenge. 
-            Percentile rankings unlock after 50 results!
-          </motion.div>
-        )}
+            ) : (
+              <span className="text-sm text-muted-foreground">Estimated Ranking</span>
+            )}
+          </div>
+          <p className="text-xl font-bold text-foreground">
+            {percentileData && percentileData.percentile !== null ? (
+              <>You scored better than <span className="text-primary">{percentileData.percentile}%</span> of students!</>
+            ) : (
+              <>
+                <span className="text-primary">Top {100 - estimatedPercentile.percentile}%</span> — {estimatedPercentile.message}
+              </>
+            )}
+          </p>
+        </motion.div>
 
         {/* Content */}
         <div className="p-6 space-y-6">
