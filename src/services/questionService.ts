@@ -78,16 +78,39 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
   }
 
   // Fetch ALL questions using the public RPC function (bypasses RLS for read access)
-  // This function is SECURITY DEFINER and allows all users to read questions
-  const { data: questions, error: questionsError } = await supabase
-    .rpc('get_public_questions') as { data: DBQuestion[] | null; error: any };
-
-  if (questionsError || !questions) {
-    console.error('Error fetching questions:', questionsError);
+  // Supabase has a default 1000 row limit, so we need to paginate
+  let allQuestions: DBQuestion[] = [];
+  let offset = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data: batch, error: questionsError } = await supabase
+      .rpc('get_public_questions')
+      .range(offset, offset + pageSize - 1) as { data: DBQuestion[] | null; error: any };
+    
+    if (questionsError) {
+      console.error('Error fetching questions:', questionsError);
+      break;
+    }
+    
+    if (!batch || batch.length === 0) {
+      hasMore = false;
+    } else {
+      allQuestions = [...allQuestions, ...batch];
+      offset += pageSize;
+      hasMore = batch.length === pageSize;
+    }
+  }
+  
+  const questions = allQuestions;
+  
+  if (questions.length === 0) {
+    console.error('No questions fetched from database');
     return bank;
   }
   
-  console.log(`Fetched ${questions.length} questions from database`);
+  console.log(`Fetched ${questions.length} questions from database (paginated)`);
 
   // Build lookup maps
   const subjectMap = new Map<string, DBSubject>(
