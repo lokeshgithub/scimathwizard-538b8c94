@@ -11,6 +11,7 @@ interface LeaderboardEntry {
   total_stars: number;
   topics_mastered: number;
   current_streak: number;
+  rank?: number;
 }
 
 interface LeaderboardProps {
@@ -62,17 +63,27 @@ export const Leaderboard = ({ currentUserId }: LeaderboardProps) => {
       .from('profiles')
       .select('id, display_name, avatar_url, total_stars, topics_mastered, current_streak, user_id')
       .order('total_stars', { ascending: false })
+      .order('created_at', { ascending: true }) // Secondary sort: earlier users rank higher for ties
       .limit(50);
 
     if (error) {
       console.error('Error fetching leaderboard:', error);
     } else if (data) {
-      setEntries(data);
+      // Calculate true ranks accounting for ties
+      let currentRank = 1;
+      const rankedData = data.map((entry: any, index: number) => {
+        if (index > 0 && entry.total_stars < data[index - 1].total_stars) {
+          currentRank = index + 1;
+        }
+        return { ...entry, rank: currentRank };
+      });
       
-      // Find current user's rank
+      setEntries(rankedData);
+      
+      // Find current user's rank (use the calculated rank, not position)
       if (currentUserId) {
-        const rank = data.findIndex((e: any) => e.user_id === currentUserId);
-        setUserRank(rank >= 0 ? rank + 1 : null);
+        const userEntry = rankedData.find((e: any) => e.user_id === currentUserId);
+        setUserRank(userEntry ? userEntry.rank : null);
       }
     }
 
@@ -164,7 +175,7 @@ export const Leaderboard = ({ currentUserId }: LeaderboardProps) => {
                   </div>
                 ) : (
                   entries.map((entry, index) => {
-                    const rank = index + 1;
+                    const rank = entry.rank ?? index + 1;
                     const isCurrentUser = currentUserId && entries[index] && (entries[index] as any).user_id === currentUserId;
 
                     return (
