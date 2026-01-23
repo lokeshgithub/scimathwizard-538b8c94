@@ -119,6 +119,7 @@ export type Database = {
           created_at: string
           current_streak: number
           display_name: string
+          grade: number | null
           id: string
           longest_streak: number
           questions_answered: number
@@ -132,6 +133,7 @@ export type Database = {
           created_at?: string
           current_streak?: number
           display_name: string
+          grade?: number | null
           id?: string
           longest_streak?: number
           questions_answered?: number
@@ -145,6 +147,7 @@ export type Database = {
           created_at?: string
           current_streak?: number
           display_name?: string
+          grade?: number | null
           id?: string
           longest_streak?: number
           questions_answered?: number

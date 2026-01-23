@@ -20,19 +20,19 @@ import type { Subject } from '@/types/quiz';
 const examTypeInfo = {
   foundation: {
     label: 'Foundation',
-    description: 'For Class 6-7 • 15 questions • 30 minutes',
+    description: 'Build your basics • 15 questions • 30 minutes',
     icon: '🌟',
     color: 'from-green-500 to-emerald-600',
   },
   regional: {
     label: 'Regional',
-    description: 'For Class 8-9 • 20 questions • 45 minutes',
+    description: 'State level prep • 20 questions • 45 minutes',
     icon: '🏆',
     color: 'from-blue-500 to-indigo-600',
   },
   national: {
     label: 'National',
-    description: 'For Class 10+ • 25 questions • 60 minutes',
+    description: 'Olympiad level • 25 questions • 60 minutes',
     icon: '👑',
     color: 'from-purple-500 to-pink-600',
   },

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -158,34 +158,50 @@ const Index = () => {
       >
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
-            <motion.div
-              className="flex items-center gap-2"
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <Sparkles className="w-8 h-8" />
-              <h1 className="text-2xl md:text-3xl font-bold">Magic Mastery Quiz</h1>
-              <Sparkles className="w-8 h-8" />
-            </motion.div>
+            <div className="flex items-center gap-3">
+              <motion.div
+                className="flex items-center gap-2"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Sparkles className="w-8 h-8" />
+                <h1 className="text-2xl md:text-3xl font-bold">Magic Mastery Quiz</h1>
+                <Sparkles className="w-8 h-8" />
+              </motion.div>
+              
+              {/* Grade Badge - Prominent class indicator */}
+              {profile && (
+                <motion.div
+                  className="flex items-center gap-1.5 bg-white/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/40"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.2 }}
+                >
+                  <GraduationCap className="w-5 h-5" />
+                  <span className="font-bold text-lg">Class {profile.grade || 7}</span>
+                </motion.div>
+              )}
+            </div>
             
             <div className="flex items-center gap-2">
               {/* Pathway Navigation */}
               <PathwayNav />
               
-              {/* Sound Toggle */}
-              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
-              
+              {/* AI Analysis Button - Always visible during practice */}
               {hasAnsweredQuestions && (
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={quiz.endSession}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
                 >
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="hidden sm:inline">View Summary</span>
+                  <Brain className="w-4 h-4" />
+                  <span className="hidden sm:inline">AI Analysis</span>
                 </Button>
               )}
+              
+              {/* Sound Toggle */}
+              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
               
               {user ? (
                 <div className="flex items-center gap-2">
