@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Flame, Trophy, Clock, CheckCircle, XCircle, Star, X, Loader2 } from 'lucide-react';
-import { validateAnswer } from '@/services/questionService';
+import { logAnswerToServer } from '@/services/questionService';
 
 interface DailyChallengeCardProps {
   challenge: DailyChallenge | null;
@@ -71,21 +71,23 @@ export const DailyChallengeCard = ({
     setSelectedAnswer(index);
     setIsValidating(true);
 
-    try {
-      const result = await validateAnswer(challenge.question.id, index);
-      setIsCorrect(result.isCorrect);
-      setCorrectIndex(result.correctIndex);
-      setIsAnswered(true);
-      
-      if (timerRef.current) clearInterval(timerRef.current);
-      const timeSpent = (Date.now() - startTimeRef.current) / 1000;
-      
-      onComplete(result.isCorrect, timeSpent);
-    } catch (error) {
-      console.error('Error validating answer:', error);
-    } finally {
-      setIsValidating(false);
-    }
+    // INSTANT LOCAL VALIDATION - no network call needed!
+    // The correct answer is already loaded in memory
+    const answerIsCorrect = index === challenge.question.correct;
+    const answerCorrectIndex = challenge.question.correct;
+
+    // Log to server in background (non-blocking, fire-and-forget)
+    logAnswerToServer(challenge.question.id, index, answerIsCorrect);
+
+    setIsCorrect(answerIsCorrect);
+    setCorrectIndex(answerCorrectIndex);
+    setIsAnswered(true);
+    setIsValidating(false);
+    
+    if (timerRef.current) clearInterval(timerRef.current);
+    const timeSpent = (Date.now() - startTimeRef.current) / 1000;
+    
+    onComplete(answerIsCorrect, timeSpent);
   };
 
   const nextStreakBonus = getDailyChallengeBonus(stats.currentStreak + 1);

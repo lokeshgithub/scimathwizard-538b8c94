@@ -10,7 +10,7 @@ import {
   calculateSkillScore, 
   getSkillTier 
 } from '@/types/adaptiveChallenge';
-import { validateAnswer as validateAnswerAPI } from '@/services/questionService';
+import { logAnswerToServer } from '@/services/questionService';
 
 const initialState: AdaptiveState = {
   isActive: false,
@@ -151,137 +151,127 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
 
     const timeSpent = (Date.now() - questionStartTime) / 1000;
     
-    try {
-      // Convert shuffled index to original index for server validation
-      const originalSelectedIndex = state.currentQuestion.shuffleMap 
-        ? state.currentQuestion.shuffleMap[selectedIndex] 
-        : selectedIndex;
-      
-      const { isCorrect, correctIndex: originalCorrectIndex } = await validateAnswerAPI(
-        state.currentQuestion.id, 
-        originalSelectedIndex
+    // INSTANT LOCAL VALIDATION - no network call needed!
+    // The correct answer is already loaded in memory
+    const isCorrect = selectedIndex === state.currentQuestion.correct;
+    const shuffledCorrectIndex = state.currentQuestion.correct;
+
+    // Log to server in background (non-blocking, fire-and-forget)
+    const originalSelectedIndex = state.currentQuestion.shuffleMap 
+      ? state.currentQuestion.shuffleMap[selectedIndex] 
+      : selectedIndex;
+    logAnswerToServer(state.currentQuestion.id, originalSelectedIndex, isCorrect);
+
+    const topicName = getQuestionTopic(state.currentQuestion.id, state.subject, state.selectedTopics);
+
+    const result: AdaptiveQuestionResult = {
+      question: state.currentQuestion,
+      selectedAnswer: selectedIndex,
+      correctAnswer: shuffledCorrectIndex,
+      isCorrect,
+      timeSpent,
+      levelAtTime: state.currentLevel,
+      topicName,
+    };
+
+    // Calculate new level
+    const newCorrectAtLevel = state.correctAtCurrentLevel + (isCorrect ? 1 : 0);
+    const newQuestionsAtLevel = state.questionsAtCurrentLevel + 1;
+    const wrongAtLevel = newQuestionsAtLevel - newCorrectAtLevel;
+    const maxLevel = getMaxLevel(state.subject, state.selectedTopics);
+    
+    let newLevel = state.currentLevel;
+    let resetLevelStats = false;
+    
+    // Level up logic: 3 correct at current level
+    if (newCorrectAtLevel >= config.questionsToAdvance) {
+      if (state.currentLevel < maxLevel) {
+        newLevel = state.currentLevel + 1;
+        resetLevelStats = true;
+      }
+    }
+    // Level down logic: 2 wrong at current level
+    else if (wrongAtLevel >= config.questionsToStay) {
+      if (state.currentLevel > 1) {
+        newLevel = state.currentLevel - 1;
+        resetLevelStats = true;
+      }
+    }
+
+    const newHighest = Math.max(state.highestLevelReached, newLevel);
+    const newTotalQuestions = state.totalQuestions + 1;
+    const newTotalCorrect = state.totalCorrect + (isCorrect ? 1 : 0);
+
+    // Check if challenge should end
+    const shouldEnd = newTotalQuestions >= config.maxQuestions;
+
+    // Calculate final score if ending
+    let finalScore = 0;
+    let skillTier = null;
+    
+    if (shouldEnd) {
+      const avgTime = state.questionHistory.reduce((sum, r) => sum + r.timeSpent, 0) / 
+        (state.questionHistory.length || 1);
+      finalScore = calculateSkillScore(
+        newHighest,
+        maxLevel,
+        newTotalCorrect,
+        newTotalQuestions,
+        avgTime
       );
+      skillTier = getSkillTier(finalScore);
+    }
 
-      // Convert server's original correct index back to shuffled index for display
-      let shuffledCorrectIndex = originalCorrectIndex;
-      if (state.currentQuestion.shuffleMap) {
-        shuffledCorrectIndex = state.currentQuestion.shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
-      }
-
-      const topicName = getQuestionTopic(state.currentQuestion.id, state.subject, state.selectedTopics);
-
-      const result: AdaptiveQuestionResult = {
-        question: state.currentQuestion,
-        selectedAnswer: selectedIndex,
-        correctAnswer: shuffledCorrectIndex,
-        isCorrect,
-        timeSpent,
-        levelAtTime: state.currentLevel,
-        topicName,
-      };
-
-      // Calculate new level
-      const newCorrectAtLevel = state.correctAtCurrentLevel + (isCorrect ? 1 : 0);
-      const newQuestionsAtLevel = state.questionsAtCurrentLevel + 1;
-      const wrongAtLevel = newQuestionsAtLevel - newCorrectAtLevel;
-      const maxLevel = getMaxLevel(state.subject, state.selectedTopics);
+    // Get next question
+    let nextQuestion: Question | null = null;
+    if (!shouldEnd) {
+      // Mark current question as used
+      setUsedQuestionIds(prev => new Set([...prev, state.currentQuestion!.id]));
       
-      let newLevel = state.currentLevel;
-      let resetLevelStats = false;
+      // Pick next question at new level
+      const levelMap = getQuestionsByLevel(state.subject, state.selectedTopics);
+      const questionsAtNewLevel = (levelMap.get(newLevel) || [])
+        .filter(q => !usedQuestionIds.has(q.id) && q.id !== state.currentQuestion!.id);
       
-      // Level up logic: 3 correct at current level
-      if (newCorrectAtLevel >= config.questionsToAdvance) {
-        if (state.currentLevel < maxLevel) {
-          newLevel = state.currentLevel + 1;
-          resetLevelStats = true;
-        }
-      }
-      // Level down logic: 2 wrong at current level
-      else if (wrongAtLevel >= config.questionsToStay) {
-        if (state.currentLevel > 1) {
-          newLevel = state.currentLevel - 1;
-          resetLevelStats = true;
-        }
-      }
-
-      const newHighest = Math.max(state.highestLevelReached, newLevel);
-      const newTotalQuestions = state.totalQuestions + 1;
-      const newTotalCorrect = state.totalCorrect + (isCorrect ? 1 : 0);
-
-      // Check if challenge should end
-      const shouldEnd = newTotalQuestions >= config.maxQuestions;
-
-      // Calculate final score if ending
-      let finalScore = 0;
-      let skillTier = null;
-      
-      if (shouldEnd) {
-        const avgTime = state.questionHistory.reduce((sum, r) => sum + r.timeSpent, 0) / 
-          (state.questionHistory.length || 1);
-        finalScore = calculateSkillScore(
-          newHighest,
-          maxLevel,
-          newTotalCorrect,
-          newTotalQuestions,
-          avgTime
-        );
-        skillTier = getSkillTier(finalScore);
-      }
-
-      // Get next question
-      let nextQuestion: Question | null = null;
-      if (!shouldEnd) {
-        // Mark current question as used
-        setUsedQuestionIds(prev => new Set([...prev, state.currentQuestion!.id]));
-        
-        // Pick next question at new level
-        const levelMap = getQuestionsByLevel(state.subject, state.selectedTopics);
-        const questionsAtNewLevel = (levelMap.get(newLevel) || [])
-          .filter(q => !usedQuestionIds.has(q.id) && q.id !== state.currentQuestion!.id);
-        
-        if (questionsAtNewLevel.length > 0) {
-          const randomIndex = Math.floor(Math.random() * questionsAtNewLevel.length);
-          nextQuestion = questionsAtNewLevel[randomIndex];
-          setUsedQuestionIds(prev => new Set([...prev, nextQuestion!.id]));
-        } else {
-          // No more questions available at this level, try to find any question
-          for (let lvl = newLevel; lvl >= 1; lvl--) {
-            const questions = (levelMap.get(lvl) || [])
-              .filter(q => !usedQuestionIds.has(q.id) && q.id !== state.currentQuestion!.id);
-            if (questions.length > 0) {
-              nextQuestion = questions[Math.floor(Math.random() * questions.length)];
-              setUsedQuestionIds(prev => new Set([...prev, nextQuestion!.id]));
-              break;
-            }
+      if (questionsAtNewLevel.length > 0) {
+        const randomIndex = Math.floor(Math.random() * questionsAtNewLevel.length);
+        nextQuestion = questionsAtNewLevel[randomIndex];
+        setUsedQuestionIds(prev => new Set([...prev, nextQuestion!.id]));
+      } else {
+        // No more questions available at this level, try to find any question
+        for (let lvl = newLevel; lvl >= 1; lvl--) {
+          const questions = (levelMap.get(lvl) || [])
+            .filter(q => !usedQuestionIds.has(q.id) && q.id !== state.currentQuestion!.id);
+          if (questions.length > 0) {
+            nextQuestion = questions[Math.floor(Math.random() * questions.length)];
+            setUsedQuestionIds(prev => new Set([...prev, nextQuestion!.id]));
+            break;
           }
         }
       }
-
-      setState(prev => ({
-        ...prev,
-        questionHistory: [...prev.questionHistory, result],
-        currentLevel: newLevel,
-        highestLevelReached: newHighest,
-        questionsAtCurrentLevel: resetLevelStats ? (isCorrect ? 1 : 0) : newQuestionsAtLevel,
-        correctAtCurrentLevel: resetLevelStats ? (isCorrect ? 1 : 0) : newCorrectAtLevel,
-        totalQuestions: newTotalQuestions,
-        totalCorrect: newTotalCorrect,
-        currentQuestion: shouldEnd ? null : nextQuestion,
-        isComplete: shouldEnd || !nextQuestion,
-        endTime: shouldEnd ? Date.now() : undefined,
-        finalScore,
-        skillTier,
-      }));
-
-      if (!shouldEnd && nextQuestion) {
-        setQuestionStartTime(Date.now());
-      }
-
-      return { isCorrect, correctIndex: shuffledCorrectIndex };
-    } catch (error) {
-      console.error('Error validating answer:', error);
-      return { isCorrect: false, correctIndex: -1 };
     }
+
+    setState(prev => ({
+      ...prev,
+      questionHistory: [...prev.questionHistory, result],
+      currentLevel: newLevel,
+      highestLevelReached: newHighest,
+      questionsAtCurrentLevel: resetLevelStats ? (isCorrect ? 1 : 0) : newQuestionsAtLevel,
+      correctAtCurrentLevel: resetLevelStats ? (isCorrect ? 1 : 0) : newCorrectAtLevel,
+      totalQuestions: newTotalQuestions,
+      totalCorrect: newTotalCorrect,
+      currentQuestion: shouldEnd ? null : nextQuestion,
+      isComplete: shouldEnd || !nextQuestion,
+      endTime: shouldEnd ? Date.now() : undefined,
+      finalScore,
+      skillTier,
+    }));
+
+    if (!shouldEnd && nextQuestion) {
+      setQuestionStartTime(Date.now());
+    }
+
+    return { isCorrect, correctIndex: shuffledCorrectIndex };
   }, [
     state, 
     questionStartTime, 

@@ -36,8 +36,8 @@ interface DBTopic {
   subject_id: string;
 }
 
-// Public question data (without correct_answer for security)
-interface DBQuestionPublic {
+// Question data with correct_answer for instant local validation
+interface DBQuestion {
   id: string;
   topic_id: string;
   level: number;
@@ -46,10 +46,14 @@ interface DBQuestionPublic {
   option_b: string;
   option_c: string;
   option_d: string;
+  correct_answer: string;
   explanation: string | null;
 }
 
-// Fetch all questions organized by subject and topic
+// In-memory cache for instant answer validation
+const answerCache = new Map<string, { correctIndex: number; explanation: string }>();
+
+// Fetch all questions organized by subject and topic (with answers for instant validation)
 export async function fetchAllQuestions(): Promise<QuestionBank> {
   const bank: QuestionBank = {};
 
@@ -73,9 +77,10 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
 
-  // Fetch questions via secure function (excludes correct_answer)
+  // Fetch ALL questions with correct answers for instant local validation
   const { data: questions, error: questionsError } = await supabase
-    .rpc('get_public_questions') as { data: DBQuestionPublic[] | null; error: any };
+    .from('questions')
+    .select('*') as { data: DBQuestion[] | null; error: any };
 
   if (questionsError || !questions) {
     console.error('Error fetching questions:', questionsError);
@@ -90,7 +95,10 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     (topics as DBTopic[]).map(t => [t.id, t])
   );
 
-  // Organize questions (correct answer will be validated server-side)
+  // Clear and rebuild answer cache
+  answerCache.clear();
+
+  // Organize questions with correct answer stored in memory
   for (const q of questions) {
     const topic = topicMap.get(q.topic_id);
     if (!topic) continue;
@@ -108,31 +116,83 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       bank[subjectKey][topicName] = [];
     }
 
+    // Convert A/B/C/D to 0/1/2/3
+    const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
+
     // Shuffle options for each student session
     const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
     const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
 
-    // correct is set to -1 as it will be validated server-side
+    // Find where the correct answer ended up after shuffling
+    // shuffleMap[newIdx] = originalIdx, so we need to find newIdx where shuffleMap[newIdx] === originalCorrectIndex
+    const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+
+    // Cache the correct answer for instant validation
+    answerCache.set(q.id, {
+      correctIndex: shuffledCorrectIndex,
+      explanation: q.explanation || '',
+    });
+
+    // Store shuffled correct index locally for instant validation
     bank[subjectKey][topicName].push({
       id: q.id,
       level: q.level,
       question: q.question,
       options: shuffledOptions,
-      correct: -1, // Will be validated by edge function
+      correct: shuffledCorrectIndex, // Now stored for instant validation!
       explanation: q.explanation || '',
       concepts: [],
-      shuffleMap, // Maps shuffled index to original index
+      shuffleMap,
     });
   }
 
+  console.log(`Loaded ${questions.length} questions into memory for instant validation`);
   return bank;
 }
 
-// Validate answer via edge function (secure server-side validation)
+// Instant local answer validation - no network call needed!
+export function validateAnswerLocal(
+  questionId: string,
+  selectedAnswer: number
+): { isCorrect: boolean; correctIndex: number; explanation: string } | null {
+  const cached = answerCache.get(questionId);
+  if (!cached) return null;
+  
+  return {
+    isCorrect: selectedAnswer === cached.correctIndex,
+    correctIndex: cached.correctIndex,
+    explanation: cached.explanation,
+  };
+}
+
+// Background logging to edge function (fire-and-forget, non-blocking)
+export function logAnswerToServer(
+  questionId: string,
+  selectedAnswer: number,
+  isCorrect: boolean
+): void {
+  // Fire and forget - don't await
+  supabase.functions.invoke('validate-answer', {
+    body: { questionId, selectedAnswer, logOnly: true },
+  }).catch(() => {
+    // Silently ignore errors - this is just for logging
+  });
+}
+
+// Legacy validate answer via edge function (kept for fallback)
 export async function validateAnswer(
   questionId: string,
   selectedAnswer: number
 ): Promise<{ isCorrect: boolean; correctIndex: number; explanation: string }> {
+  // Try local validation first (instant!)
+  const localResult = validateAnswerLocal(questionId, selectedAnswer);
+  if (localResult) {
+    // Log to server in background (non-blocking)
+    logAnswerToServer(questionId, selectedAnswer, localResult.isCorrect);
+    return localResult;
+  }
+
+  // Fallback to edge function if not in cache
   const { data, error } = await supabase.functions.invoke('validate-answer', {
     body: { questionId, selectedAnswer },
   });
