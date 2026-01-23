@@ -20,6 +20,7 @@ import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
 import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
 import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
+import { DailyLoginRewards } from '@/components/quiz/DailyLoginRewards';
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
@@ -58,11 +59,22 @@ const Index = () => {
     }
   }, [quiz.showSessionSummary]); // Sync when session ends
 
-  // Helper to add stars from daily challenge
+  // Helper to add stars from daily challenge/login rewards
   const handleAddStars = useCallback((stars: number) => {
-    // Stars are tracked in sessionStats - we'd need to update the quiz store
-    // For now, this is handled internally by daily challenge
-  }, []);
+    // Stars are tracked in sessionStats - update profile if logged in
+    if (user && profile) {
+      updateStats({
+        total_stars: (profile.total_stars || 0) + stars,
+      });
+    }
+  }, [user, profile, updateStats]);
+
+  // Handle login reward claim
+  const handleLoginRewardClaim = useCallback((stars: number, day: number) => {
+    handleAddStars(stars);
+    sound.playAchievement();
+    confetti.fireAchievement();
+  }, [handleAddStars, sound, confetti]);
 
   // Track subject exploration for achievements
   useEffect(() => {
@@ -412,6 +424,9 @@ const Index = () => {
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
+
+      {/* Daily Login Rewards */}
+      <DailyLoginRewards onClaimReward={handleLoginRewardClaim} />
     </div>
   );
 };
