@@ -291,8 +291,61 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
   }
 }
 
+// Canonical topic name mappings - maps normalized lowercase to proper display name
+const TOPIC_NAME_MAP: Record<string, string> = {
+  'integers': 'Integers',
+  'rationalnumbers': 'Rational Numbers',
+  'rational numbers': 'Rational Numbers',
+  'fractions': 'Fractions',
+  'decimals': 'Decimals',
+  'decimal fractions': 'Decimals',
+  'exponentsandpowers': 'Exponents and Powers',
+  'exponents and powers': 'Exponents and Powers',
+  'exponents': 'Exponents and Powers',
+  'ratioandprop': 'Ratio and Proportion',
+  'ratio and prop': 'Ratio and Proportion',
+  'ratio and proportion': 'Ratio and Proportion',
+  'unitarymethods': 'Unitary Methods',
+  'unitary methods': 'Unitary Methods',
+  'unitary method': 'Unitary Methods',
+  'percentages': 'Percentages',
+  'percent and percentage': 'Percentages',
+  'profitandloss': 'Profit and Loss',
+  'profit and loss': 'Profit and Loss',
+  'profit loss and discount': 'Profit and Loss',
+  'simpleinterest': 'Simple Interest',
+  'simple interest': 'Simple Interest',
+  'algebraicexpressions': 'Algebraic Expressions',
+  'algebraic expressions': 'Algebraic Expressions',
+  'algebraic_expressions': 'Algebraic Expressions',
+  'fundamental concepts': 'Algebraic Expressions',
+  'probability': 'Probability',
+  'linearequations': 'Linear Equations',
+  'linear equations': 'Linear Equations',
+  'simple linear equations': 'Linear Equations',
+  'setconcepts': 'Set Concepts',
+  'set concepts': 'Set Concepts',
+  'sets': 'Set Concepts',
+  'linesandangles': 'Lines and Angles',
+  'lines and angles': 'Lines and Angles',
+  'triangles': 'Triangles',
+  'pythagorastheorem': 'Pythagoras Theorem',
+  'pythagoras theorem': 'Pythagoras Theorem',
+  'symmetry': 'Symmetry',
+  'perimeter and area': 'Perimeter and Area',
+  'perimeterandarea': 'Perimeter and Area',
+  'congruence': 'Congruence',
+  'congruent triangles': 'Congruence',
+  'datahandling': 'Data Handling',
+  'data handling': 'Data Handling',
+  'mensuration': 'Mensuration',
+  'quadrilaterals': 'Quadrilaterals',
+  'circles': 'Circles',
+  'constructions': 'Constructions',
+};
+
 // Normalize topic name to a clean, human-readable format
-// Handles: "ch1-integers" → "Integers", "ch11b-algebraic_expressions" → "Algebraic Expressions"
+// Handles: "ch1-integers" → "Integers", "ch10-simpleinterest" → "Simple Interest"
 export function normalizeTopicName(rawName: string): string {
   let name = rawName.trim();
   
@@ -305,15 +358,51 @@ export function normalizeTopicName(rawName: string): string {
   // Remove extra spaces
   name = name.replace(/\s+/g, ' ').trim();
   
+  // Check if we have a known mapping (try both with and without spaces)
+  const lowerName = name.toLowerCase();
+  const noSpaceName = lowerName.replace(/\s+/g, '');
+  
+  if (TOPIC_NAME_MAP[lowerName]) {
+    return TOPIC_NAME_MAP[lowerName];
+  }
+  if (TOPIC_NAME_MAP[noSpaceName]) {
+    return TOPIC_NAME_MAP[noSpaceName];
+  }
+  
+  // Fallback: Split camelCase/concatenated words and title case
+  // Handle cases like "simpleinterest" → "Simple Interest"
+  name = name
+    // Insert space before capital letters (for camelCase)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    // Insert space between word boundaries in concatenated lowercase words
+    .replace(/(interest|numbers|expressions|equations|handling|methods|concepts|theorem|angles|triangles|proportion|powers)/gi, ' $1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
   // Title case each word
   name = name
     .split(' ')
+    .filter(word => word.length > 0)
     .map(word => {
-      // Handle special cases like "and", "or", "of" that should stay lowercase (unless first word)
       const lowerWord = word.toLowerCase();
+      // Keep small words lowercase unless first word
+      if (['and', 'or', 'of', 'the', 'in', 'on', 'at', 'to', 'for'].includes(lowerWord)) {
+        return lowerWord;
+      }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
+  
+  // Capitalize first letter always
+  if (name.length > 0) {
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+  }
+  
+  // Check mapping again after processing
+  const processedLower = name.toLowerCase();
+  if (TOPIC_NAME_MAP[processedLower]) {
+    return TOPIC_NAME_MAP[processedLower];
+  }
   
   return name;
 }
