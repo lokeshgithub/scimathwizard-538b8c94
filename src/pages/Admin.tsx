@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,11 +8,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { uploadQuestionsFromCSV, parseCSVContent, parseExcelFile, fetchAllQuestionsForAdmin, exportQuestionBankToExcel } from '@/services/questionService';
+import { 
+  uploadQuestionsFromCSV, 
+  parseCSVContent, 
+  parseExcelFile, 
+  fetchAllQuestionsForAdmin, 
+  exportQuestionBankToExcel,
+  deleteAllQuestionData,
+  normalizeTopicName 
+} from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { UsageDashboard } from '@/components/admin/UsageDashboard';
 import { QuestionBankSummary } from '@/components/admin/QuestionBankSummary';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -32,8 +51,11 @@ const Admin = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMode, setUploadMode] = useState<'append' | 'replace'>('append');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isCleaningAll, setIsCleaningAll] = useState(false);
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
   const [uploadResults, setUploadResults] = useState<Array<{
     topic: string;
+    normalizedTopic?: string;
     success: boolean;
     count?: number;
     skipped?: number;
@@ -196,6 +218,28 @@ const Admin = () => {
     }
   };
 
+  const handleCleanAllData = async () => {
+    setIsCleaningAll(true);
+    try {
+      const result = await deleteAllQuestionData({ keepSubjects: false });
+      
+      if (result.success) {
+        toast.success(
+          `Cleaned database: ${result.deletedQuestions} questions, ${result.deletedTopics} topics, ${result.deletedSubjects} subjects deleted`
+        );
+        setUploadResults([]);
+        setSummaryRefreshKey(prev => prev + 1);
+      } else {
+        toast.error(`Failed to clean data: ${result.error}`);
+      }
+    } catch (error) {
+      toast.error('Failed to clean database');
+      console.error(error);
+    } finally {
+      setIsCleaningAll(false);
+    }
+  };
+
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -235,6 +279,7 @@ const Admin = () => {
             
             results.push({
               topic: `${fileName} → ${sheet.name}`,
+              normalizedTopic: result.normalizedTopicName,
               success: result.success,
               count: result.count,
               skipped: result.skipped,
@@ -273,6 +318,7 @@ const Admin = () => {
         
         results.push({
           topic: finalTopicName,
+          normalizedTopic: result.normalizedTopicName,
           success: result.success,
           count: result.count,
           skipped: result.skipped,
@@ -296,6 +342,7 @@ const Admin = () => {
         message += `, skipped ${totalSkipped} duplicate(s)`;
       }
       toast.success(message);
+      setSummaryRefreshKey(prev => prev + 1);
     }
   }, [subject, topicName, uploadMode]);
 
@@ -570,7 +617,14 @@ const Admin = () => {
                       <AlertCircle className="w-5 h-5 text-destructive" />
                     )}
                     <div className="flex-1">
-                      <p className="font-medium">{result.topic}</p>
+                      <p className="font-medium">
+                        {result.topic}
+                        {result.normalizedTopic && result.normalizedTopic !== result.topic && (
+                          <span className="text-primary ml-2 font-normal text-sm">
+                            → {result.normalizedTopic}
+                          </span>
+                        )}
+                      </p>
                       {result.success ? (
                         <p className="text-sm text-muted-foreground">
                           {result.count} questions uploaded
@@ -622,10 +676,59 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-6">
-          <QuestionBankSummary />
-        </div>
+        <Card className="mt-6 border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Clean All Data
+            </CardTitle>
+            <CardDescription>
+              Delete ALL questions, topics, and subjects for a fresh start. Use this before uploading a complete new question bank.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  disabled={isCleaningAll}
+                  className="w-full sm:w-auto"
+                >
+                  {isCleaningAll ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Cleaning database...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete All Questions & Topics
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete ALL questions, topics, and subjects from the database. 
+                    This action cannot be undone. Use this only if you want to start fresh with a new question bank.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCleanAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, Delete Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
 
+        <div className="mt-6">
+          <QuestionBankSummary key={summaryRefreshKey} />
+        </div>
         <div className="mt-6">
           <UsageDashboard />
         </div>

@@ -216,8 +216,8 @@ export async function checkDuplicateQuestions(
     .select('question')
     .eq('topic_id', topicId);
 
-  const existingSet = new Set(
-    (existingQuestions || []).map(q => q.question.trim().toLowerCase())
+  const existingSet = new Set<string>(
+    (existingQuestions || []).map((q: { question: string }) => q.question.trim().toLowerCase())
   );
 
   return existingSet;
@@ -238,6 +238,110 @@ export async function deleteTopicQuestions(topicId: string): Promise<{ success: 
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }
+}
+
+// Delete ALL questions, topics, and optionally subjects for a fresh start
+export async function deleteAllQuestionData(options: { keepSubjects?: boolean } = {}): Promise<{ 
+  success: boolean; 
+  error?: string; 
+  deletedQuestions?: number;
+  deletedTopics?: number;
+  deletedSubjects?: number;
+}> {
+  try {
+    // Delete all questions first (child table)
+    const { data: deletedQuestions, error: questionsError } = await supabase
+      .from('questions')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (workaround for no .deleteAll())
+      .select('id');
+
+    if (questionsError) throw new Error(`Failed to delete questions: ${questionsError.message}`);
+
+    // Delete all topics
+    const { data: deletedTopics, error: topicsError } = await supabase
+      .from('topics')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+      .select('id');
+
+    if (topicsError) throw new Error(`Failed to delete topics: ${topicsError.message}`);
+
+    let deletedSubjectsCount = 0;
+    if (!options.keepSubjects) {
+      // Delete all subjects
+      const { data: deletedSubjects, error: subjectsError } = await supabase
+        .from('subjects')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .select('id');
+
+      if (subjectsError) throw new Error(`Failed to delete subjects: ${subjectsError.message}`);
+      deletedSubjectsCount = deletedSubjects?.length || 0;
+    }
+
+    return { 
+      success: true, 
+      deletedQuestions: deletedQuestions?.length || 0,
+      deletedTopics: deletedTopics?.length || 0,
+      deletedSubjects: deletedSubjectsCount,
+    };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+// Normalize topic name to a clean, human-readable format
+// Handles: "ch1-integers" → "Integers", "ch11b-algebraic_expressions" → "Algebraic Expressions"
+export function normalizeTopicName(rawName: string): string {
+  let name = rawName.trim();
+  
+  // Remove common prefixes like "ch1-", "ch11b-", "chapter1-", etc.
+  name = name.replace(/^(ch(apter)?[\d]+[a-z]?[-_\s]*)/i, '');
+  
+  // Replace underscores and hyphens with spaces
+  name = name.replace(/[_-]+/g, ' ');
+  
+  // Remove extra spaces
+  name = name.replace(/\s+/g, ' ').trim();
+  
+  // Title case each word
+  name = name
+    .split(' ')
+    .map(word => {
+      // Handle special cases like "and", "or", "of" that should stay lowercase (unless first word)
+      const lowerWord = word.toLowerCase();
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+  
+  return name;
+}
+
+// Find existing topic by normalized name (case-insensitive fuzzy match)
+export async function findMatchingTopic(
+  subjectId: string, 
+  rawTopicName: string
+): Promise<{ id: string; name: string } | null> {
+  const normalizedInput = normalizeTopicName(rawTopicName).toLowerCase();
+  
+  // Fetch all topics for this subject
+  const { data: topics } = await supabase
+    .from('topics')
+    .select('id, name')
+    .eq('subject_id', subjectId);
+  
+  if (!topics || topics.length === 0) return null;
+  
+  // Try to find a match
+  for (const topic of topics) {
+    const normalizedExisting = normalizeTopicName(topic.name).toLowerCase();
+    if (normalizedExisting === normalizedInput) {
+      return topic;
+    }
+  }
+  
+  return null;
 }
 
 // Sanitize database error messages for user display
@@ -267,8 +371,11 @@ export async function uploadQuestionsFromCSV(
     explanation: string;
   }>,
   options: { replaceExisting?: boolean } = {}
-): Promise<{ success: boolean; error?: string; count?: number; skipped?: number }> {
+): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string }> {
   try {
+    // Normalize the topic name first
+    const normalizedTopicName = normalizeTopicName(topicName);
+    
     // Get or create subject
     let { data: subject } = await supabase
       .from('subjects')
@@ -290,19 +397,15 @@ export async function uploadQuestionsFromCSV(
       subject = newSubject;
     }
 
-    // Get or create topic
-    let { data: topic } = await supabase
-      .from('topics')
-      .select('id')
-      .eq('subject_id', subject.id)
-      .eq('name', topicName)
-      .maybeSingle();
-
+    // Try to find an existing topic with matching normalized name
+    let topic = await findMatchingTopic(subject.id, topicName);
+    
     if (!topic) {
+      // No match found - create new topic with normalized name
       const { data: newTopic, error: topicError } = await supabase
         .from('topics')
-        .insert({ subject_id: subject.id, name: topicName })
-        .select('id')
+        .insert({ subject_id: subject.id, name: normalizedTopicName })
+        .select('id, name')
         .single();
 
       if (topicError) {
@@ -401,7 +504,8 @@ export async function uploadQuestionsFromCSV(
     return { 
       success: true, 
       count: questionsToInsert.length,
-      skipped: skippedCount
+      skipped: skippedCount,
+      normalizedTopicName: topic.name,
     };
   } catch (error) {
     return { success: false, error: (error as Error).message };
