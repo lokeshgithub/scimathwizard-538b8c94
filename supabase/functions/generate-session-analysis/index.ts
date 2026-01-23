@@ -88,30 +88,77 @@ Deno.serve(async (req) => {
       userId,
     } = body;
 
+    // Calculate efficiency metrics
+    const BENCHMARK_TIME_EASY = 30; // seconds for easy questions
+    const BENCHMARK_TIME_HARD = 60; // seconds for harder questions
+    const avgBenchmark = 45; // average expected time
+    
+    const efficiencyScore = averageTimePerQuestion > 0 
+      ? Math.min(100, Math.round((avgBenchmark / averageTimePerQuestion) * 100 * (overallAccuracy)))
+      : 0;
+    
+    // Categorize topics by efficiency (accuracy + speed combined)
+    const topicEfficiency = topicAnalyses.map(t => {
+      const speedScore = t.averageTimeSeconds > 0 ? Math.min(1, avgBenchmark / t.averageTimeSeconds) : 0;
+      const effScore = (t.accuracy * 0.7) + (speedScore * 0.3); // Weight accuracy more
+      return {
+        ...t,
+        efficiencyScore: Math.round(effScore * 100),
+        isEfficient: effScore >= 0.75,
+        needsSpeedWork: t.accuracy >= 0.7 && t.averageTimeSeconds > 45,
+        needsAccuracyWork: t.accuracy < 0.7,
+      };
+    });
+
+    const efficientTopics = topicEfficiency.filter(t => t.isEfficient).map(t => t.topic);
+    const needsSpeedTopics = topicEfficiency.filter(t => t.needsSpeedWork).map(t => t.topic);
+    const needsAccuracyTopics = topicEfficiency.filter(t => t.needsAccuracyWork).map(t => t.topic);
+
     // Build a detailed prompt for the AI
-    const prompt = `You are an encouraging educational tutor helping a student understand their quiz performance. Based on the following quiz session data, provide personalized learning advice.
+    const prompt = `You are an expert educational coach helping a student understand their quiz performance with actionable insights. Analyze their performance data and provide SPECIFIC, POINTED recommendations.
 
 **Subject**: ${subject}
 **Total Questions Attempted**: ${totalQuestions}
 **Overall Accuracy**: ${(overallAccuracy * 100).toFixed(1)}%
 **Average Time Per Question**: ${averageTimePerQuestion.toFixed(1)} seconds
+**Efficiency Score**: ${efficiencyScore}/100 (combines speed + accuracy)
 
-**Topic Performance**:
-${topicAnalyses.map(t => `- ${t.topic}: ${t.correctAnswers}/${t.questionsAttempted} correct (${(t.accuracy * 100).toFixed(0)}%), avg ${t.averageTimeSeconds.toFixed(1)}s per question`).join('\n')}
+**DETAILED TOPIC ANALYSIS**:
+${topicEfficiency.map(t => `- ${t.topic}: 
+  • Accuracy: ${t.correctAnswers}/${t.questionsAttempted} (${(t.accuracy * 100).toFixed(0)}%)
+  • Avg Time: ${t.averageTimeSeconds.toFixed(1)}s/question
+  • Efficiency: ${t.efficiencyScore}/100
+  • Status: ${t.isEfficient ? '✅ Efficient' : t.needsSpeedWork ? '⏱️ Accurate but slow' : '📚 Needs practice'}`).join('\n')}
 
-**Strong Areas**: ${strengths.length > 0 ? strengths.join(', ') : 'None identified yet'}
-**Areas for Improvement**: ${weaknesses.length > 0 ? weaknesses.join(', ') : 'None - great job!'}
-**Topics Taking More Time**: ${slowTopics.length > 0 ? slowTopics.join(', ') : 'None - you\'re quick!'}
-**Quick Topics**: ${fastTopics.length > 0 ? fastTopics.join(', ') : 'None identified'}
+**EFFICIENCY BREAKDOWN**:
+- Topics with good efficiency: ${efficientTopics.length > 0 ? efficientTopics.join(', ') : 'Keep practicing!'}
+- Topics accurate but slow (need speed drills): ${needsSpeedTopics.length > 0 ? needsSpeedTopics.join(', ') : 'None - you\'re quick!'}
+- Topics needing accuracy improvement: ${needsAccuracyTopics.length > 0 ? needsAccuracyTopics.join(', ') : 'Great accuracy overall!'}
 
-Please provide:
-1. A brief, encouraging summary of their performance (2-3 sentences)
-2. Specific advice for their weak areas (mention the topic names)
-3. Tips for the topics where they took more time
-4. Suggested learning resources or practice strategies
-5. A motivational closing message
+**Strong Areas**: ${strengths.length > 0 ? strengths.join(', ') : 'Building foundations'}
+**Weak Areas**: ${weaknesses.length > 0 ? weaknesses.join(', ') : 'No major weaknesses!'}
 
-Format your response in a friendly, student-appropriate tone. Use emojis sparingly to keep it engaging. Keep the total response under 400 words.`;
+PROVIDE YOUR ANALYSIS IN THIS EXACT STRUCTURE:
+
+## 🎯 Performance Overview
+(2-3 sentences summarizing their overall performance, efficiency score interpretation)
+
+## ⚡ Speed & Efficiency Analysis  
+(Analyze their time management. For topics where they're accurate but slow, suggest speed improvement techniques like timed practice, formula memorization, or pattern recognition drills)
+
+## 📚 Topics to Focus On
+(For EACH weak topic, provide:
+- What concept they likely struggle with
+- One specific practice strategy
+- A resource suggestion if applicable)
+
+## 🚀 Action Plan
+(3-4 bullet points with specific next steps they should take)
+
+## 💪 Motivation
+(Brief encouraging closing)
+
+Be SPECIFIC - mention actual topic names, give concrete study tips, and reference their actual scores. Keep total response under 500 words.`;
 
     const startTime = Date.now();
     const validUserId = userId && isValidUUID(userId) ? userId : null;
