@@ -316,7 +316,61 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
   }
 }
 
+// Delete a specific topic and all its questions
+export async function deleteTopicById(topicId: string): Promise<{ 
+  success: boolean; 
+  error?: string; 
+  deletedQuestions?: number;
+}> {
+  try {
+    // First delete all questions in this topic
+    const { data: deletedQuestions, error: questionsError } = await supabase
+      .from('questions')
+      .delete()
+      .eq('topic_id', topicId)
+      .select('id');
+
+    if (questionsError) throw new Error(`Failed to delete questions: ${questionsError.message}`);
+
+    // Then delete the topic itself
+    const { error: topicError } = await supabase
+      .from('topics')
+      .delete()
+      .eq('id', topicId);
+
+    if (topicError) throw new Error(`Failed to delete topic: ${topicError.message}`);
+
+    return { 
+      success: true, 
+      deletedQuestions: deletedQuestions?.length || 0,
+    };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
 // Canonical topic name mappings - maps normalized lowercase to proper display name
+// Official blueprint topics - these are the ONLY valid topic names
+export const BLUEPRINT_TOPICS: Record<string, string[]> = {
+  'Math': [
+    'Integers', 'Rational Numbers', 'Fractions', 'Decimals',
+    'Exponents and Powers', 'Ratio and Proportion', 'Unitary Methods',
+    'Percentages', 'Profit and Loss', 'Simple Interest',
+    'Algebraic Expressions', 'Linear Equations', 'Set Concepts',
+    'Lines and Angles', 'Triangles', 'Pythagoras Theorem', 'Congruence',
+    'Symmetry', 'Perimeter and Area', 'Mensuration', 'Quadrilaterals',
+    'Circles', 'Constructions', 'Data Handling', 'Probability',
+  ],
+  'Physics': [
+    'Motion', 'Force', 'Gravitation', 'Work and Energy', 'Sound',
+    'Light', 'Electricity', 'Magnetism', 'Heat',
+  ],
+  'Chemistry': [
+    'Matter', 'Atoms and Molecules', 'Chemical Reactions', 'Acids and Bases',
+    'Metals and Non-metals', 'Carbon Compounds', 'Periodic Table',
+  ],
+};
+
 const TOPIC_NAME_MAP: Record<string, string> = {
   'integers': 'Integers',
   'rationalnumbers': 'Rational Numbers',
@@ -368,6 +422,83 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   'circles': 'Circles',
   'constructions': 'Constructions',
 };
+
+/**
+ * Parse a filename/sheet name to extract topic name and level
+ * Examples:
+ * - "Data Handling Level 1" → { topic: "Data Handling", level: 1 }
+ * - "ch1-integers" → { topic: "Integers", level: null }
+ * - "Profit and Loss L2" → { topic: "Profit and Loss", level: 2 }
+ */
+export function parseTopicFromName(rawName: string): { topic: string; level: number | null } {
+  let name = rawName.trim();
+  let extractedLevel: number | null = null;
+  
+  // Remove file extension if present
+  name = name.replace(/\.(csv|tsv|txt|xlsx|xls)$/i, '');
+  
+  // Extract level from patterns like "Level 1", "L1", "level-1", "Lvl 2"
+  const levelPatterns = [
+    /\s*level\s*[-_]?\s*(\d+)\s*$/i,   // "Level 1", "level-1", "level_1"
+    /\s*l(\d+)\s*$/i,                   // "L1", "l2"
+    /\s*lvl\s*[-_]?\s*(\d+)\s*$/i,     // "Lvl 1", "lvl-2"
+    /\s*[-_]\s*(\d+)\s*$/,              // trailing "-1" or "_2"
+  ];
+  
+  for (const pattern of levelPatterns) {
+    const match = name.match(pattern);
+    if (match) {
+      extractedLevel = parseInt(match[1], 10);
+      name = name.replace(pattern, '').trim();
+      break;
+    }
+  }
+  
+  // Remove chapter prefixes like "ch1-", "chapter2-"
+  name = name.replace(/^(ch(apter)?[\d]+[a-z]?[-_\s]*)/i, '');
+  
+  // Clean up underscores and hyphens
+  name = name.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Try to normalize the topic name
+  const normalized = normalizeTopicName(name);
+  
+  return { topic: normalized, level: extractedLevel };
+}
+
+/**
+ * Find the best matching blueprint topic for a given input
+ * Returns the official topic name if found, otherwise null
+ */
+export function findBlueprintMatch(inputTopic: string, subject: string): string | null {
+  const blueprintTopics = BLUEPRINT_TOPICS[subject] || BLUEPRINT_TOPICS['Math'];
+  const normalizedInput = inputTopic.toLowerCase().replace(/\s+/g, '');
+  
+  // Direct match
+  for (const topic of blueprintTopics) {
+    if (topic.toLowerCase() === inputTopic.toLowerCase()) {
+      return topic;
+    }
+  }
+  
+  // Fuzzy match - remove spaces and compare
+  for (const topic of blueprintTopics) {
+    const normalizedTopic = topic.toLowerCase().replace(/\s+/g, '');
+    if (normalizedTopic === normalizedInput) {
+      return topic;
+    }
+  }
+  
+  // Partial match - check if input contains topic or vice versa
+  for (const topic of blueprintTopics) {
+    const normalizedTopic = topic.toLowerCase().replace(/\s+/g, '');
+    if (normalizedInput.includes(normalizedTopic) || normalizedTopic.includes(normalizedInput)) {
+      return topic;
+    }
+  }
+  
+  return null;
+}
 
 // Normalize topic name to a clean, human-readable format
 // Handles: "ch1-integers" → "Integers", "ch10-simpleinterest" → "Simple Interest"
@@ -485,10 +616,14 @@ export async function uploadQuestionsFromCSV(
     explanation: string;
   }>,
   options: { replaceExisting?: boolean } = {}
-): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string }> {
+): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string; blueprintMatch?: boolean }> {
   try {
-    // Normalize the topic name first
-    const normalizedTopicName = normalizeTopicName(topicName);
+    // Parse the topic name to extract actual topic and level from filename
+    const { topic: parsedTopic, level: filenameLevel } = parseTopicFromName(topicName);
+    
+    // Check if this matches a blueprint topic
+    const blueprintMatch = findBlueprintMatch(parsedTopic, subjectName);
+    const normalizedTopicName = blueprintMatch || normalizeTopicName(parsedTopic);
     
     // Get or create subject
     let { data: subject } = await supabase

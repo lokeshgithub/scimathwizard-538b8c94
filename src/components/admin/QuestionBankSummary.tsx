@@ -2,12 +2,28 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Database, RefreshCw, BookOpen, Layers } from 'lucide-react';
+import { Loader2, Database, RefreshCw, BookOpen, Layers, Trash2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import { deleteTopicById, BLUEPRINT_TOPICS } from '@/services/questionService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from '@/components/ui/badge';
 
 interface TopicSummary {
   subject: string;
   topic: string;
+  topicId: string;
   questionCount: number;
+  isBlueprint: boolean;
 }
 
 interface SubjectSummary {
@@ -17,11 +33,16 @@ interface SubjectSummary {
   topics: TopicSummary[];
 }
 
-export function QuestionBankSummary() {
+interface QuestionBankSummaryProps {
+  onDataChange?: () => void;
+}
+
+export function QuestionBankSummary({ onDataChange }: QuestionBankSummaryProps) {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
 
   const fetchSummary = async () => {
     setIsLoading(true);
@@ -50,18 +71,32 @@ export function QuestionBankSummary() {
           summaryMap.set(row.subject_name, subject);
         }
 
+        // Check if this topic matches a blueprint topic
+        const blueprintTopics = BLUEPRINT_TOPICS[row.subject_name] || [];
+        const isBlueprint = blueprintTopics.some(
+          bt => bt.toLowerCase() === row.topic_name.toLowerCase()
+        );
+
         subject.topics.push({
           subject: row.subject_name,
           topic: row.topic_name,
+          topicId: row.topic_id,
           questionCount: Number(row.question_count) || 0,
+          isBlueprint,
         });
         subject.topicCount++;
         subject.questionCount += Number(row.question_count) || 0;
       }
 
-      // Sort topics within each subject
+      // Sort topics within each subject (non-blueprint first, then alphabetically)
       for (const subject of summaryMap.values()) {
-        subject.topics.sort((a, b) => a.topic.localeCompare(b.topic));
+        subject.topics.sort((a, b) => {
+          // Put non-blueprint topics first (so admin sees them prominently)
+          if (a.isBlueprint !== b.isBlueprint) {
+            return a.isBlueprint ? 1 : -1;
+          }
+          return a.topic.localeCompare(b.topic);
+        });
       }
 
       setSubjects(Array.from(summaryMap.values()).filter(s => s.topicCount > 0));
@@ -77,8 +112,30 @@ export function QuestionBankSummary() {
     fetchSummary();
   }, []);
 
+  const handleDeleteTopic = async (topicId: string, topicName: string) => {
+    setDeletingTopicId(topicId);
+    try {
+      const result = await deleteTopicById(topicId);
+      if (result.success) {
+        toast.success(`Deleted "${topicName}" with ${result.deletedQuestions} questions`);
+        fetchSummary();
+        onDataChange?.();
+      } else {
+        toast.error(`Failed to delete: ${result.error}`);
+      }
+    } catch (err) {
+      toast.error('Failed to delete topic');
+    } finally {
+      setDeletingTopicId(null);
+    }
+  };
+
   const totalQuestions = subjects.reduce((acc, s) => acc + s.questionCount, 0);
   const totalTopics = subjects.reduce((acc, s) => acc + s.topicCount, 0);
+  const nonBlueprintTopics = subjects.reduce(
+    (acc, s) => acc + s.topics.filter(t => !t.isBlueprint).length,
+    0
+  );
 
   if (error) {
     return (
@@ -110,7 +167,7 @@ export function QuestionBankSummary() {
               Question Bank Summary
             </CardTitle>
             <CardDescription>
-              Overview of all questions in the database
+              Overview of all questions in the database. Non-blueprint topics are highlighted.
             </CardDescription>
           </div>
           <Button onClick={fetchSummary} variant="outline" size="icon" disabled={isLoading}>
@@ -126,7 +183,7 @@ export function QuestionBankSummary() {
         ) : (
           <div className="space-y-6">
             {/* Overall Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-primary/10 rounded-lg p-4 text-center">
                 <div className="flex items-center justify-center gap-2 text-primary mb-1">
                   <Layers className="w-4 h-4" />
@@ -148,6 +205,15 @@ export function QuestionBankSummary() {
                 </div>
                 <p className="text-2xl font-bold">{totalQuestions.toLocaleString()}</p>
               </div>
+              {nonBlueprintTopics > 0 && (
+                <div className="bg-amber-500/10 rounded-lg p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-amber-600 mb-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Non-Blueprint</span>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-600">{nonBlueprintTopics}</p>
+                </div>
+              )}
             </div>
 
             {/* Subject Breakdown */}
@@ -181,13 +247,58 @@ export function QuestionBankSummary() {
                     <div className="divide-y">
                       {subject.topics.map((topic) => (
                         <div
-                          key={topic.topic}
-                          className="flex items-center justify-between p-3 pl-6 text-sm"
+                          key={topic.topicId}
+                          className={`flex items-center justify-between p-3 pl-6 text-sm ${
+                            !topic.isBlueprint ? 'bg-amber-50 dark:bg-amber-950/20' : ''
+                          }`}
                         >
-                          <span>{topic.topic}</span>
-                          <span className="text-muted-foreground">
-                            {topic.questionCount} questions
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span>{topic.topic}</span>
+                            {!topic.isBlueprint && (
+                              <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                                Not in Blueprint
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-muted-foreground">
+                              {topic.questionCount} questions
+                            </span>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  disabled={deletingTopicId === topic.topicId}
+                                >
+                                  {deletingTopicId === topic.topicId ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete "{topic.topic}"?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete all {topic.questionCount} questions in this topic.
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteTopic(topic.topicId, topic.topic)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Topic
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       ))}
                     </div>
