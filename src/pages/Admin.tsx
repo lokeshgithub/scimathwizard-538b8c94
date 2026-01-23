@@ -15,7 +15,8 @@ import {
   fetchAllQuestionsForAdmin, 
   exportQuestionBankToExcel,
   deleteAllQuestionData,
-  normalizeTopicName 
+  parseTopicFromName,
+  findBlueprintMatch,
 } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -60,6 +61,7 @@ const Admin = () => {
     count?: number;
     skipped?: number;
     error?: string;
+    blueprintMatch?: boolean;
   }>>([]);
 
   // Check admin role
@@ -267,16 +269,23 @@ const Admin = () => {
           }
           
           for (const sheet of sheets) {
-            const sheetTopicName = topicName || sheet.name || fileName;
-            const detectedSubject = detectSubjectFromName(sheetTopicName) || subject;
+            // Smart parsing: extract topic name from sheet name (e.g., "Data Handling Level 1" → "Data Handling")
+            const rawSheetName = topicName || sheet.name || fileName;
+            const { topic: parsedTopic } = parseTopicFromName(rawSheetName);
+            const detectedSubject = detectSubjectFromName(rawSheetName) || subject;
+            
+            // Check against blueprint for validation
+            const blueprintMatch = findBlueprintMatch(parsedTopic, detectedSubject);
+            const finalTopicName = blueprintMatch || parsedTopic;
             
             const result = await uploadQuestionsFromCSV(
               detectedSubject, 
-              sheetTopicName, 
+              rawSheetName, // Pass raw name - upload function will parse it
               sheet.questions,
               { replaceExisting: uploadMode === 'replace' }
             );
             
+            const wasMatched = blueprintMatch !== null;
             results.push({
               topic: `${fileName} → ${sheet.name}`,
               normalizedTopic: result.normalizedTopicName,
@@ -284,6 +293,7 @@ const Admin = () => {
               count: result.count,
               skipped: result.skipped,
               error: result.error,
+              blueprintMatch: wasMatched,
             });
           }
         } catch (error) {
@@ -605,14 +615,22 @@ const Admin = () => {
                   <motion.div
                     key={index}
                     className={`flex items-center gap-3 p-3 rounded-lg ${
-                      result.success ? 'bg-primary/10' : 'bg-destructive/10'
+                      result.success 
+                        ? result.blueprintMatch === false 
+                          ? 'bg-amber-100 dark:bg-amber-950/30 border border-amber-300' 
+                          : 'bg-primary/10' 
+                        : 'bg-destructive/10'
                     }`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                   >
                     {result.success ? (
-                      <CheckCircle className="w-5 h-5 text-primary" />
+                      result.blueprintMatch === false ? (
+                        <AlertCircle className="w-5 h-5 text-amber-600" />
+                      ) : (
+                        <CheckCircle className="w-5 h-5 text-primary" />
+                      )
                     ) : (
                       <AlertCircle className="w-5 h-5 text-destructive" />
                     )}
@@ -622,6 +640,11 @@ const Admin = () => {
                         {result.normalizedTopic && result.normalizedTopic !== result.topic && (
                           <span className="text-primary ml-2 font-normal text-sm">
                             → {result.normalizedTopic}
+                          </span>
+                        )}
+                        {result.blueprintMatch === false && (
+                          <span className="text-amber-600 ml-2 font-normal text-xs">
+                            ⚠️ Not in blueprint
                           </span>
                         )}
                       </p>
