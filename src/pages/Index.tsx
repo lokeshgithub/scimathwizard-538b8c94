@@ -187,18 +187,27 @@ const Index = () => {
               {/* Pathway Navigation */}
               <PathwayNav />
               
-              {/* AI Analysis Button - Always visible during practice */}
-              {hasAnsweredQuestions && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={quiz.endSession}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
-                >
-                  <Brain className="w-4 h-4" />
-                  <span className="hidden sm:inline">AI Analysis</span>
-                </Button>
-              )}
+              {/* AI Analysis Button - Always visible, enabled after answering questions */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={quiz.endSession}
+                disabled={!hasAnsweredQuestions}
+                className={`flex items-center gap-2 border-0 transition-all ${
+                  hasAnsweredQuestions 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30' 
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                title={hasAnsweredQuestions ? 'Get AI-powered analysis of your practice session' : 'Answer some questions first'}
+              >
+                <Brain className="w-4 h-4" />
+                <span className="hidden sm:inline">Analyze Progress</span>
+                {hasAnsweredQuestions && (
+                  <span className="hidden md:inline bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
+                    {quiz.sessionPerformance.questionTimings.length}
+                  </span>
+                )}
+              </Button>
               
               {/* Sound Toggle */}
               <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
