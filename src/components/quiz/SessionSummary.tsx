@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { SessionAnalysis } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart3, Clock, Target, TrendingUp, Zap, BookOpen, X, Loader2, Download } from 'lucide-react';
+import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
 
@@ -31,6 +31,39 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
   const [isExporting, setIsExporting] = useState(false);
   const [studentName, setStudentName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+
+  // Calculate efficiency metrics
+  const efficiencyMetrics = useMemo(() => {
+    const BENCHMARK_TIME = 45; // seconds average expected
+    const avgTime = analysis.averageTimePerQuestion;
+    
+    const speedScore = avgTime > 0 ? Math.min(100, Math.round((BENCHMARK_TIME / avgTime) * 100)) : 0;
+    const accuracyScore = Math.round(analysis.overallAccuracy * 100);
+    const efficiencyScore = Math.round((accuracyScore * 0.7) + (speedScore * 0.3));
+    
+    // Categorize topics
+    const topicMetrics = analysis.topicAnalyses.map(t => {
+      const topicSpeedScore = t.averageTimeSeconds > 0 ? Math.min(1, BENCHMARK_TIME / t.averageTimeSeconds) : 0;
+      const topicEffScore = (t.accuracy * 0.7) + (topicSpeedScore * 0.3);
+      return {
+        ...t,
+        efficiencyScore: Math.round(topicEffScore * 100),
+        isEfficient: topicEffScore >= 0.75,
+        needsSpeedWork: t.accuracy >= 0.7 && t.averageTimeSeconds > 45,
+        needsAccuracyWork: t.accuracy < 0.7,
+      };
+    });
+
+    return {
+      speedScore,
+      accuracyScore,
+      efficiencyScore,
+      topicMetrics,
+      fastAccurateCount: topicMetrics.filter(t => t.isEfficient).length,
+      slowAccurateCount: topicMetrics.filter(t => t.needsSpeedWork).length,
+      needsPracticeCount: topicMetrics.filter(t => t.needsAccuracyWork).length,
+    };
+  }, [analysis]);
 
   const handleExportClick = () => {
     setShowNameInput(true);
@@ -139,19 +172,44 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
               <div className="text-xs text-muted-foreground">Avg Time</div>
             </div>
             <div className="bg-muted rounded-xl p-4 text-center">
-              <Zap className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <div className="text-2xl font-bold">{formatTime(analysis.totalTimeSeconds)}</div>
-              <div className="text-xs text-muted-foreground">Total Time</div>
+              <Gauge className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <div className="text-2xl font-bold">{efficiencyMetrics.efficiencyScore}</div>
+              <div className="text-xs text-muted-foreground">Efficiency</div>
             </div>
           </div>
 
-          {/* Topic Breakdown */}
+          {/* Efficiency Breakdown */}
+          <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
+            <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+              <Gauge className="w-5 h-5 text-primary" /> Efficiency Analysis
+            </h3>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="text-center p-2 bg-background/50 rounded-lg">
+                <div className="text-lg font-bold text-success">{efficiencyMetrics.fastAccurateCount}</div>
+                <div className="text-xs text-muted-foreground">Efficient</div>
+              </div>
+              <div className="text-center p-2 bg-background/50 rounded-lg">
+                <div className="text-lg font-bold text-amber-500">{efficiencyMetrics.slowAccurateCount}</div>
+                <div className="text-xs text-muted-foreground">Need Speed</div>
+              </div>
+              <div className="text-center p-2 bg-background/50 rounded-lg">
+                <div className="text-lg font-bold text-destructive">{efficiencyMetrics.needsPracticeCount}</div>
+                <div className="text-xs text-muted-foreground">Need Practice</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Speed Score:</span>
+              <Progress value={efficiencyMetrics.speedScore} className="flex-1 h-2" />
+              <span className="font-medium">{efficiencyMetrics.speedScore}%</span>
+            </div>
+          </div>
+          {/* Topic Breakdown with Efficiency */}
           <div>
             <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
               <BarChart3 className="w-5 h-5" /> Topic Performance
             </h3>
             <div className="space-y-3">
-              {analysis.topicAnalyses.map((topic) => (
+              {efficiencyMetrics.topicMetrics.map((topic) => (
                 <div key={topic.topic} className="bg-muted rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{formatName(topic.topic)}</span>
@@ -159,13 +217,29 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
                       <span className={topic.accuracy >= 0.8 ? 'text-success' : topic.accuracy >= 0.6 ? 'text-amber-500' : 'text-destructive'}>
                         {Math.round(topic.accuracy * 100)}%
                       </span>
-                      <span className="text-muted-foreground">({formatTime(topic.averageTimeSeconds)}/q)</span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {formatTime(topic.averageTimeSeconds)}
+                      </span>
                     </div>
                   </div>
                   <Progress value={topic.accuracy * 100} className="h-2" />
-                  <div className="flex gap-2 mt-2">
-                    {topic.isStrength && <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded">💪 Strong</span>}
-                    {topic.isWeakness && <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">📚 Needs Practice</span>}
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {topic.isEfficient && (
+                      <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Efficient
+                      </span>
+                    )}
+                    {topic.needsSpeedWork && (
+                      <span className="text-xs bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Timer className="w-3 h-3" /> Speed Drill Needed
+                      </span>
+                    )}
+                    {topic.needsAccuracyWork && (
+                      <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Review Concepts
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -175,7 +249,7 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
           {/* AI Recommendations */}
           <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
             <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" /> Personalized Recommendations
+              <BookOpen className="w-5 h-5 text-primary" /> AI Coach Recommendations
             </h3>
             {isLoadingAI ? (
               <div className="flex items-center justify-center py-4">
@@ -183,8 +257,22 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
                 <span className="ml-2 text-muted-foreground">Analyzing your performance...</span>
               </div>
             ) : (
-              <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                {recommendations}
+              <div className="text-sm text-foreground space-y-1">
+                {recommendations.split('\n').map((line, i) => {
+                  // Format headers
+                  if (line.startsWith('## ')) {
+                    return <h4 key={i} className="font-bold text-primary mt-3 mb-1 text-base">{line.replace('## ', '')}</h4>;
+                  }
+                  // Format bullet points
+                  if (line.startsWith('- ') || line.startsWith('• ')) {
+                    return <p key={i} className="ml-4 mb-1">{line}</p>;
+                  }
+                  // Regular paragraphs
+                  if (line.trim()) {
+                    return <p key={i} className="mb-1">{line}</p>;
+                  }
+                  return null;
+                })}
               </div>
             )}
           </div>
