@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain } from 'lucide-react';
@@ -42,23 +42,42 @@ const Index = () => {
   const [modalPassed, setModalPassed] = useState(false);
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
   const [wasRetrying, setWasRetrying] = useState(false);
+  
+  // Track what we've already synced to avoid duplicate additions
+  // Initialize with current session stats to prevent re-syncing on page reload
+  const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
 
-  // Sync stats to database when session stats change
+  // Sync stats to database incrementally - on every answer
   useEffect(() => {
-    if (user && profile && quiz.sessionStats.solved > 0) {
-      const newTotalStars = (profile.total_stars || 0) + quiz.sessionStats.stars;
-      const newQuestionsAnswered = (profile.questions_answered || 0) + quiz.sessionStats.solved;
-      
-      // Only update if there are new answers
-      if (quiz.sessionStats.solved > 0) {
-        updateStats({
-          total_stars: newTotalStars,
-          questions_answered: newQuestionsAnswered,
-          topics_mastered: quiz.sessionStats.mastered,
-        });
-      }
+    if (!user || !profile) return;
+    
+    const { stars, solved, mastered } = quiz.sessionStats;
+    
+    // On first run, initialize the ref with current values to prevent re-sync of old data
+    if (lastSyncedRef.current === null) {
+      lastSyncedRef.current = { stars, solved, mastered };
+      return; // Don't sync on first mount - data was already synced previously
     }
-  }, [quiz.showSessionSummary]); // Sync when session ends
+    
+    const lastSynced = lastSyncedRef.current;
+    
+    // Calculate incremental changes since last sync
+    const starsToAdd = stars - lastSynced.stars;
+    const solvedToAdd = solved - lastSynced.solved;
+    const masteredToAdd = mastered - lastSynced.mastered;
+    
+    // Only sync if there's something new (positive increment)
+    if (starsToAdd > 0 || solvedToAdd > 0 || masteredToAdd > 0) {
+      updateStats({
+        total_stars: (profile.total_stars || 0) + starsToAdd,
+        questions_answered: (profile.questions_answered || 0) + solvedToAdd,
+        topics_mastered: (profile.topics_mastered || 0) + masteredToAdd,
+      });
+      
+      // Update what we've synced
+      lastSyncedRef.current = { stars, solved, mastered };
+    }
+  }, [quiz.sessionStats.stars, quiz.sessionStats.solved, quiz.sessionStats.mastered, user, profile, updateStats]);
 
   // Helper to add stars from daily challenge/login rewards
   const handleAddStars = useCallback((stars: number) => {

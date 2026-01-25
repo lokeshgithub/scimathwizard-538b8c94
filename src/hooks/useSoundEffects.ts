@@ -1,14 +1,15 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 
-// Sound URLs - using free, high-quality game sounds
+// Sound URLs - using freesound.org and other reliable CDN sources
+// These are direct download links that don't block hotlinking
 const SOUNDS = {
-  correct: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3', // Cheerful ding
-  incorrect: 'https://cdn.pixabay.com/audio/2022/03/10/audio_40a55bb0ef.mp3', // Gentle wrong
-  streak3: 'https://cdn.pixabay.com/audio/2022/03/15/audio_4e8d8f7c54.mp3', // Nice combo
-  streak5: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3', // Power up
-  levelUp: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6b8b0cc.mp3', // Level complete
-  achievement: 'https://cdn.pixabay.com/audio/2022/03/15/audio_4e8d8f7c54.mp3', // Achievement unlock
-  click: 'https://cdn.pixabay.com/audio/2022/03/10/audio_40a55bb0ef.mp3', // UI click
+  correct: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3', // Success ding
+  incorrect: 'https://assets.mixkit.co/active_storage/sfx/2001/2001-preview.mp3', // Soft decline
+  streak3: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3', // Achievement
+  streak5: 'https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3', // Level up
+  levelUp: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3', // Game bonus
+  achievement: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3', // Achievement unlock
+  click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', // UI click
 } as const;
 
 type SoundType = keyof typeof SOUNDS;
