@@ -20,7 +20,7 @@ import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
 import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
 import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
-import { DailyLoginRewards } from '@/components/quiz/DailyLoginRewards';
+
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
@@ -89,12 +89,6 @@ const Index = () => {
     }
   }, [user, profile, updateStats]);
 
-  // Handle login reward claim
-  const handleLoginRewardClaim = useCallback((stars: number, day: number) => {
-    handleAddStars(stars);
-    sound.playAchievement();
-    confetti.fireAchievement();
-  }, [handleAddStars, sound, confetti]);
 
   // Track subject exploration for achievements
   useEffect(() => {
@@ -455,8 +449,6 @@ const Index = () => {
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
 
-      {/* Daily Login Rewards */}
-      <DailyLoginRewards onClaimReward={handleLoginRewardClaim} />
     </div>
   );
 };
