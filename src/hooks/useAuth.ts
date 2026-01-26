@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
+import { initFunElementTracking } from '@/services/funElementTrackingService';
+import { initFunElementCache } from '@/data/funElements';
 interface Profile {
   id: string;
   user_id: string;
@@ -126,15 +127,23 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Defer profile fetch and admin check with setTimeout
+        // Defer profile fetch, admin check, and fun element tracking with setTimeout
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
             checkAdminRole(session.user.id);
+            // Initialize fun element tracking for logged-in user
+            initFunElementTracking(session.user.id).then(() => {
+              initFunElementCache();
+            });
           }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
+          // Initialize fun element tracking for guest (localStorage)
+          initFunElementTracking(null).then(() => {
+            initFunElementCache();
+          });
         }
       }
     );
@@ -148,6 +157,15 @@ export const useAuth = () => {
       if (session?.user) {
         fetchProfile(session.user.id);
         checkAdminRole(session.user.id);
+        // Initialize fun element tracking for logged-in user
+        initFunElementTracking(session.user.id).then(() => {
+          initFunElementCache();
+        });
+      } else {
+        // Initialize fun element tracking for guest
+        initFunElementTracking(null).then(() => {
+          initFunElementCache();
+        });
       }
     });
 

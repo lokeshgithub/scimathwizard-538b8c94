@@ -113,53 +113,74 @@ const levelFunElements: Record<number, FunElement[]> = {
   5: hogwartsLateFun,
 };
 
-// Track used elements in session storage to prevent repetition
-const USED_ELEMENTS_KEY = 'quiz_used_fun_elements';
+import { 
+  getSeenElements, 
+  markElementSeen, 
+  resetSeenElements 
+} from '@/services/funElementTrackingService';
 
-const getUsedElements = (): Set<string> => {
+// In-memory seen set for synchronous initial check (populated async)
+let localSeenCache: Set<string> = new Set();
+
+// Initialize cache from tracking service (call on app load)
+export const initFunElementCache = async (): Promise<void> => {
   try {
-    const stored = sessionStorage.getItem(USED_ELEMENTS_KEY);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
+    localSeenCache = await getSeenElements();
   } catch {
-    return new Set();
+    localSeenCache = new Set();
   }
 };
 
-const markElementUsed = (id: string): void => {
-  try {
-    const used = getUsedElements();
-    used.add(id);
-    sessionStorage.setItem(USED_ELEMENTS_KEY, JSON.stringify([...used]));
-  } catch {
-    // Ignore storage errors
+// Get all element IDs for a level (useful for reset)
+export const getLevelElementIds = (level: number): string[] => {
+  const elements = levelFunElements[level] || levelFunElements[1];
+  return elements.map(e => e.id);
+};
+
+// Legacy reset function (now async-aware)
+export const resetUsedElements = async (level?: number): Promise<void> => {
+  if (level !== undefined) {
+    const levelIds = getLevelElementIds(level);
+    await resetSeenElements(levelIds);
+    levelIds.forEach(id => localSeenCache.delete(id));
+  } else {
+    await resetSeenElements();
+    localSeenCache = new Set();
   }
 };
 
-export const resetUsedElements = (): void => {
-  try {
-    sessionStorage.removeItem(USED_ELEMENTS_KEY);
-  } catch {
-    // Ignore storage errors
-  }
-};
-
+/**
+ * Get a random fun element that hasn't been seen before
+ * Uses local cache for immediate return, then marks as seen async
+ */
 export const getRandomFunElement = (level: number): FunElement | null => {
   const elements = levelFunElements[level] || levelFunElements[1];
-  const used = getUsedElements();
   
-  // Filter out already used elements
-  const available = elements.filter(e => !used.has(e.id));
+  // Filter out already seen elements using local cache
+  const available = elements.filter(e => !localSeenCache.has(e.id));
   
-  // If all elements used, reset and use all (prevents stale state)
-  const pool = available.length > 0 ? available : elements;
+  // If all elements seen for this level, reset this level and use all
+  if (available.length === 0) {
+    // Async reset for this level (fire and forget)
+    const levelIds = elements.map(e => e.id);
+    resetSeenElements(levelIds).then(() => {
+      levelIds.forEach(id => localSeenCache.delete(id));
+    });
+    // For this call, use all elements
+    const element = elements[Math.floor(Math.random() * elements.length)];
+    localSeenCache.add(element.id);
+    markElementSeen(element.id); // Async persist
+    return element;
+  }
   
-  if (pool.length === 0) return null;
+  // Pick random from available
+  const element = available[Math.floor(Math.random() * available.length)];
   
-  // Pick random element
-  const element = pool[Math.floor(Math.random() * pool.length)];
+  // Update local cache immediately
+  localSeenCache.add(element.id);
   
-  // Mark as used
-  markElementUsed(element.id);
+  // Persist async (fire and forget)
+  markElementSeen(element.id);
   
   return element;
 };

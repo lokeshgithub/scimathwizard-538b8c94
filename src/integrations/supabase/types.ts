@@ -322,6 +322,27 @@ export type Database = {
         }
         Relationships: []
       }
+      seen_fun_elements: {
+        Row: {
+          element_id: string
+          id: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          element_id: string
+          id?: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          element_id?: string
+          id?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           created_at: string
