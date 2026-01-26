@@ -20,8 +20,24 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Check if user has admin role
+  const checkAdminRole = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .rpc('has_role', { _user_id: userId, _role: 'admin' });
+    
+    if (error) {
+      console.error('Error checking admin role:', error);
+      setIsAdmin(false);
+      return false;
+    }
+    
+    setIsAdmin(data === true);
+    return data === true;
+  }, []);
 
   // Fetch user profile
   const fetchProfile = useCallback(async (userId: string) => {
@@ -110,13 +126,15 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Defer profile fetch with setTimeout
+        // Defer profile fetch and admin check with setTimeout
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            checkAdminRole(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
       }
     );
@@ -129,11 +147,12 @@ export const useAuth = () => {
 
       if (session?.user) {
         fetchProfile(session.user.id);
+        checkAdminRole(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [fetchProfile, checkAdminRole]);
 
   const signUp = async (email: string, password: string, displayName: string, grade: number = 7) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -213,6 +232,7 @@ export const useAuth = () => {
     user,
     session,
     profile,
+    isAdmin,
     loading,
     signUp,
     signIn,
