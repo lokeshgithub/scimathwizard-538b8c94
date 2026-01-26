@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -35,7 +35,7 @@ const Index = () => {
   const quiz = useQuizStore();
   const achievements = useAchievements();
   const dailyChallenge = useDailyChallenge(quiz.banks);
-  const { user, profile, signOut, updateStats } = useAuth();
+  const { user, profile, isAdmin, signOut, updateStats } = useAuth();
   const sound = useSoundEffects();
   const confetti = useConfetti();
   const [showModal, setShowModal] = useState(false);
@@ -240,6 +240,15 @@ const Index = () => {
               
               {user ? (
                 <div className="flex items-center gap-2">
+                  {/* Admin Link - Only visible for admins */}
+                  {isAdmin && (
+                    <Link to="/admin">
+                      <div className="flex items-center gap-1.5 bg-accent/50 hover:bg-accent/70 transition-colors rounded-full px-3 py-1 cursor-pointer border border-accent">
+                        <Settings className="w-4 h-4" />
+                        <span className="text-sm font-medium hidden sm:inline">Admin</span>
+                      </div>
+                    </Link>
+                  )}
                   <Link to="/profile">
                     <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-full px-3 py-1 cursor-pointer">
                       <User className="w-4 h-4" />
