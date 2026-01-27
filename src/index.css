@@ -50,6 +50,8 @@
     --level-3: 262 83% 58%;
     --level-4: 325 78% 55%;
     --level-5: 45 93% 50%;
+    --level-6: 280 70% 50%;
+    --level-7: 15 85% 55%;
 
     /* Magical gradients */
     --gradient-magical: linear-gradient(135deg, hsl(262 83% 58%), hsl(199 89% 48%), hsl(325 78% 55%));

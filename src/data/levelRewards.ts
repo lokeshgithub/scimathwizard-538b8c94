@@ -22,104 +22,104 @@ export const LEVEL_REWARDS: LevelReward[] = [
   {
     level: 1,
     badge: {
-      name: 'Beginner Badge',
+      name: 'Fundamentals Badge',
       icon: '🌱',
       color: 'from-green-400 to-green-600',
-      description: 'You\'ve started your learning journey!',
+      description: 'Textbook Direct - Single-step recall and basic formula application.',
     },
     title: 'Explorer',
     certificate: {
-      name: 'Certificate of Beginning',
-      description: 'Successfully completed Level 1 challenges',
+      name: 'Certificate of Fundamentals',
+      description: 'Successfully completed Level 1 - Introductory exercises mastered',
     },
     starsBonus: 50,
-    achievementMessage: 'Great start! You\'re on your way to becoming a master!',
-    percentileMessage: 'You\'re building a strong foundation!',
+    achievementMessage: 'Great start! You\'re building the foundation!',
+    percentileMessage: 'You\'re in the Top 90% - Fundamentals mastered!',
   },
   {
     level: 2,
     badge: {
-      name: 'Bronze Badge',
+      name: 'Fluency Badge',
       icon: '🥉',
       color: 'from-amber-600 to-amber-800',
-      description: 'You\'re developing strong skills!',
+      description: 'School Standard - Multi-step operations and standard word problems.',
     },
     title: 'Apprentice',
     certificate: {
-      name: 'Certificate of Progress',
-      description: 'Demonstrated consistent learning in Level 2',
+      name: 'Certificate of Fluency',
+      description: 'Demonstrated consistent learning in Level 2 - School Standard',
     },
     starsBonus: 100,
-    achievementMessage: 'Excellent progress! Keep pushing forward!',
-    percentileMessage: 'You\'re above average in your class!',
+    achievementMessage: 'Excellent progress! Ready for school exams!',
+    percentileMessage: 'You\'re in the Top 50% - School Standard achieved!',
   },
   {
     level: 3,
     badge: {
-      name: 'Silver Badge',
+      name: 'Strategic Badge',
       icon: '🥈',
       color: 'from-gray-300 to-gray-500',
-      description: 'You\'re becoming smarter every day!',
+      description: 'Competitive Basic - Logic-heavy arithmetic and pattern recognition.',
     },
     title: 'Scholar',
     certificate: {
-      name: 'Certificate of Achievement',
-      description: 'Achieved Level 3 mastery',
+      name: 'Certificate of Strategic Thinking',
+      description: 'Achieved Level 3 - Competitive Basic mastery',
     },
     starsBonus: 200,
-    achievementMessage: '🎉 Amazing! You\'re getting smarter with every question!',
-    percentileMessage: 'You\'re in the top 50% of students in your class!',
+    achievementMessage: '🎉 Amazing! You\'re thinking like a competitor!',
+    percentileMessage: 'You\'re in the Top 25% - Competitive Basic level!',
   },
   {
     level: 4,
     badge: {
-      name: 'Gold Badge',
+      name: 'Bridge Badge',
       icon: '🥇',
       color: 'from-yellow-400 to-yellow-600',
-      description: 'Outstanding performance!',
+      description: 'Competitive Advanced - Inter-topic connections within the class.',
     },
     title: 'Champion',
     certificate: {
       name: 'Certificate of Excellence',
-      description: 'Achieved Level 4 excellence',
+      description: 'Achieved Level 4 - NSTSE/IMO School Level',
     },
     starsBonus: 350,
-    achievementMessage: '🏆 Incredible! You\'re among the best in your class!',
-    percentileMessage: 'You\'re in the top 25% of students!',
+    achievementMessage: '🏆 Incredible! You\'re ready for NSTSE/IMO!',
+    percentileMessage: 'You\'re in the Top 10% - Olympiad School Level!',
   },
   {
     level: 5,
     badge: {
-      name: 'Platinum Badge',
+      name: 'IIT Foundation Badge',
       icon: '💎',
       color: 'from-cyan-400 to-blue-600',
-      description: 'You\'re a class topper!',
+      description: 'Elite Prep - Analytical word problems and multi-stage reasoning.',
     },
     title: 'Genius',
     certificate: {
-      name: 'Certificate of Distinction',
-      description: 'Achieved Level 5 distinction - Class Topper Status',
+      name: 'Certificate of IIT Foundation',
+      description: 'Achieved Level 5 - FIITJEE/Allen Foundation Level',
     },
     starsBonus: 500,
-    achievementMessage: '🌟 EXTRAORDINARY! You\'re among the TOP 5% of your class!',
-    percentileMessage: 'You\'re a CLASS TOPPER! Top 5% nationwide!',
+    achievementMessage: '🌟 EXTRAORDINARY! IIT Foundation material!',
+    percentileMessage: 'You\'re in the Top 3-5% - Elite Prep level!',
   },
   {
     level: 6,
     badge: {
-      name: 'Diamond Badge',
+      name: 'Olympiad Badge',
       icon: '👑',
       color: 'from-purple-500 to-pink-600',
-      description: 'You\'re among the best in India!',
+      description: 'Extended Thinking - Abstract proofs and sophisticated integration.',
     },
     title: 'Wizard Master',
     certificate: {
-      name: 'Certificate of Mastery',
-      description: 'Achieved Level 6 mastery - National Level Excellence',
+      name: 'Certificate of Olympiad Mastery',
+      description: 'Achieved Level 6 - NMTC/PRMO Level Excellence',
     },
     starsBonus: 1000,
     achievementMessage: '👑 LEGENDARY! You\'re among the TOP 1% in INDIA!',
-    percentileMessage: 'You\'re a NATIONAL CHAMPION! Top 1% in India!',
+    percentileMessage: 'You\'re in the Top 1% - National Olympiad level!',
   },
   {
     level: 7,
@@ -127,7 +127,7 @@ export const LEVEL_REWARDS: LevelReward[] = [
       name: 'Legendary Badge',
       icon: '⭐',
       color: 'from-rose-500 to-orange-500',
-      description: 'Absolute mastery achieved!',
+      description: 'Absolute mastery achieved - Beyond Olympiad!',
     },
     title: 'Grand Master',
     certificate: {
@@ -136,7 +136,7 @@ export const LEVEL_REWARDS: LevelReward[] = [
     },
     starsBonus: 2000,
     achievementMessage: '🔥 UNSTOPPABLE! You\'ve achieved LEGENDARY status!',
-    percentileMessage: 'You\'re among the ELITE! Olympiad Champion material!',
+    percentileMessage: 'You\'re among the ELITE! International Champion material!',
   },
 ];
 
@@ -155,10 +155,10 @@ export const getTotalBonusStars = (maxLevelReached: number): number => {
 };
 
 export const getLevelProgressMessage = (currentLevel: number): string => {
-  if (currentLevel >= 6) return 'You\'re among the TOP 1% in India! 🇮🇳';
-  if (currentLevel >= 5) return 'You\'re a CLASS TOPPER! 🏆';
-  if (currentLevel >= 4) return 'You\'re in the top 25%! 💪';
-  if (currentLevel >= 3) return 'You\'re getting smarter! 🧠';
-  if (currentLevel >= 2) return 'Great progress! Keep going! 📈';
-  return 'Your journey begins! 🌱';
+  if (currentLevel >= 6) return 'Top 1% - Olympiad Level! 🇮🇳';
+  if (currentLevel >= 5) return 'Top 3-5% - IIT Foundation! 💎';
+  if (currentLevel >= 4) return 'Top 10% - Olympiad School Level! 🏆';
+  if (currentLevel >= 3) return 'Top 25% - Competitive Basic! 🥈';
+  if (currentLevel >= 2) return 'Top 50% - School Standard! 📈';
+  return 'Top 90% - Fundamentals! 🌱';
 };

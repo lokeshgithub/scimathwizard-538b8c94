@@ -377,6 +377,20 @@ export const themeLevels: ThemeLevel[] = [
     bgClass: 'from-amber-400 to-yellow-500',
     accentColor: 'hsl(var(--level-5))',
   },
+  {
+    level: 6,
+    theme: 'Olympiad Champions',
+    characters: harryPotterLateCharacters, // Reuse advanced Harry Potter characters
+    bgClass: 'from-purple-600 to-pink-500',
+    accentColor: 'hsl(var(--level-6))',
+  },
+  {
+    level: 7,
+    theme: 'Grand Masters',
+    characters: harryPotterLateCharacters, // Reuse advanced Harry Potter characters
+    bgClass: 'from-rose-500 to-orange-500',
+    accentColor: 'hsl(var(--level-7))',
+  },
 ];
 
 export const getRandomCharacter = (level: number): Character => {
