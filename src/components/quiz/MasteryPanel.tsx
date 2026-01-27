@@ -1,7 +1,20 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { themeLevels } from '@/data/characters';
 import { TopicProgress } from '@/types/quiz';
-import { CheckCircle, Lock, Circle, Sparkles } from 'lucide-react';
+import { CheckCircle, Lock, Circle, Sparkles, RotateCcw } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 interface MasteryPanelProps {
   topicName: string;
@@ -10,6 +23,7 @@ interface MasteryPanelProps {
   levelStats: { correct: number; total: number };
   perLevel: number;
   topicLevels?: number[];
+  onResetProgress?: () => void;
 }
 
 const formatName = (name: string) => {
@@ -49,8 +63,10 @@ export const MasteryPanel = ({
   progress, 
   levelStats, 
   perLevel,
-  topicLevels = [1, 2, 3, 4, 5]
+  topicLevels = [1, 2, 3, 4, 5],
+  onResetProgress
 }: MasteryPanelProps) => {
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const currentTheme = getThemeForLevel(currentLevel);
   const progressPercent = levelStats.total > 0 
     ? Math.round((levelStats.correct / perLevel) * 100)
@@ -58,6 +74,11 @@ export const MasteryPanel = ({
   const accuracy = levelStats.total > 0 
     ? Math.round((levelStats.correct / levelStats.total) * 100)
     : 0;
+
+  const handleReset = () => {
+    onResetProgress?.();
+    setShowResetDialog(false);
+  };
 
   return (
     <motion.div
@@ -72,6 +93,40 @@ export const MasteryPanel = ({
             {currentTheme?.theme || `Level ${currentLevel}`}
           </p>
         </div>
+        
+        {/* Reset Progress Button */}
+        {onResetProgress && (
+          <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset Progress?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reset all your progress for <strong>{formatName(topicName)}</strong> back to Level 1. 
+                  You'll need to master each level again. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleReset}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Reset Progress
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Level badges - dynamic based on topic */}
