@@ -380,6 +380,8 @@ const Index = () => {
                 sessionStats={quiz.sessionStats}
                 onAnswer={handleAnswer}
                 onNext={handleNext}
+                onPrevious={quiz.previousQuestion}
+                canGoBack={quiz.canGoBack}
                 onSolutionViewed={quiz.markSolutionViewed}
                 onPrefetchNext={quiz.prefetchNextQuestion}
               />

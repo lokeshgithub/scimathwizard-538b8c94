@@ -192,6 +192,10 @@ export const useAuth = () => {
       return { error };
     }
 
+    // Clear any previous guest progress for new accounts
+    localStorage.removeItem('magical-mastery-quiz');
+    localStorage.removeItem('quiz-seen-fun-elements');
+
     // Create profile for new user with grade
     if (data.user) {
       await createProfile(data.user.id, displayName, grade);

@@ -42,10 +42,10 @@ export const useSoundEffects = () => {
   const play = useCallback((sound: SoundType) => {
     if (!enabled) return;
 
-    // Debounce - prevent same sound playing too quickly
+    // Debounce - prevent same sound playing too quickly (increased to 500ms to prevent double plays)
     const now = Date.now();
     const lastTime = lastPlayTime.current.get(sound) || 0;
-    if (now - lastTime < 100) return;
+    if (now - lastTime < 500) return;
     lastPlayTime.current.set(sound, now);
 
     try {

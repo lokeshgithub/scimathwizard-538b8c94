@@ -5,7 +5,7 @@ import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/
 import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { MilestoneAnimation } from './MilestoneAnimation';
-import { ArrowRight, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
 
@@ -16,6 +16,8 @@ interface QuizCardProps {
   sessionStats: SessionStats;
   onAnswer: (selectedIndex: number) => Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null; timeSpent?: number }>;
   onNext: () => void;
+  onPrevious?: () => void;
+  canGoBack?: boolean;
   onSolutionViewed: (questionId: string) => void;
   onPrefetchNext?: () => void;
 }
@@ -27,6 +29,8 @@ export const QuizCard = ({
   sessionStats,
   onAnswer, 
   onNext,
+  onPrevious,
+  canGoBack = false,
   onSolutionViewed,
   onPrefetchNext
 }: QuizCardProps) => {
@@ -437,17 +441,33 @@ export const QuizCard = ({
           )}
         </AnimatePresence>
 
-        {/* Next Button */}
+        {/* Navigation Buttons */}
         {isAnswered && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={handleNext}
-            className="w-full p-4 bg-gradient-magical hover:opacity-90 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-opacity shadow-magical"
-          >
-            Next Question
-            <ArrowRight className="w-5 h-5" />
-          </motion.button>
+          <div className="flex gap-3">
+            {/* Previous Question Button */}
+            {canGoBack && onPrevious && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={onPrevious}
+                className="flex-1 p-4 bg-muted hover:bg-muted/80 rounded-xl text-foreground font-semibold flex items-center justify-center gap-2 transition-colors border border-border"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Previous
+              </motion.button>
+            )}
+            
+            {/* Next Question Button */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={handleNext}
+              className="flex-1 p-4 bg-gradient-magical hover:opacity-90 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-opacity shadow-magical"
+            >
+              Next Question
+              <ArrowRight className="w-5 h-5" />
+            </motion.button>
+          </div>
         )}
       </div>
 

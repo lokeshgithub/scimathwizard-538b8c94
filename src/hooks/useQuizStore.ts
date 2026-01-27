@@ -45,6 +45,8 @@ interface QuizState {
   currentQuestions: Question[];
   questionIndex: number;
   levelStats: { correct: number; total: number };
+  questionHistory: number[]; // Track visited question indices for back navigation
+  unlimitedPractice: boolean; // Allow unlimited practice mode
 }
 
 const initialSessionStats: SessionStats = {
@@ -113,6 +115,8 @@ export const useQuizStore = () => {
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [questionHistory, setQuestionHistory] = useState<number[]>([]); // Track question history for back navigation
+  const [unlimitedPractice, setUnlimitedPractice] = useState(false); // Allow unlimited practice
   
   // Timer tracking
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -298,9 +302,11 @@ export const useQuizStore = () => {
     });
   }, [banks, subject, questionTracking]);
 
-  const selectTopic = useCallback((topicName: string) => {
+  const selectTopic = useCallback((topicName: string, startUnlimited: boolean = false) => {
     setTopic(topicName);
     setMixedTopics(null); // Clear mixed mode
+    setUnlimitedPractice(startUnlimited);
+    setQuestionHistory([]); // Reset question history
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
     
@@ -323,8 +329,8 @@ export const useQuizStore = () => {
     const available = getAvailableQuestions(topicName, currentLevel);
     const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
     
-    // If no new questions available, use all questions for the level (allow repeats for practice)
-    const questionsToUse = available.length > 0 ? available : allForLevel;
+    // If unlimited practice mode or no new questions available, use all questions
+    const questionsToUse = (startUnlimited || available.length === 0) ? allForLevel : available;
     const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
     
     setCurrentQuestions(shuffled);
@@ -338,6 +344,8 @@ export const useQuizStore = () => {
     setMixedTopics(selectedTopics);
     setLevel(1);
     setLevelStats({ correct: 0, total: 0 });
+    setQuestionHistory([]); // Reset question history
+    setUnlimitedPractice(false);
     
     // Gather all questions from selected topics
     const allQuestions: Question[] = [];
@@ -508,6 +516,9 @@ export const useQuizStore = () => {
   }, [questionIndex, currentQuestions.length]);
 
   const nextQuestion = useCallback(() => {
+    // Add current question to history before moving
+    setQuestionHistory(prev => [...prev, questionIndex]);
+    
     if (questionIndex + 1 >= currentQuestions.length) {
       // Reshuffle and start over
       const shuffled = [...currentQuestions].sort(() => Math.random() - 0.5);
@@ -519,6 +530,19 @@ export const useQuizStore = () => {
     setPrefetchedNextIndex(null);
     setQuestionStartTime(Date.now());
   }, [questionIndex, currentQuestions]);
+
+  // Navigate to previous question (for review)
+  const previousQuestion = useCallback(() => {
+    if (questionHistory.length > 0) {
+      const prevIndex = questionHistory[questionHistory.length - 1];
+      setQuestionHistory(prev => prev.slice(0, -1));
+      setQuestionIndex(prevIndex);
+      setQuestionStartTime(Date.now());
+    }
+  }, [questionHistory]);
+
+  // Check if we can go back
+  const canGoBack = questionHistory.length > 0;
 
   const getCurrentQuestion = useCallback(() => {
     return currentQuestions[questionIndex] || null;
@@ -638,6 +662,10 @@ export const useQuizStore = () => {
     isLoading,
     sessionPerformance,
     showSessionSummary,
+    questionHistory,
+    canGoBack,
+    unlimitedPractice,
+    totalQuestionsForLevel: currentQuestions.length,
     
     // Dynamic level info
     getTopicMaxLevel,
@@ -658,6 +686,7 @@ export const useQuizStore = () => {
     advanceLevel,
     retryLevel,
     nextQuestion,
+    previousQuestion,
     prefetchNextQuestion,
     markSolutionViewed,
     getTopicProgress,
