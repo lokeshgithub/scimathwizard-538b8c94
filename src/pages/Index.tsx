@@ -356,6 +356,10 @@ const Index = () => {
                 levelStats={quiz.levelStats}
                 perLevel={quiz.PER_LEVEL}
                 topicLevels={quiz.getTopicLevels(quiz.topic)}
+                onResetProgress={() => {
+                  quiz.resetTopicProgress(quiz.topic!);
+                  quiz.selectTopic(quiz.topic!);
+                }}
               />
             )}
 

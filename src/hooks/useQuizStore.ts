@@ -627,6 +627,36 @@ export const useQuizStore = () => {
     };
   }, [sessionPerformance]);
 
+  // Reset progress for a specific topic
+  const resetTopicProgress = useCallback((topicName: string) => {
+    setProgress(prev => {
+      const updated = { ...prev };
+      delete updated[topicName];
+      return updated;
+    });
+    
+    // Also clear question tracking for this topic's questions
+    const topicQuestions = banks[subject]?.[topicName] || [];
+    const questionIds = topicQuestions.map(q => q.id);
+    setQuestionTracking(prev => {
+      const updated = { ...prev };
+      for (const id of questionIds) {
+        delete updated[id];
+      }
+      return updated;
+    });
+  }, [banks, subject]);
+
+  // Reset all progress (full reset)
+  const resetAllProgress = useCallback(() => {
+    setProgress({});
+    setQuestionTracking({});
+    setSessionStats(initialSessionStats);
+    setLevelStats({ correct: 0, total: 0 });
+    setQuestionHistory([]);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
   // End session and show summary
   const endSession = useCallback(() => {
     setSessionPerformance(prev => ({
@@ -694,6 +724,8 @@ export const useQuizStore = () => {
     endSession,
     setShowSessionSummary,
     resetSession,
+    resetTopicProgress,
+    resetAllProgress,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {
