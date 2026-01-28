@@ -48,6 +48,7 @@ interface DBQuestion {
   option_d: string;
   correct_answer: string;
   explanation: string | null;
+  hint: string | null;
 }
 
 // In-memory cache for instant answer validation
@@ -158,6 +159,21 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       explanation: q.explanation || '',
     });
 
+    // Generate auto-hint if no custom hint: eliminate 1-2 wrong options
+    let hint = q.hint;
+    if (!hint) {
+      // Auto-generate by showing 1-2 wrong options to avoid
+      const wrongOptions = shuffledOptions
+        .map((opt, idx) => ({ opt, idx }))
+        .filter(({ idx }) => idx !== shuffledCorrectIndex);
+      
+      // Randomly pick 1-2 wrong options to reveal
+      const revealCount = Math.min(2, wrongOptions.length);
+      const shuffledWrong = wrongOptions.sort(() => Math.random() - 0.5).slice(0, revealCount);
+      const eliminatedLabels = shuffledWrong.map(w => String.fromCharCode(65 + w.idx)).join(' and ');
+      hint = `💡 Hint: Option${revealCount > 1 ? 's' : ''} ${eliminatedLabels} ${revealCount > 1 ? 'are' : 'is'} NOT the correct answer.`;
+    }
+
     // Store shuffled correct index locally for instant validation
     bank[subjectKey][topicName].push({
       id: q.id,
@@ -167,6 +183,7 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       correct: shuffledCorrectIndex, // Now stored for instant validation!
       explanation: q.explanation || '',
       concepts: [],
+      hint,
       shuffleMap,
     });
   }

@@ -226,6 +226,7 @@ export type Database = {
           correct_answer: string
           created_at: string
           explanation: string | null
+          hint: string | null
           id: string
           level: number
           option_a: string
@@ -239,6 +240,7 @@ export type Database = {
           correct_answer: string
           created_at?: string
           explanation?: string | null
+          hint?: string | null
           id?: string
           level: number
           option_a: string
@@ -252,6 +254,7 @@ export type Database = {
           correct_answer?: string
           created_at?: string
           explanation?: string | null
+          hint?: string | null
           id?: string
           level?: number
           option_a?: string
@@ -469,6 +472,7 @@ export type Database = {
           correct_answer: string
           created_at: string
           explanation: string
+          hint: string
           id: string
           level: number
           option_a: string
