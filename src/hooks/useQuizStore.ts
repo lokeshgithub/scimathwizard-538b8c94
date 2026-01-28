@@ -541,6 +541,14 @@ export const useQuizStore = () => {
     }
   }, [questionHistory]);
 
+  // Deduct stars for using hints
+  const deductStars = useCallback((cost: number) => {
+    setSessionStats(prev => ({
+      ...prev,
+      stars: Math.max(0, prev.stars - cost),
+    }));
+  }, []);
+
   // Check if we can go back
   const canGoBack = questionHistory.length > 0;
 
@@ -726,6 +734,7 @@ export const useQuizStore = () => {
     resetSession,
     resetTopicProgress,
     resetAllProgress,
+    deductStars,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {

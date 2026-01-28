@@ -388,6 +388,7 @@ const Index = () => {
                 canGoBack={quiz.canGoBack}
                 onSolutionViewed={quiz.markSolutionViewed}
                 onPrefetchNext={quiz.prefetchNextQuestion}
+                onHintUsed={quiz.deductStars}
               />
             )}
           </>

@@ -5,9 +5,12 @@ import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/
 import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { MilestoneAnimation } from './MilestoneAnimation';
-import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle, Star } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
+
+// Progressive hint star costs
+const HINT_COSTS = [5, 10, 15]; // 1st hint: 5 stars, 2nd: 10 stars, 3rd: 15 stars
 
 interface QuizCardProps {
   question: Question;
@@ -20,6 +23,7 @@ interface QuizCardProps {
   canGoBack?: boolean;
   onSolutionViewed: (questionId: string) => void;
   onPrefetchNext?: () => void;
+  onHintUsed?: (cost: number) => void; // Callback to deduct stars
 }
 
 export const QuizCard = ({ 
@@ -32,7 +36,8 @@ export const QuizCard = ({
   onPrevious,
   canGoBack = false,
   onSolutionViewed,
-  onPrefetchNext
+  onPrefetchNext,
+  onHintUsed
 }: QuizCardProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -45,6 +50,11 @@ export const QuizCard = ({
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
+  
+  // Hint state
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [showHint, setShowHint] = useState(false);
+  const [totalHintCost, setTotalHintCost] = useState(0);
   
   // Timer state
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -88,7 +98,30 @@ export const QuizCard = ({
     setMilestone(null);
     setIsValidating(false);
     setCorrectIndex(-1);
+    // Reset hint state for new question
+    setHintsUsed(0);
+    setShowHint(false);
+    setTotalHintCost(0);
   }, [question.id]);
+
+  // Get next hint cost
+  const getNextHintCost = () => {
+    if (hintsUsed >= HINT_COSTS.length) return null;
+    return HINT_COSTS[hintsUsed];
+  };
+
+  // Handle using a hint
+  const handleUseHint = useCallback(() => {
+    if (isAnswered || hintsUsed >= HINT_COSTS.length) return;
+    
+    const cost = HINT_COSTS[hintsUsed];
+    if (sessionStats.stars < cost) return; // Not enough stars
+    
+    setHintsUsed(prev => prev + 1);
+    setShowHint(true);
+    setTotalHintCost(prev => prev + cost);
+    onHintUsed?.(cost);
+  }, [isAnswered, hintsUsed, sessionStats.stars, onHintUsed]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -236,13 +269,92 @@ export const QuizCard = ({
       {/* Question */}
       <div className="p-6">
         <motion.p 
-          className="text-lg font-medium text-foreground mb-6 leading-relaxed"
+          className="text-lg font-medium text-foreground mb-4 leading-relaxed"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
           {question.question}
         </motion.p>
+
+        {/* Hint Button - Only show before answering */}
+        {!isAnswered && (
+          <div className="mb-4">
+            {!showHint ? (
+              <motion.button
+                onClick={handleUseHint}
+                disabled={getNextHintCost() === null || sessionStats.stars < (getNextHintCost() || 0)}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                  ${getNextHintCost() === null
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : sessionStats.stars < (getNextHintCost() || 0)
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300'
+                  }
+                `}
+                whileHover={sessionStats.stars >= (getNextHintCost() || 0) && getNextHintCost() !== null ? { scale: 1.02 } : {}}
+                whileTap={sessionStats.stars >= (getNextHintCost() || 0) && getNextHintCost() !== null ? { scale: 0.98 } : {}}
+              >
+                <HelpCircle className="w-4 h-4" />
+                {getNextHintCost() !== null ? (
+                  <>
+                    Need a hint?
+                    <span className="flex items-center gap-1 ml-1 text-xs opacity-75">
+                      <Star className="w-3 h-3" />
+                      -{getNextHintCost()}
+                    </span>
+                  </>
+                ) : (
+                  'No more hints available'
+                )}
+              </motion.button>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl"
+              >
+                <div className="flex items-start gap-3">
+                  <Lightbulb className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-700 dark:text-amber-300 text-sm mb-1">
+                      Hint {hintsUsed} of {HINT_COSTS.length}
+                      <span className="text-xs ml-2 opacity-75">(Cost: {totalHintCost} ⭐)</span>
+                    </p>
+                    <p className="text-amber-800 dark:text-amber-200">
+                      {question.hint}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Option to get another hint if available */}
+                {getNextHintCost() !== null && (
+                  <motion.button
+                    onClick={handleUseHint}
+                    disabled={sessionStats.stars < (getNextHintCost() || 0)}
+                    className={`
+                      mt-3 ml-8 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                      ${sessionStats.stars < (getNextHintCost() || 0)
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-amber-200 hover:bg-amber-300 text-amber-800 dark:bg-amber-800/40 dark:hover:bg-amber-800/60 dark:text-amber-200'
+                      }
+                    `}
+                    whileHover={sessionStats.stars >= (getNextHintCost() || 0) ? { scale: 1.02 } : {}}
+                    whileTap={sessionStats.stars >= (getNextHintCost() || 0) ? { scale: 0.98 } : {}}
+                  >
+                    <HelpCircle className="w-3 h-3" />
+                    Another hint
+                    <span className="flex items-center gap-0.5">
+                      <Star className="w-3 h-3" />
+                      -{getNextHintCost()}
+                    </span>
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+          </div>
+        )}
 
         {/* Options */}
         <div className="space-y-3 mb-6">

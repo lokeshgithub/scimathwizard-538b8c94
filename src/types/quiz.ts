@@ -6,6 +6,7 @@ export interface Question {
   correct: number;
   explanation: string;
   concepts: string[];
+  hint?: string; // Custom hint from database, or auto-generated
   // Maps shuffled index to original index: shuffleMap[shuffledIdx] = originalIdx
   // e.g., if shuffleMap = [2, 0, 3, 1], shuffled option 0 was originally option 2
   shuffleMap?: number[];
