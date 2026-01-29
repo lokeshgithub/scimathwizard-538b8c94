@@ -619,6 +619,7 @@ export async function uploadQuestionsFromCSV(
     optionD: string;
     correctAnswer: string;
     explanation: string;
+    hint?: string;
   }>,
   options: { replaceExisting?: boolean } = {}
 ): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string; blueprintMatch?: boolean }> {
@@ -692,6 +693,7 @@ export async function uploadQuestionsFromCSV(
       option_d: string;
       correct_answer: string;
       explanation: string | null;
+      hint: string | null;
     }> = [];
 
     for (let index = 0; index < questions.length; index++) {
@@ -708,7 +710,8 @@ export async function uploadQuestionsFromCSV(
       const validAnswer = ['A', 'B', 'C', 'D'].includes(answer) ? answer : 'A';
       
       // Ensure level is between 1-5
-      const validLevel = Math.min(5, Math.max(1, q.level || 1));
+      // Support levels 1-7 (Fundamentals to Grand Master)
+      const validLevel = Math.min(7, Math.max(1, q.level || 1));
       
       // Sanitize and validate text fields with length limits
       const sanitizeText = (text: string, maxLength: number): string => {
@@ -726,6 +729,7 @@ export async function uploadQuestionsFromCSV(
       const optionC = sanitizeText(q.optionC, 500);
       const optionD = sanitizeText(q.optionD, 500);
       const explanation = sanitizeText(q.explanation, 5000);
+      const hint = q.hint ? sanitizeText(q.hint, 2000) : null;
       
       if (!questionText || !optionA || !optionB || !optionC || !optionD) {
         throw new Error(`Question ${index + 1} is missing required fields`);
@@ -741,6 +745,7 @@ export async function uploadQuestionsFromCSV(
         option_d: optionD,
         correct_answer: validAnswer,
         explanation: explanation || null,
+        hint: hint,
       });
     }
 
@@ -900,6 +905,7 @@ export function parseCSVContent(text: string): Array<{
   optionD: string;
   correctAnswer: string;
   explanation: string;
+  hint?: string;
 }> {
   const questions: Array<{
     level: number;
@@ -910,6 +916,7 @@ export function parseCSVContent(text: string): Array<{
     optionD: string;
     correctAnswer: string;
     explanation: string;
+    hint?: string;
   }> = [];
 
   // Auto-detect delimiter: check first line for tabs vs commas
@@ -977,6 +984,7 @@ export function parseCSVContent(text: string): Array<{
         optionD: values[6],
         correctAnswer: values[7],
         explanation: values[8],
+        hint: values[9] || undefined, // hints column (index 9)
       });
     }
   }
@@ -994,6 +1002,7 @@ function parseQuestionRow(values: string[]): {
   optionD: string;
   correctAnswer: string;
   explanation: string;
+  hint?: string;
 } | null {
   if (values.length < 9) return null;
   
@@ -1005,12 +1014,13 @@ function parseQuestionRow(values: string[]): {
   const optionD = values[6]?.trim();
   const correctAnswer = values[7]?.trim();
   const explanation = values[8]?.trim() || '';
+  const hint = values[9]?.trim() || undefined;
   
   if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
     return null;
   }
   
-  return { level, question, optionA, optionB, optionC, optionD, correctAnswer, explanation };
+  return { level, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, hint };
 }
 
 // Parse Excel file and return sheets with their questions
@@ -1025,6 +1035,7 @@ export interface ExcelSheet {
     optionD: string;
     correctAnswer: string;
     explanation: string;
+    hint?: string;
   }>;
 }
 
