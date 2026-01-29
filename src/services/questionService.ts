@@ -159,20 +159,8 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       explanation: q.explanation || '',
     });
 
-    // Generate auto-hint if no custom hint: eliminate 1-2 wrong options
-    let hint = q.hint;
-    if (!hint) {
-      // Auto-generate by showing 1-2 wrong options to avoid
-      const wrongOptions = shuffledOptions
-        .map((opt, idx) => ({ opt, idx }))
-        .filter(({ idx }) => idx !== shuffledCorrectIndex);
-      
-      // Randomly pick 1-2 wrong options to reveal
-      const revealCount = Math.min(2, wrongOptions.length);
-      const shuffledWrong = wrongOptions.sort(() => Math.random() - 0.5).slice(0, revealCount);
-      const eliminatedLabels = shuffledWrong.map(w => String.fromCharCode(65 + w.idx)).join(' and ');
-      hint = `💡 Hint: Option${revealCount > 1 ? 's' : ''} ${eliminatedLabels} ${revealCount > 1 ? 'are' : 'is'} NOT the correct answer.`;
-    }
+    // Use only custom hints from database - no auto-generation
+    const hint = q.hint || undefined;
 
     // Store shuffled correct index locally for instant validation
     bank[subjectKey][topicName].push({
