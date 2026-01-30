@@ -507,11 +507,15 @@ export function findBlueprintMatch(inputTopic: string, subject: string): string 
 
 // Normalize topic name to a clean, human-readable format
 // Handles: "ch1-integers" → "Integers", "ch10-simpleinterest" → "Simple Interest"
+// Also handles: "ch01_integers_master_final" → "Integers"
 export function normalizeTopicName(rawName: string): string {
   let name = rawName.trim();
   
   // Remove common prefixes like "ch1-", "ch11b-", "chapter1-", etc.
   name = name.replace(/^(ch(apter)?[\d]+[a-z]?[-_\s]*)/i, '');
+  
+  // Remove common suffixes like "_master", "_final", "_v2", "_backup", etc.
+  name = name.replace(/[-_\s]*(master|final|backup|copy|v\d+|version\d*|draft|new|old|updated|edited|revised)[-_\s]*/gi, ' ');
   
   // Replace underscores and hyphens with spaces
   name = name.replace(/[_-]+/g, ' ');
