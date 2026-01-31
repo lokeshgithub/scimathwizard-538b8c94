@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
-import { Character, themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
-import { getRandomFunElement, getMilestoneAnimation, FunElement } from '@/data/funElements';
+import { Character, themeLevels } from '@/data/characters';
+import { getMilestoneAnimation, FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
+import { SimpleFeedback } from './SimpleFeedback';
 import { MilestoneAnimation } from './MilestoneAnimation';
+import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle, Star } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
@@ -43,11 +45,10 @@ export const QuizCard = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [message, setMessage] = useState('');
-  const [funElement, setFunElement] = useState<FunElement | null>(null);
+  const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null);
   const [milestone, setMilestone] = useState<{ emoji: string; message: string; animation: string } | null>(null);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [recentWrongCount, setRecentWrongCount] = useState(0); // Track recent wrong answers for struggling detection
   const [isValidating, setIsValidating] = useState(false);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
   
@@ -92,9 +93,7 @@ export const QuizCard = ({
     setIsAnswered(false);
     setIsCorrect(false);
     setShowExplanation(false);
-    setCharacter(null);
-    setMessage('');
-    setFunElement(null);
+    setFeedbackResult(null);
     setMilestone(null);
     setIsValidating(false);
     setCorrectIndex(-1);
@@ -136,10 +135,6 @@ export const QuizCard = ({
     setSelectedAnswer(index);
     setIsValidating(true);
 
-    // Pre-load character for instant display after validation
-    const char = getRandomCharacter(level);
-    const fun = getRandomFunElement(level);
-
     try {
       const result = await onAnswer(index);
       
@@ -153,29 +148,49 @@ export const QuizCard = ({
       // This happens while user sees feedback, before they click explanation
       onPrefetchNext?.();
 
-      // Show pre-loaded character and fun element
-      setCharacter(char);
-      setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
-      setFunElement(fun);
-
-      // Track consecutive correct answers for milestones
+      // Track streaks and struggling
+      let newConsecutive = consecutiveCorrect;
+      let newRecentWrong = recentWrongCount;
+      
       if (result.isCorrect) {
-        const newConsecutive = consecutiveCorrect + 1;
+        newConsecutive = consecutiveCorrect + 1;
         setConsecutiveCorrect(newConsecutive);
+        // Decay recent wrong count on correct answers
+        if (recentWrongCount > 0) {
+          newRecentWrong = Math.max(0, recentWrongCount - 1);
+          setRecentWrongCount(newRecentWrong);
+        }
+      } else {
+        setConsecutiveCorrect(0);
+        newConsecutive = 0;
+        newRecentWrong = Math.min(5, recentWrongCount + 1);
+        setRecentWrongCount(newRecentWrong);
+      }
+
+      // Get smart feedback using the feedback service
+      const feedback = getFeedback({
+        isCorrect: result.isCorrect,
+        level,
+        streak: newConsecutive,
+        totalAnswered: sessionStats.solved, // Use solved as total answered
+        recentWrongCount: newRecentWrong,
+      });
+      setFeedbackResult(feedback);
+
+      // Check for milestone animations
+      if (result.isCorrect) {
         const newTotalCorrect = sessionStats.totalCorrect + 1;
         const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
         if (milestoneAnim) {
           setMilestone(milestoneAnim);
         }
-      } else {
-        setConsecutiveCorrect(0);
       }
     } catch (error) {
       console.error('Error validating answer:', error);
       setIsValidating(false);
       setSelectedAnswer(null); // Reset on error
     }
-  }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, sessionStats.totalCorrect, onPrefetchNext]);
+  }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, recentWrongCount, sessionStats.totalCorrect, sessionStats.solved, onPrefetchNext]);
 
   const handleShowExplanation = useCallback(() => {
     setShowExplanation(true);
@@ -432,47 +447,61 @@ export const QuizCard = ({
           </motion.div>
         )}
 
-        {/* Character Feedback */}
+        {/* Feedback - shows ONE of: simple message, character message, or fun element */}
         <AnimatePresence>
-          {isAnswered && character && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className={`
-                p-4 rounded-xl mb-4
-                ${isCorrect ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}
-              `}
-            >
-              <div className="flex items-start gap-3">
-                <motion.span 
-                  className="text-4xl"
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 0.5 }}
+          {isAnswered && feedbackResult && (
+            <>
+              {/* Simple feedback */}
+              {feedbackResult.type === 'simple' && feedbackResult.simpleMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-4"
                 >
-                  {character.emoji}
-                </motion.span>
-                <div>
-                  <p className="font-semibold text-foreground mb-1">{character.name} says:</p>
-                  <p className="text-muted-foreground italic">"{message}"</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Fun Element Surprise */}
-        <AnimatePresence>
-          {isAnswered && funElement && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-4"
-            >
-              <FunElementCard element={funElement} />
-            </motion.div>
+                  <SimpleFeedback message={feedbackResult.simpleMessage} isCorrect={isCorrect} />
+                </motion.div>
+              )}
+              
+              {/* Character feedback (only for exceptional performance) */}
+              {feedbackResult.type === 'character' && feedbackResult.character && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className={`
+                    p-4 rounded-xl mb-4
+                    ${isCorrect ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}
+                  `}
+                >
+                  <div className="flex items-start gap-3">
+                    <motion.span 
+                      className="text-4xl"
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {feedbackResult.character.emoji}
+                    </motion.span>
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">{feedbackResult.character.name} says:</p>
+                      <p className="text-muted-foreground italic">"{feedbackResult.message}"</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
+              {/* Fun element (rare surprise) */}
+              {feedbackResult.type === 'fun_element' && feedbackResult.funElement && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-4"
+                >
+                  <FunElementCard element={feedbackResult.funElement} />
+                </motion.div>
+              )}
+            </>
           )}
         </AnimatePresence>
 
