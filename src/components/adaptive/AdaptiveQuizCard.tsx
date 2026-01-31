@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle, XCircle, ArrowRight, Sparkles, Brain } from 'lucide-react';
 import type { Question, SessionStats } from '@/types/quiz';
-import { themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
-import { getRandomFunElement } from '@/data/funElements';
+import { themeLevels } from '@/data/characters';
 import { FunElementCard } from '@/components/quiz/FunElementCard';
+import { SimpleFeedback } from '@/components/quiz/SimpleFeedback';
+import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 
 interface AdaptiveQuizCardProps {
   question: Question;
@@ -30,9 +31,9 @@ export const AdaptiveQuizCard = ({
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
   const [isAnswered, setIsAnswered] = useState(false);
   const [timer, setTimer] = useState(0);
-  const [character, setCharacter] = useState(getRandomCharacter(currentLevel));
-  const [message, setMessage] = useState('');
-  const [funElement, setFunElement] = useState<ReturnType<typeof getRandomFunElement>>(null);
+  const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null);
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [recentWrongCount, setRecentWrongCount] = useState(0);
   const timerRef = useRef<number>();
 
   // Reset state when question changes
@@ -42,9 +43,7 @@ export const AdaptiveQuizCard = ({
     setCorrectIndex(-1);
     setIsAnswered(false);
     setTimer(0);
-    setCharacter(getRandomCharacter(currentLevel));
-    setMessage('');
-    setFunElement(null);
+    setFeedbackResult(null);
   }, [question.id, currentLevel]);
 
   // Timer
@@ -68,22 +67,37 @@ export const AdaptiveQuizCard = ({
     setCorrectIndex(result.correctIndex);
     setIsAnswered(true);
     
-    // Set character and message
-    const char = getRandomCharacter(currentLevel);
-    setCharacter(char);
-    setMessage(getRandomMessage(char, result.isCorrect ? 'correct' : 'incorrect'));
+    // Track streaks and struggling
+    let newConsecutive = consecutiveCorrect;
+    let newRecentWrong = recentWrongCount;
     
-    // Maybe show fun element (50% chance on correct answer)
-    if (result.isCorrect && Math.random() > 0.5) {
-      const element = getRandomFunElement(currentLevel);
-      if (element) {
-        setFunElement(element);
+    if (result.isCorrect) {
+      newConsecutive = consecutiveCorrect + 1;
+      setConsecutiveCorrect(newConsecutive);
+      if (recentWrongCount > 0) {
+        newRecentWrong = Math.max(0, recentWrongCount - 1);
+        setRecentWrongCount(newRecentWrong);
       }
+    } else {
+      setConsecutiveCorrect(0);
+      newConsecutive = 0;
+      newRecentWrong = Math.min(5, recentWrongCount + 1);
+      setRecentWrongCount(newRecentWrong);
     }
+    
+    // Get smart feedback
+    const feedback = getFeedback({
+      isCorrect: result.isCorrect,
+      level: currentLevel,
+      streak: newConsecutive,
+      totalAnswered: questionsAnswered,
+      recentWrongCount: newRecentWrong,
+    });
+    setFeedbackResult(feedback);
   };
 
   const handleNext = () => {
-    setFunElement(null);
+    setFeedbackResult(null);
     onNext();
   };
 
@@ -189,28 +203,42 @@ export const AdaptiveQuizCard = ({
               exit={{ opacity: 0, height: 0 }}
               className="mt-6 space-y-4"
             >
-              {/* Character message */}
-              <div className="bg-muted rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <motion.span
-                    className="text-3xl"
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  >
-                    {character.emoji}
-                  </motion.span>
-                  <span className="font-semibold text-foreground">{character.name}</span>
-                  {isCorrect ? (
-                    <span className="text-success text-sm font-medium">✓ Correct!</span>
-                  ) : (
-                    <span className="text-destructive text-sm font-medium">✗ Not quite</span>
+              {/* Feedback - shows ONE of: simple, character, or fun element */}
+              {feedbackResult && (
+                <>
+                  {/* Simple feedback */}
+                  {feedbackResult.type === 'simple' && feedbackResult.simpleMessage && (
+                    <SimpleFeedback message={feedbackResult.simpleMessage} isCorrect={isCorrect === true} />
                   )}
-                </div>
-                <p className="text-muted-foreground italic">"{message}"</p>
-              </div>
-
-              {/* Fun element */}
-              {funElement && <FunElementCard element={funElement} />}
+                  
+                  {/* Character feedback */}
+                  {feedbackResult.type === 'character' && feedbackResult.character && (
+                    <div className="bg-muted rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <motion.span
+                          className="text-3xl"
+                          animate={{ y: [0, -5, 0] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          {feedbackResult.character.emoji}
+                        </motion.span>
+                        <span className="font-semibold text-foreground">{feedbackResult.character.name}</span>
+                        {isCorrect ? (
+                          <span className="text-success text-sm font-medium">✓ Correct!</span>
+                        ) : (
+                          <span className="text-destructive text-sm font-medium">✗ Not quite</span>
+                        )}
+                      </div>
+                      <p className="text-muted-foreground italic">"{feedbackResult.message}"</p>
+                    </div>
+                  )}
+                  
+                  {/* Fun element */}
+                  {feedbackResult.type === 'fun_element' && feedbackResult.funElement && (
+                    <FunElementCard element={feedbackResult.funElement} />
+                  )}
+                </>
+              )}
 
               {/* Time feedback */}
               <div className="flex items-center justify-center gap-2 text-sm">
