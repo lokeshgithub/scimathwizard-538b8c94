@@ -217,6 +217,7 @@ export const useQuizStore = () => {
   const [loadError, setLoadError] = useState<string | null>(null); // Network/loading error
   const [questionHistory, setQuestionHistory] = useState<number[]>([]); // Track question history for back navigation
   const [unlimitedPractice, setUnlimitedPractice] = useState(false); // Allow unlimited practice
+  const [isReviewMode, setIsReviewMode] = useState(false); // Review mode: view solved questions without affecting progress
   // Track which levels are unlocked per topic (Level 1 always unlocked, higher levels need mastery OR unlock assessment)
   const [unlockedLevels, setUnlockedLevels] = useState<UnlockedLevels>(
     (stored as any).unlockedLevels || {}
@@ -496,15 +497,16 @@ export const useQuizStore = () => {
 
     // Filter out:
     // 1. Questions answered in current session (no repeats within a session)
-    // 2. Questions mastered cleanly (correct WITHOUT viewing solution)
+    // 2. Questions answered correctly (EVER) - these don't repeat until progress reset
+    // Students can review solved questions via Review Mode instead
     return levelQuestions.filter(q => {
       // Don't repeat questions already answered in this session
       if (sessionAnsweredIds.has(q.id)) return false;
 
       const status = questionTracking[q.id];
       if (!status) return true;
-      // Only exclude if masteredCleanly - viewing solution doesn't count as mastery
-      return !status.masteredCleanly;
+      // Exclude ANY correctly answered question - they can use Review Mode to see these
+      return !status.answeredCorrectly;
     });
   }, [banks, subject, questionTracking, sessionAnsweredIds]);
 
@@ -512,6 +514,7 @@ export const useQuizStore = () => {
     setTopic(topicName);
     setMixedTopics(null); // Clear mixed mode
     setUnlimitedPractice(startUnlimited);
+    setIsReviewMode(false); // Ensure not in review mode
     setQuestionHistory([]); // Reset question history
     setSessionAnsweredIds(new Set()); // Clear session tracking - new topic = fresh questions
     const prog = getTopicProgress(topicName);
@@ -604,6 +607,7 @@ export const useQuizStore = () => {
     setLevelStats({ correct: 0, total: 0 });
     setQuestionHistory([]); // Reset question history
     setUnlimitedPractice(false);
+    setIsReviewMode(false); // Ensure not in review mode
     setSessionAnsweredIds(new Set()); // Clear session tracking for fresh quiz
     
     // Gather all questions from selected topics
@@ -668,6 +672,12 @@ export const useQuizStore = () => {
     const isCorrect = selectedIndex === currentQ.correct;
     const correctIndex = currentQ.correct;
 
+    // In REVIEW MODE, skip all tracking - just return the result
+    // Students can practice without affecting their progress
+    if (isReviewMode) {
+      return { isCorrect, correctIndex, question: currentQ, timeSpent };
+    }
+
     // Log to server in background (non-blocking, fire-and-forget)
     const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
     logAnswerToServer(currentQ.id, originalSelectedIndex, isCorrect);
@@ -686,7 +696,7 @@ export const useQuizStore = () => {
       ...prev,
       questionTimings: [...prev.questionTimings, timing],
     }));
-    
+
     // Update level stats
     setLevelStats(prev => ({
       correct: prev.correct + (isCorrect ? 1 : 0),
@@ -719,7 +729,7 @@ export const useQuizStore = () => {
     setSessionAnsweredIds(prev => new Set(prev).add(currentQ.id));
 
     return { isCorrect, correctIndex, question: currentQ, timeSpent };
-  }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
+  }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic, isReviewMode]);
 
   // Record topic for spaced repetition (non-blocking)
   const recordTopicForSpacedRepetition = useCallback((topicName: string, accuracy: number) => {
@@ -1010,6 +1020,7 @@ export const useQuizStore = () => {
     setLevel(practiceLevel);
     setMixedTopics(null);
     setUnlimitedPractice(true); // Enable unlimited mode
+    setIsReviewMode(false); // Not review mode
 
     // Load ALL questions for this level, not just 10
     const shuffled = [...levelQuestions].sort(() => Math.random() - 0.5);
@@ -1019,6 +1030,59 @@ export const useQuizStore = () => {
     setQuestionHistory([]);
     setQuestionStartTime(Date.now());
   }, [banks, subject]);
+
+  // Start Review Mode - load only SOLVED questions for review
+  // Answers in review mode do NOT affect progress or tracking
+  const startReviewMode = useCallback((topicName: string, reviewLevel?: number) => {
+    const topicQuestions = banks[subject]?.[topicName] || [];
+
+    // Filter to only correctly answered questions
+    let solvedQuestions = topicQuestions.filter(q => {
+      const status = questionTracking[q.id];
+      return status?.answeredCorrectly;
+    });
+
+    // If a specific level is requested, filter to that level
+    if (reviewLevel !== undefined) {
+      solvedQuestions = solvedQuestions.filter(q => q.level === reviewLevel);
+    }
+
+    if (solvedQuestions.length === 0) return;
+
+    setTopic(topicName);
+    setLevel(reviewLevel || 1);
+    setMixedTopics(null);
+    setUnlimitedPractice(false);
+    setIsReviewMode(true); // Enable review mode
+    setSessionAnsweredIds(new Set()); // Clear session tracking for review
+
+    // Load solved questions in order (not shuffled for review)
+    setCurrentQuestions(solvedQuestions);
+    setQuestionIndex(0);
+    setLevelStats({ correct: 0, total: 0 });
+    setQuestionHistory([]);
+    setQuestionStartTime(Date.now());
+  }, [banks, subject, questionTracking]);
+
+  // Get count of solved questions for a topic (or specific level)
+  const getSolvedQuestionsCount = useCallback((topicName: string, lvl?: number): number => {
+    const topicQuestions = banks[subject]?.[topicName] || [];
+    let questions = lvl !== undefined
+      ? topicQuestions.filter(q => q.level === lvl)
+      : topicQuestions;
+
+    return questions.filter(q => questionTracking[q.id]?.answeredCorrectly).length;
+  }, [banks, subject, questionTracking]);
+
+  // Get count of unsolved (new) questions for a topic/level
+  const getUnsolvedQuestionsCount = useCallback((topicName: string, lvl?: number): number => {
+    const topicQuestions = banks[subject]?.[topicName] || [];
+    let questions = lvl !== undefined
+      ? topicQuestions.filter(q => q.level === lvl)
+      : topicQuestions;
+
+    return questions.filter(q => !questionTracking[q.id]?.answeredCorrectly).length;
+  }, [banks, subject, questionTracking]);
 
   // Get all questions count for a topic/level (for UI display)
   const getQuestionsCountForLevel = useCallback((topicName: string, levelNum: number): number => {
@@ -1034,6 +1098,7 @@ export const useQuizStore = () => {
     setQuestionIndex(0);
     setQuestionHistory([]);
     setUnlimitedPractice(false);
+    setIsReviewMode(false);
     // Don't reset levelStats or progress - keep their work
     // Don't clear active session - they may want to resume later
   }, []);
@@ -1049,6 +1114,7 @@ export const useQuizStore = () => {
       setQuestionIndex(0);
       setQuestionHistory([]);
       setUnlimitedPractice(false);
+      setIsReviewMode(false);
       setLevel(1);
       setLevelStats({ correct: 0, total: 0 });
       setSessionAnsweredIds(new Set()); // Clear session tracking
@@ -1077,6 +1143,7 @@ export const useQuizStore = () => {
     questionHistory,
     canGoBack,
     unlimitedPractice,
+    isReviewMode,
     totalQuestionsForLevel: currentQuestions.length,
     
     // Dynamic level info
@@ -1116,6 +1183,9 @@ export const useQuizStore = () => {
     deductStars,
     syncStarsFromProfile,
     startUnlimitedPractice,
+    startReviewMode,
+    getSolvedQuestionsCount,
+    getUnsolvedQuestionsCount,
     getQuestionsCountForLevel,
     exitToTopics,
     refreshQuestions: async () => {

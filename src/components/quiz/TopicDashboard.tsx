@@ -3,13 +3,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
 import {
   Sparkles, Flame, Target, ChevronDown, ChevronRight,
-  Zap, Award, BookOpen, Lock, Bell, Play, Search
+  Zap, Award, BookOpen, Lock, Bell, Play, Search, Eye, RotateCcw, MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
 import { SignUpPrompt } from './SignUpPrompt';
 import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
 import type { DueTopic } from '@/services/spacedRepetitionService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
@@ -25,6 +41,10 @@ interface TopicDashboardProps {
   dueTopics?: DueTopic[];
   isLevelUnlocked?: (topic: string, level: number) => boolean;
   onRequestUnlock?: (topic: string, level: number) => void;
+  // Review mode and reset
+  onStartReview?: (topic: string) => void;
+  onResetProgress?: (topic: string) => void;
+  getSolvedCount?: (topic: string) => number;
 }
 
 const formatName = (name: string) => {
@@ -173,6 +193,9 @@ export const TopicDashboard = ({
   dueTopics = [],
   isLevelUnlocked,
   onRequestUnlock,
+  onStartReview,
+  onResetProgress,
+  getSolvedCount,
 }: TopicDashboardProps) => {
   // Get default expanded categories based on subject
   const getDefaultExpandedCategories = useCallback((subject: string): Set<string> => {
@@ -190,6 +213,7 @@ export const TopicDashboard = ({
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => getDefaultExpandedCategories(currentSubject));
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [resetConfirmTopic, setResetConfirmTopic] = useState<string | null>(null);
   const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
 
@@ -476,11 +500,12 @@ export const TopicDashboard = ({
                       <div className="p-3 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {categoryTopics.map((topic) => {
                           const colors = getMasteryColor(topic.percentage);
+                          const solvedCount = getSolvedCount ? getSolvedCount(topic.name) : 0;
+                          const hasSolvedQuestions = solvedCount > 0;
 
                           return (
-                            <motion.button
+                            <motion.div
                               key={topic.name}
-                              onClick={() => handleSelectTopic(topic.name)}
                               className={`
                                 relative p-3 rounded-lg text-left transition-all
                                 bg-muted/50 hover:bg-muted border border-transparent
@@ -491,66 +516,102 @@ export const TopicDashboard = ({
                               whileTap={{ scale: 0.99 }}
                             >
                               {/* Due indicator */}
-                              {topic.isDue && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                              {topic.isDue && !topic.isComplete && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center z-10">
                                   <Bell className="w-3 h-3 text-white" />
                                 </div>
                               )}
 
                               {/* Complete badge */}
                               {topic.isComplete && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center z-10">
                                   <Award className="w-3 h-3 text-white" />
                                 </div>
                               )}
 
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xl">{topic.icon}</span>
-                                <span className="font-medium text-foreground text-sm truncate flex-1">
-                                  {formatName(topic.name)}
-                                </span>
-                              </div>
+                              {/* Main clickable area */}
+                              <button
+                                onClick={() => handleSelectTopic(topic.name)}
+                                className="w-full text-left"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xl">{topic.icon}</span>
+                                  <span className="font-medium text-foreground text-sm truncate flex-1">
+                                    {formatName(topic.name)}
+                                  </span>
+                                  {/* Topic options menu */}
+                                  {(hasSolvedQuestions || topic.percentage > 0) && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          className="p-1 rounded hover:bg-muted-foreground/10 text-muted-foreground"
+                                          aria-label="Topic options"
+                                        >
+                                          <MoreVertical className="w-4 h-4" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                        {hasSolvedQuestions && onStartReview && (
+                                          <DropdownMenuItem onClick={() => onStartReview(topic.name)}>
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            Review Solved ({solvedCount})
+                                          </DropdownMenuItem>
+                                        )}
+                                        {topic.percentage > 0 && onResetProgress && (
+                                          <DropdownMenuItem
+                                            onClick={() => setResetConfirmTopic(topic.name)}
+                                            className="text-destructive focus:text-destructive"
+                                          >
+                                            <RotateCcw className="w-4 h-4 mr-2" />
+                                            Reset Progress
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
 
-                              {/* Level indicators - compact */}
-                              <div className="flex items-center gap-1 mb-2">
-                                {topic.levels.slice(0, 7).map((level: number) => {
-                                  const isMastered = topic.progress[level]?.mastered;
-                                  const unlocked = isLevelUnlocked ? isLevelUnlocked(topic.name, level) : true;
-                                  const isLocked = !unlocked && !isMastered;
+                                {/* Level indicators - compact */}
+                                <div className="flex items-center gap-1 mb-2">
+                                  {topic.levels.slice(0, 7).map((level: number) => {
+                                    const isMastered = topic.progress[level]?.mastered;
+                                    const unlocked = isLevelUnlocked ? isLevelUnlocked(topic.name, level) : true;
+                                    const isLocked = !unlocked && !isMastered;
 
-                                  return (
-                                    <button
-                                      key={level}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStartLevel(topic.name, level);
-                                      }}
-                                      className={`
-                                        w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                                        transition-all hover:scale-110
-                                        ${isMastered
-                                          ? `${colors.bg} text-white`
-                                          : isLocked
-                                          ? 'bg-muted/70 text-muted-foreground/50'
-                                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                        }
-                                      `}
-                                      title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `Practice L${level}`}
-                                    >
-                                      {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                    return (
+                                      <button
+                                        key={level}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartLevel(topic.name, level);
+                                        }}
+                                        className={`
+                                          w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                                          transition-all hover:scale-110
+                                          ${isMastered
+                                            ? `${colors.bg} text-white`
+                                            : isLocked
+                                            ? 'bg-muted/70 text-muted-foreground/50'
+                                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                          }
+                                        `}
+                                        title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `Practice L${level}`}
+                                      >
+                                        {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
 
-                              {/* Progress bar */}
-                              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full ${colors.bg} rounded-full`}
-                                  style={{ width: `${topic.percentage}%` }}
-                                />
-                              </div>
-                            </motion.button>
+                                {/* Progress bar */}
+                                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full ${colors.bg} rounded-full`}
+                                    style={{ width: `${topic.percentage}%` }}
+                                  />
+                                </div>
+                              </button>
+                            </motion.div>
                           );
                         })}
                       </div>
@@ -569,6 +630,34 @@ export const TopicDashboard = ({
         onClose={() => setShowSignUpPrompt(false)}
         topicsUsed={guestLimits.topicsUsed.length}
       />
+
+      {/* Reset Progress Confirmation */}
+      <AlertDialog open={!!resetConfirmTopic} onOpenChange={() => setResetConfirmTopic(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Progress?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset all progress for <strong>{resetConfirmTopic && formatName(resetConfirmTopic)}</strong>.
+              All solved questions will become available again for practice.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (resetConfirmTopic && onResetProgress) {
+                  onResetProgress(resetConfirmTopic);
+                }
+                setResetConfirmTopic(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Reset Progress
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

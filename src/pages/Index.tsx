@@ -566,6 +566,9 @@ const Index = () => {
                   dueTopics={dueTopics}
                   isLevelUnlocked={quiz.isLevelUnlocked}
                   onRequestUnlock={handleRequestUnlock}
+                  onStartReview={quiz.startReviewMode}
+                  onResetProgress={quiz.resetTopicProgress}
+                  getSolvedCount={quiz.getSolvedQuestionsCount}
                 />
 
                 {/* Spaced Repetition Card - show when logged in */}
@@ -591,8 +594,20 @@ const Index = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                <span>⭐ {quiz.sessionStats.stars}</span>
+                {quiz.isReviewMode ? (
+                  <>
+                    <span className="flex items-center gap-1.5 text-blue-500">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                      Review Mode
+                    </span>
+                    <span className="text-xs text-muted-foreground">Answers don't count</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
+                    <span>⭐ {quiz.sessionStats.stars}</span>
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -621,14 +636,36 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No Questions Available</h3>
-                <p className="text-muted-foreground mb-4">
-                  There are no questions for Level {quiz.level} in this topic yet.
-                </p>
-                <Button onClick={quiz.exitToTopics} variant="outline">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Choose Another Topic
-                </Button>
+                {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level) > 0 ? (
+                  // All questions solved in practice mode
+                  <>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">All Questions Solved!</h3>
+                    <p className="text-muted-foreground mb-4">
+                      You've answered all {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level)} questions in this level correctly.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                      <Button onClick={() => quiz.startReviewMode(quiz.topic!, quiz.level)} variant="outline">
+                        Review Solved Questions
+                      </Button>
+                      <Button onClick={quiz.exitToTopics}>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Topics
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  // No questions exist for this level
+                  <>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No Questions Available</h3>
+                    <p className="text-muted-foreground mb-4">
+                      There are no questions for Level {quiz.level} in this topic yet.
+                    </p>
+                    <Button onClick={quiz.exitToTopics} variant="outline">
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Choose Another Topic
+                    </Button>
+                  </>
+                )}
               </motion.div>
             )}
           </>
