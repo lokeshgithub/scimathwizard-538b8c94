@@ -2,10 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels } from '@/data/characters';
-import { getMilestoneAnimation, FunElement } from '@/data/funElements';
+import { FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { SimpleFeedback } from './SimpleFeedback';
-import { MilestoneAnimation } from './MilestoneAnimation';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
 
@@ -44,7 +43,6 @@ export const QuizCard = ({
   const [isCorrect, setIsCorrect] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null);
-  const [milestone, setMilestone] = useState<{ emoji: string; message: string; animation: string } | null>(null);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const [recentWrongCount, setRecentWrongCount] = useState(0); // Track recent wrong answers for struggling detection
   const [isValidating, setIsValidating] = useState(false);
@@ -94,7 +92,6 @@ export const QuizCard = ({
     setIsCorrect(false);
     setShowExplanation(false);
     setFeedbackResult(null);
-    setMilestone(null);
     setIsValidating(false);
     setCorrectIndex(-1);
     // Reset hint state for new question
@@ -170,14 +167,8 @@ export const QuizCard = ({
       });
       setFeedbackResult(feedback);
 
-      // Check for milestone animations
-      if (result.isCorrect) {
-        const newTotalCorrect = sessionStats.totalCorrect + 1;
-        const milestoneAnim = getMilestoneAnimation(newConsecutive, newTotalCorrect);
-        if (milestoneAnim) {
-          setMilestone(milestoneAnim);
-        }
-      }
+      // Pop-up milestone animations removed for snappier flow
+      // Level completion modal still shows via handleNext -> checkMastery
     } catch (error) {
       console.error('Error validating answer:', error);
       setIsValidating(false);
@@ -603,11 +594,8 @@ export const QuizCard = ({
         )}
       </div>
 
-      {/* Milestone Celebration Animation */}
-      <MilestoneAnimation 
-        milestone={milestone} 
-        onComplete={() => setMilestone(null)} 
-      />
+      {/* Pop-up milestone animations removed for snappier flow */}
+      {/* Level completion modal still shows via LevelCompleteModal in Index.tsx */}
     </motion.div>
   );
 };

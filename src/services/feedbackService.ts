@@ -2,10 +2,10 @@
  * Feedback Service
  *
  * Manages feedback display logic:
- * - Shows either character message OR fun element (not both)
- * - Fun elements appear rarely (~5% chance) - reduced for snappier flow
- * - Character "special" messages only for exceptional performance (streak >= 7 or major milestones)
- * - Tracks used messages in session to prevent repetition
+ * - Shows simple feedback most of the time for snappy flow
+ * - Character messages and riddles appear with smart spacing (min 3 questions gap)
+ * - Random gap of 4-15 questions for normal performance
+ * - Immediate feedback for exceptional (10+ streak) or struggling (5+ wrong)
  */
 
 import { Character, getRandomCharacter, getRandomMessage, themeLevels } from '@/data/characters';
@@ -14,6 +14,15 @@ import { getRandomFunElement, FunElement } from '@/data/funElements';
 // Session-level tracking for used messages (reset on page refresh)
 const usedCharacterMessages = new Set<string>();
 const usedCharacterPhrases = new Set<string>();
+
+// Track questions since last special feedback (character/riddle)
+let questionsSinceLastSpecialFeedback = 0;
+let nextSpecialFeedbackAt = getRandomGap(); // Random gap 4-15
+
+function getRandomGap(): number {
+  // Random number between 4 and 15
+  return Math.floor(Math.random() * 12) + 4;
+}
 
 // Generic simple messages for normal feedback (not exceptional performance)
 const simpleCorrectMessages = [
@@ -59,23 +68,42 @@ interface FeedbackContext {
 }
 
 /**
- * Determines if student is performing exceptionally (worth special character message)
- * Made VERY selective - only for major achievements to avoid interrupting flow
+ * Determines if student deserves immediate special feedback (override normal spacing)
+ * - Exceptional performance: 10+ streak
+ * - Struggling: 5+ wrong in a row
  */
 function isExceptionalPerformance(context: FeedbackContext): boolean {
-  // Only show character feedback for MAJOR streaks (10+)
-  if (context.isCorrect && context.streak >= 9) { // Will become 10 after this answer
+  // Exceptional success: 10+ streak - celebrate immediately
+  if (context.isCorrect && context.streak >= 10) {
     return true;
   }
 
-  // Struggling feedback only after 5+ wrong (very struggling)
-  if (!context.isCorrect && context.recentWrongCount >= 4) { // Will become 5 after this answer
+  // Struggling: 5+ wrong in a row - encourage immediately
+  if (!context.isCorrect && context.recentWrongCount >= 5) {
     return true;
   }
-
-  // No milestone-based triggers - keep flow snappy
 
   return false;
+}
+
+/**
+ * Determines if it's time to show special feedback based on spacing rules
+ * - Minimum 3 questions gap
+ * - Random 4-15 questions for normal performance
+ */
+function shouldShowSpecialFeedback(context: FeedbackContext): boolean {
+  // Always allow if exceptional performance (override spacing)
+  if (isExceptionalPerformance(context)) {
+    return true;
+  }
+
+  // Must have at least 3 questions gap (safety minimum)
+  if (questionsSinceLastSpecialFeedback < 3) {
+    return false;
+  }
+
+  // Check if we've reached the random gap
+  return questionsSinceLastSpecialFeedback >= nextSpecialFeedbackAt;
 }
 
 /**
@@ -154,42 +182,60 @@ function getUniqueCharacter(level: number): Character {
 /**
  * Main feedback decision function
  * Returns what type of feedback to show and the content
+ *
+ * Logic:
+ * - Most answers: simple "Correct!" or "Not quite."
+ * - Special feedback (character/riddle) with smart spacing:
+ *   - Min 3 questions gap
+ *   - Random 4-15 questions for normal performance
+ *   - Immediate for exceptional (10+ streak) or struggling (5+ wrong)
  */
 export function getFeedback(context: FeedbackContext): FeedbackResult {
-  const { isCorrect, level, streak } = context;
-  
-  // Check if this is exceptional performance (deserves character message)
-  const isExceptional = isExceptionalPerformance(context);
-  
-  // Fun elements: ~2% chance, ONLY on correct answers with streak 3+, and ONLY if not showing character
-  // Made very rare to keep question flow snappy
-  const showFunElement = isCorrect && !isExceptional && streak >= 3 && Math.random() < 0.02;
-  
-  if (showFunElement) {
-    const funElement = getRandomFunElement(level);
-    if (funElement) {
+  const { isCorrect, level } = context;
+
+  // Increment counter
+  questionsSinceLastSpecialFeedback++;
+
+  // Check if we should show special feedback (character or riddle)
+  if (shouldShowSpecialFeedback(context)) {
+    // Reset counter and set new random gap
+    questionsSinceLastSpecialFeedback = 0;
+    nextSpecialFeedbackAt = getRandomGap();
+
+    // 50% chance: character message, 50% chance: fun element (riddle/joke)
+    const showCharacter = Math.random() < 0.5;
+
+    if (showCharacter) {
+      const character = getUniqueCharacter(level);
+      const messageType = isCorrect ? 'correct' : 'encouragement';
+      const message = getUniqueCharacterMessage(character, messageType);
+
       return {
-        type: 'fun_element',
-        funElement,
+        type: 'character',
+        character,
+        message,
+      };
+    } else {
+      // Show fun element (riddle, joke, fact, etc.)
+      const funElement = getRandomFunElement(level);
+      if (funElement) {
+        return {
+          type: 'fun_element',
+          funElement,
+        };
+      }
+      // Fallback to character if no fun element available
+      const character = getUniqueCharacter(level);
+      const message = getUniqueCharacterMessage(character, isCorrect ? 'correct' : 'encouragement');
+      return {
+        type: 'character',
+        character,
+        message,
       };
     }
-    // Fall through to simple if no fun element available
   }
-  
-  // Exceptional performance: show character with special message
-  if (isExceptional) {
-    const character = getUniqueCharacter(level);
-    const messageType = isCorrect ? 'correct' : 'incorrect';
-    const message = getUniqueCharacterMessage(character, messageType);
-    
-    return {
-      type: 'character',
-      character,
-      message,
-    };
-  }
-  
-  // Normal case: simple feedback
+
+  // Normal case: simple feedback (most common)
   return {
     type: 'simple',
     simpleMessage: getSimpleFeedback(isCorrect),
@@ -205,6 +251,8 @@ export function resetFeedbackTracking(): void {
   lastCharacterName = '';
   lastSimpleCorrectIndex = -1;
   lastSimpleIncorrectIndex = -1;
+  questionsSinceLastSpecialFeedback = 0;
+  nextSpecialFeedbackAt = getRandomGap();
 }
 
 /**
