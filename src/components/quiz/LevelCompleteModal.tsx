@@ -27,7 +27,7 @@ export const LevelCompleteModal = ({
   const [message, setMessage] = useState('');
   const [showReward, setShowReward] = useState(false);
   
-  const accuracy = Math.round((stats.correct / stats.total) * 100);
+  const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
   const currentTheme = themeLevels.find(t => t.level === level);
   const isTopicComplete = passed && level === maxLevel;
   const reward = getLevelReward(level);

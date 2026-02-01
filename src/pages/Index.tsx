@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings, ArrowLeft } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -31,6 +31,16 @@ import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { StarShop } from '@/components/quiz/StarShop';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 
 const Index = () => {
@@ -45,6 +55,7 @@ const Index = () => {
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   // Track what we've already synced to avoid duplicate additions
   // Initialize with current session stats to prevent re-syncing on page reload
@@ -343,13 +354,27 @@ const Index = () => {
         <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
         
         {quiz.isLoading ? (
-          <motion.div 
+          <motion.div
             className="flex flex-col items-center justify-center py-16"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
             <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
             <p className="text-muted-foreground">Loading magical questions...</p>
+          </motion.div>
+        ) : quiz.loadError ? (
+          <motion.div
+            className="flex flex-col items-center justify-center py-16 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+            <p className="text-foreground font-medium mb-2">Oops! Something went wrong</p>
+            <p className="text-muted-foreground mb-4">{quiz.loadError}</p>
+            <Button onClick={quiz.retryLoadQuestions} className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </Button>
           </motion.div>
         ) : (
           <>
@@ -388,7 +413,14 @@ const Index = () => {
             {/* Back to Topics Button - shown when in a quiz */}
             {quiz.topic && quiz.currentQuestion && (
               <motion.button
-                onClick={quiz.exitToTopics}
+                onClick={() => {
+                  // Show confirmation if there's in-progress work
+                  if (quiz.levelStats.total > 0) {
+                    setShowExitConfirm(true);
+                  } else {
+                    quiz.exitToTopics();
+                  }
+                }}
                 className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -421,7 +453,13 @@ const Index = () => {
             {quiz.mixedTopics && quiz.mixedTopics.length > 0 && quiz.currentQuestion && (
               <>
                 <motion.button
-                  onClick={quiz.exitToTopics}
+                  onClick={() => {
+                    if (quiz.levelStats.total > 0) {
+                      setShowExitConfirm(true);
+                    } else {
+                      quiz.exitToTopics();
+                    }
+                  }}
                   className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -456,6 +494,25 @@ const Index = () => {
                 onSolutionViewed={quiz.markSolutionViewed}
                 onPrefetchNext={quiz.prefetchNextQuestion}
               />
+            )}
+
+            {/* No questions available for this topic/level */}
+            {quiz.topic && !quiz.currentQuestion && !quiz.mixedTopics && (
+              <motion.div
+                className="text-center py-12"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Questions Available</h3>
+                <p className="text-muted-foreground mb-4">
+                  There are no questions for Level {quiz.level} in this topic yet.
+                </p>
+                <Button onClick={quiz.exitToTopics} variant="outline">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Choose Another Topic
+                </Button>
+              </motion.div>
             )}
           </>
         )}
@@ -529,6 +586,30 @@ const Index = () => {
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
+
+      {/* Exit Quiz Confirmation */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave Quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have answered {quiz.levelStats.total} question{quiz.levelStats.total !== 1 ? 's' : ''} in this level.
+              Your progress will be saved and you can continue later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Quiz</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowExitConfirm(false);
+                quiz.exitToTopics();
+              }}
+            >
+              Leave Quiz
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

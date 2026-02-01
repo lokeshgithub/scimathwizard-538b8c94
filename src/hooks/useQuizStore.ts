@@ -182,9 +182,10 @@ export const useQuizStore = () => {
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null); // Network/loading error
   const [questionHistory, setQuestionHistory] = useState<number[]>([]); // Track question history for back navigation
   const [unlimitedPractice, setUnlimitedPractice] = useState(false); // Allow unlimited practice
-  
+
   // Timer tracking
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [sessionPerformance, setSessionPerformance] = useState<SessionPerformance>(initialSessionPerformance);
@@ -216,22 +217,25 @@ export const useQuizStore = () => {
   }, [topic, getTopicMaxLevel]);
 
   // Load questions from database on mount
-  useEffect(() => {
-    const loadQuestions = async () => {
-      setIsLoading(true);
-      try {
-        const dbQuestions = await fetchAllQuestions();
-        if (Object.keys(dbQuestions).length > 0) {
-          setBanks(dbQuestions);
-        }
-      } catch (error) {
-        console.error('Failed to load questions from database:', error);
-      } finally {
-        setIsLoading(false);
+  const loadQuestions = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const dbQuestions = await fetchAllQuestions();
+      if (Object.keys(dbQuestions).length > 0) {
+        setBanks(dbQuestions);
       }
-    };
-    loadQuestions();
+    } catch (error) {
+      console.error('Failed to load questions from database:', error);
+      setLoadError('Failed to load questions. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
 
   // Save to storage when relevant state changes
   useEffect(() => {
@@ -911,6 +915,8 @@ export const useQuizStore = () => {
       ? currentQuestions[prefetchedNextIndex] 
       : currentQuestions[questionIndex + 1] || null,
     isLoading,
+    loadError,
+    retryLoadQuestions: loadQuestions,
     sessionPerformance,
     showSessionSummary,
     questionHistory,
