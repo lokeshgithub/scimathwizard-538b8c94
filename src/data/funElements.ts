@@ -186,26 +186,24 @@ export const getRandomFunElement = (level: number): FunElement | null => {
 };
 
 // Special celebration animations for milestones
-// Rebalanced to focus on mastery over volume
+// Made VERY rare to avoid interrupting flow - only major achievements
 export const getMilestoneAnimation = (streak: number, totalCorrect: number): { emoji: string; message: string; animation: string } | null => {
-  // Streak milestones - capped at meaningful levels (no grinding incentive)
+  // Streak milestones - only at 10+ to avoid frequent interruptions
   const streakMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    5: { emoji: '🔥', message: "ON FIRE! 5 in a row! +30 bonus stars! ⭐", animation: 'fire' },
     10: { emoji: '💎', message: "BRILLIANT! 10 streak! +50 bonus stars! 💫", animation: 'diamond' },
-    // Beyond 10 gives no extra milestone - focus on accuracy, not grinding
+    // Removed streak 5 - too frequent, interrupts flow
   };
 
   if (streakMilestones[streak]) {
     return streakMilestones[streak];
   }
 
-  // Total correct milestones - reduced frequency, more meaningful
+  // Total correct milestones - only major ones (50, 100, 200)
   const totalMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    10: { emoji: '🎯', message: "10 total correct! You're getting started! 🌟", animation: 'stars' },
-    50: { emoji: '📚', message: "50 questions answered! Keep building knowledge! 💪", animation: 'books' },
+    50: { emoji: '📚', message: "50 questions correct! Keep building knowledge! 💪", animation: 'books' },
     100: { emoji: '🚀', message: "100 correct! You're a learning rocket! 🌙", animation: 'rocket' },
     200: { emoji: '💯', message: "200 CORRECT! You're a CHAMPION! 🏆", animation: 'century' },
-    // Removed 25, 75, 150 - too frequent, dilutes the feeling
+    // Removed 10 - too early and frequent
   };
 
   if (totalMilestones[totalCorrect]) {
@@ -216,21 +214,20 @@ export const getMilestoneAnimation = (streak: number, totalCorrect: number): { e
 };
 
 // Get bonus stars for milestones
-// Rebalanced to cap streak bonuses and reduce volume-chasing
+// Only major milestones give bonuses to avoid frequent interruptions
 export const getMilestoneBonus = (streak: number, totalCorrect: number): number => {
-  // Streak bonuses capped at reasonable levels
+  // Streak bonuses - only at 10+
   const streakBonuses: Record<number, number> = {
-    5: 30,   // Reduced from 50
-    10: 50,  // Reduced from 100
-    // No more bonuses beyond 10 - prevents easy-topic grinding
+    10: 50,
+    // Removed streak 5 bonus - keep flow snappy
   };
 
-  // Total correct bonuses - fewer milestones, still rewarding
+  // Total correct bonuses - only major ones
   const totalBonuses: Record<number, number> = {
-    10: 20,   // Reduced
-    50: 75,   // Reduced from 100
-    100: 150, // Reduced from 250
-    200: 300, // Reduced from 500
+    50: 75,
+    100: 150,
+    200: 300,
+    // Removed 10 - too early
   };
 
   return (streakBonuses[streak] || 0) + (totalBonuses[totalCorrect] || 0);

@@ -60,25 +60,20 @@ interface FeedbackContext {
 
 /**
  * Determines if student is performing exceptionally (worth special character message)
- * Made more selective to reduce interruptions between questions
+ * Made VERY selective - only for major achievements to avoid interrupting flow
  */
 function isExceptionalPerformance(context: FeedbackContext): boolean {
-  // Exceptional success: streak of 7+ (reduced frequency)
-  if (context.isCorrect && context.streak >= 6) { // Will become 7 after this answer
+  // Only show character feedback for MAJOR streaks (10+)
+  if (context.isCorrect && context.streak >= 9) { // Will become 10 after this answer
     return true;
   }
 
-  // Exceptional struggle: 4+ wrong in last 5 questions (more lenient)
-  if (!context.isCorrect && context.recentWrongCount >= 3) { // Will become 4 after this answer
+  // Struggling feedback only after 5+ wrong (very struggling)
+  if (!context.isCorrect && context.recentWrongCount >= 4) { // Will become 5 after this answer
     return true;
   }
 
-  // First question of session removed - simple feedback is fine for first question
-
-  // Major milestone: every 15th correct answer (less frequent)
-  if (context.isCorrect && context.streak > 0 && context.streak % 15 === 0) {
-    return true;
-  }
+  // No milestone-based triggers - keep flow snappy
 
   return false;
 }
@@ -166,9 +161,9 @@ export function getFeedback(context: FeedbackContext): FeedbackResult {
   // Check if this is exceptional performance (deserves character message)
   const isExceptional = isExceptionalPerformance(context);
   
-  // Fun elements: ~5% chance, ONLY on correct answers, and ONLY if not showing character
-  // Reduced from 15% to make question flow snappier
-  const showFunElement = isCorrect && !isExceptional && Math.random() < 0.05;
+  // Fun elements: ~2% chance, ONLY on correct answers with streak 3+, and ONLY if not showing character
+  // Made very rare to keep question flow snappy
+  const showFunElement = isCorrect && !isExceptional && streak >= 3 && Math.random() < 0.02;
   
   if (showFunElement) {
     const funElement = getRandomFunElement(level);
