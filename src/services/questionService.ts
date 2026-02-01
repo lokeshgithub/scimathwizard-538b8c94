@@ -1152,7 +1152,7 @@ interface ExistingQuestion {
   correct_answer: string;
   explanation: string | null;
   hint: string | null;
-  sub_topic: string | null;
+  sub_topic?: string | null; // Optional - column may not exist yet
 }
 
 // Smart upload that detects changes and only updates modified questions
