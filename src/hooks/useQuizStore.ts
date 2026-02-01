@@ -50,6 +50,7 @@ interface QuizState {
   levelStats: { correct: number; total: number };
   questionHistory: number[]; // Track visited question indices for back navigation
   unlimitedPractice: boolean; // Allow unlimited practice mode
+  unlockedLevels: UnlockedLevels; // Track which levels are unlocked per topic
 }
 
 const initialSessionStats: SessionStats = {
@@ -106,7 +107,7 @@ const loadFromStorage = (): Partial<QuizState> => {
   return {};
 };
 
-const saveToStorage = (state: Partial<QuizState> & { unlockedLevels?: UnlockedLevels }) => {
+const saveToStorage = (state: Partial<QuizState>) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       schemaVersion: SCHEMA_VERSION,

@@ -471,7 +471,7 @@ export const TopicDashboard = ({
       <SignUpPrompt
         isOpen={showSignUpPrompt}
         onClose={() => setShowSignUpPrompt(false)}
-        message="Sign up to unlock unlimited topics and track your progress!"
+        topicsUsed={guestLimits.topicsUsed.length}
       />
     </>
   );
