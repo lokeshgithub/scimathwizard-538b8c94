@@ -3,7 +3,7 @@ export interface Achievement {
   name: string;
   description: string;
   emoji: string;
-  category: 'questions' | 'streak' | 'mastery' | 'speed' | 'special';
+  category: 'questions' | 'streak' | 'mastery' | 'speed' | 'special' | 'growth';
   requirement: number;
   unlocked: boolean;
   unlockedAt?: number;
@@ -68,6 +68,13 @@ export const ACHIEVEMENTS: Omit<Achievement, 'unlocked' | 'unlockedAt' | 'progre
   { id: 'comeback_kid', name: 'Comeback Kid', description: 'Retry and pass a level you failed', emoji: '💪', category: 'special', requirement: 1, tier: 'bronze' },
   { id: 'consistent', name: 'Consistent Learner', description: 'Practice 3 days in a row', emoji: '📅', category: 'special', requirement: 3, tier: 'bronze' },
   { id: 'dedicated', name: 'Truly Dedicated', description: 'Practice 7 days in a row', emoji: '🎯', category: 'special', requirement: 7, tier: 'gold' },
+
+  // Growth Mindset Achievements (new)
+  { id: 'growth_mindset', name: 'Growth Mindset', description: 'Attempt a level above your comfort zone', emoji: '🌱', category: 'growth', requirement: 1, tier: 'bronze' },
+  { id: 'deep_learner', name: 'Deep Learner', description: 'Master all levels in a single topic', emoji: '🎓', category: 'growth', requirement: 1, tier: 'gold' },
+  { id: 'memory_master', name: 'Memory Master', description: 'Complete 5 spaced repetition reviews on time', emoji: '🧠', category: 'growth', requirement: 5, tier: 'silver' },
+  { id: 'challenge_seeker', name: 'Challenge Seeker', description: 'Answer 10 Level 5+ questions correctly', emoji: '🏔️', category: 'growth', requirement: 10, tier: 'gold' },
+  { id: 'resilient', name: 'Resilient', description: 'Improve accuracy by 20% on a retried level', emoji: '🔄', category: 'growth', requirement: 1, tier: 'silver' },
 ];
 
 export const TIER_COLORS = {

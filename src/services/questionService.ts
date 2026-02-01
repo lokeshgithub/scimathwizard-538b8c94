@@ -377,56 +377,178 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
 };
 
 const TOPIC_NAME_MAP: Record<string, string> = {
+  // Integers
   'integers': 'Integers',
+  'integer': 'Integers',
+  // Rational Numbers
   'rationalnumbers': 'Rational Numbers',
   'rational numbers': 'Rational Numbers',
+  'rational number': 'Rational Numbers',
+  // Fractions
   'fractions': 'Fractions',
+  'fraction': 'Fractions',
+  // Decimals
   'decimals': 'Decimals',
+  'decimal': 'Decimals',
   'decimal fractions': 'Decimals',
+  // Exponents and Powers
   'exponentsandpowers': 'Exponents and Powers',
   'exponents and powers': 'Exponents and Powers',
   'exponents': 'Exponents and Powers',
+  'exponent': 'Exponents and Powers',
+  'powers': 'Exponents and Powers',
+  // Ratio and Proportion
+  'ratioandproportion': 'Ratio and Proportion',
+  'ratio and proportion': 'Ratio and Proportion',
+  'ratioproportion': 'Ratio and Proportion',
+  'ratio proportion': 'Ratio and Proportion',
   'ratioandprop': 'Ratio and Proportion',
   'ratio and prop': 'Ratio and Proportion',
-  'ratio and proportion': 'Ratio and Proportion',
+  'ratio': 'Ratio and Proportion',
+  'proportion': 'Ratio and Proportion',
+  // Unitary Methods
   'unitarymethods': 'Unitary Methods',
   'unitary methods': 'Unitary Methods',
   'unitary method': 'Unitary Methods',
+  'unitarymethod': 'Unitary Methods',
+  // Percentages
   'percentages': 'Percentages',
+  'percentage': 'Percentages',
+  'percent': 'Percentages',
   'percent and percentage': 'Percentages',
+  'percentpercentage': 'Percentages',
+  'percent percentage': 'Percentages',
+  // Profit and Loss
   'profitandloss': 'Profit and Loss',
   'profit and loss': 'Profit and Loss',
+  'profitloss': 'Profit and Loss',
+  'profit loss': 'Profit and Loss',
   'profit loss and discount': 'Profit and Loss',
+  'profitlossdiscount': 'Profit and Loss',
+  'profit loss discount': 'Profit and Loss',
+  'profit': 'Profit and Loss',
+  'loss': 'Profit and Loss',
+  'discount': 'Profit and Loss',
+  // Simple Interest
   'simpleinterest': 'Simple Interest',
   'simple interest': 'Simple Interest',
+  'interest': 'Simple Interest',
+  // Algebraic Expressions
   'algebraicexpressions': 'Algebraic Expressions',
   'algebraic expressions': 'Algebraic Expressions',
   'algebraic_expressions': 'Algebraic Expressions',
+  'algebraic expression': 'Algebraic Expressions',
+  'algebra': 'Algebraic Expressions',
   'fundamental concepts': 'Algebraic Expressions',
+  // Probability
   'probability': 'Probability',
+  // Linear Equations
   'linearequations': 'Linear Equations',
   'linear equations': 'Linear Equations',
+  'linear equation': 'Linear Equations',
   'simple linear equations': 'Linear Equations',
+  // Set Concepts
   'setconcepts': 'Set Concepts',
   'set concepts': 'Set Concepts',
   'sets': 'Set Concepts',
+  'set': 'Set Concepts',
+  // Lines and Angles
   'linesandangles': 'Lines and Angles',
   'lines and angles': 'Lines and Angles',
+  'lines': 'Lines and Angles',
+  'angles': 'Lines and Angles',
+  // Triangles
   'triangles': 'Triangles',
+  'triangle': 'Triangles',
+  // Pythagoras Theorem
   'pythagorastheorem': 'Pythagoras Theorem',
   'pythagoras theorem': 'Pythagoras Theorem',
+  'pythagoras': 'Pythagoras Theorem',
+  // Symmetry
   'symmetry': 'Symmetry',
+  // Perimeter and Area
   'perimeter and area': 'Perimeter and Area',
   'perimeterandarea': 'Perimeter and Area',
+  'perimeter': 'Perimeter and Area',
+  'area': 'Perimeter and Area',
+  // Congruence
   'congruence': 'Congruence',
   'congruent triangles': 'Congruence',
+  'congruent': 'Congruence',
+  // Data Handling
   'datahandling': 'Data Handling',
   'data handling': 'Data Handling',
+  'data': 'Data Handling',
+  // Mensuration
   'mensuration': 'Mensuration',
+  // Quadrilaterals
   'quadrilaterals': 'Quadrilaterals',
+  'quadrilateral': 'Quadrilaterals',
+  // Circles
   'circles': 'Circles',
+  'circle': 'Circles',
+  // Constructions
   'constructions': 'Constructions',
+  'construction': 'Constructions',
 };
+
+/**
+ * Calculate similarity between two strings (0-1)
+ * Uses a combination of techniques for robust matching
+ */
+function calculateSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const s2 = str2.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (s1 === s2) return 1;
+  if (s1.length === 0 || s2.length === 0) return 0;
+
+  // Check if one contains the other
+  if (s1.includes(s2) || s2.includes(s1)) {
+    const containmentScore = Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length);
+    return Math.max(0.7, containmentScore);
+  }
+
+  // Calculate word overlap
+  const words1 = new Set(str1.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+  const words2 = new Set(str2.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+
+  if (words1.size > 0 && words2.size > 0) {
+    const intersection = [...words1].filter(w => words2.has(w)).length;
+    const union = new Set([...words1, ...words2]).size;
+    const jaccardScore = intersection / union;
+    if (jaccardScore > 0.5) return jaccardScore;
+  }
+
+  // Levenshtein distance based similarity
+  const maxLen = Math.max(s1.length, s2.length);
+  const distance = levenshteinDistance(s1, s2);
+  return 1 - (distance / maxLen);
+}
+
+/**
+ * Levenshtein distance between two strings
+ */
+function levenshteinDistance(s1: string, s2: string): number {
+  const m = s1.length;
+  const n = s2.length;
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+
+  return dp[m][n];
+}
 
 /**
  * Parse a filename/sheet name to extract topic name and level
@@ -473,36 +595,64 @@ export function parseTopicFromName(rawName: string): { topic: string; level: num
 
 /**
  * Find the best matching blueprint topic for a given input
+ * Uses fuzzy matching with 80% similarity threshold
  * Returns the official topic name if found, otherwise null
  */
 export function findBlueprintMatch(inputTopic: string, subject: string): string | null {
   const blueprintTopics = BLUEPRINT_TOPICS[subject] || BLUEPRINT_TOPICS['Math'];
   const normalizedInput = inputTopic.toLowerCase().replace(/\s+/g, '');
-  
-  // Direct match
+  const SIMILARITY_THRESHOLD = 0.6; // 60% minimum similarity for a match
+
+  // 1. Direct exact match (case-insensitive)
   for (const topic of blueprintTopics) {
     if (topic.toLowerCase() === inputTopic.toLowerCase()) {
       return topic;
     }
   }
-  
-  // Fuzzy match - remove spaces and compare
+
+  // 2. Check TOPIC_NAME_MAP first (explicit mappings)
+  const lowerInput = inputTopic.toLowerCase();
+  const noSpaceInput = lowerInput.replace(/\s+/g, '');
+  if (TOPIC_NAME_MAP[lowerInput]) {
+    return TOPIC_NAME_MAP[lowerInput];
+  }
+  if (TOPIC_NAME_MAP[noSpaceInput]) {
+    return TOPIC_NAME_MAP[noSpaceInput];
+  }
+
+  // 3. Fuzzy match - remove spaces and compare
   for (const topic of blueprintTopics) {
     const normalizedTopic = topic.toLowerCase().replace(/\s+/g, '');
     if (normalizedTopic === normalizedInput) {
       return topic;
     }
   }
-  
-  // Partial match - check if input contains topic or vice versa
+
+  // 4. Partial match - check if input contains topic or vice versa
   for (const topic of blueprintTopics) {
     const normalizedTopic = topic.toLowerCase().replace(/\s+/g, '');
     if (normalizedInput.includes(normalizedTopic) || normalizedTopic.includes(normalizedInput)) {
       return topic;
     }
   }
-  
-  return null;
+
+  // 5. Similarity-based fuzzy match (find best match above threshold)
+  let bestMatch: string | null = null;
+  let bestScore = SIMILARITY_THRESHOLD;
+
+  for (const topic of blueprintTopics) {
+    const similarity = calculateSimilarity(inputTopic, topic);
+    if (similarity > bestScore) {
+      bestScore = similarity;
+      bestMatch = topic;
+    }
+  }
+
+  if (bestMatch) {
+    console.log(`Fuzzy matched "${inputTopic}" → "${bestMatch}" (${(bestScore * 100).toFixed(0)}% similarity)`);
+  }
+
+  return bestMatch;
 }
 
 // Normalize topic name to a clean, human-readable format
@@ -929,8 +1079,20 @@ export function parseCSVContent(text: string): Array<{
   const commaCount = (firstLine.match(/,/g) || []).length;
   const delimiter = tabCount > commaCount ? '\t' : ',';
 
-  // Parse delimited content handling multi-line quoted fields
+  // Parse delimited content
+  // For TSV files, use simple split (quotes are just regular characters)
+  // For CSV files, handle quoted fields properly
   const parseDelimited = (content: string, delim: string): string[][] => {
+    // For TSV (tab-delimited), use simple parsing - quotes are NOT special
+    // This avoids issues with unescaped quotes in field content
+    if (delim === '\t') {
+      return content
+        .split(/\r?\n/)
+        .filter(line => line.trim().length > 0)
+        .map(line => line.split('\t').map(field => field.trim()));
+    }
+
+    // For CSV (comma-delimited), handle quoted fields
     const rows: string[][] = [];
     let currentRow: string[] = [];
     let currentField = '';

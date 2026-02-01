@@ -83,8 +83,9 @@ export const useSoundEffects = () => {
     playCorrect: useCallback(() => play('correct'), [play]),
     playIncorrect: useCallback(() => play('incorrect'), [play]),
     playStreak: useCallback((count: number) => {
-      if (count >= 5) play('streak5');
-      else if (count >= 3) play('streak3');
+      // Only play streak sounds at 5+ and 10+ (reduced frequency for snappier flow)
+      if (count >= 10) play('streak5');
+      else if (count >= 5) play('streak3');
     }, [play]),
     playLevelUp: useCallback(() => play('levelUp'), [play]),
     playAchievement: useCallback(() => play('achievement'), [play]),

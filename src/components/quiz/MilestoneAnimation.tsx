@@ -12,10 +12,11 @@ export const MilestoneAnimation = ({ milestone, onComplete }: MilestoneAnimation
   useEffect(() => {
     if (milestone) {
       setVisible(true);
+      // Reduced from 2500ms to 1500ms for snappier flow
       const timer = setTimeout(() => {
         setVisible(false);
-        setTimeout(onComplete, 300);
-      }, 2500);
+        setTimeout(onComplete, 200);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [milestone, onComplete]);

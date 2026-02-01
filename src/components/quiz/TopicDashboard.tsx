@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
-import { 
-  Sparkles, Flame, Target, TrendingUp, Play, 
-  ChevronRight, Zap, Award, BookOpen, Lock
+import {
+  Sparkles, Flame, Target, TrendingUp, Play,
+  ChevronRight, Zap, Award, BookOpen, Lock, Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
 import { SignUpPrompt } from './SignUpPrompt';
 import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
+import type { DueTopic } from '@/services/spacedRepetitionService';
 
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
@@ -20,6 +21,7 @@ interface TopicDashboardProps {
   isAdmin?: boolean;
   currentSubject?: string;
   isLoggedIn?: boolean;
+  dueTopics?: DueTopic[];
 }
 
 const formatName = (name: string) => {
@@ -90,21 +92,32 @@ const getTopicIcon = (name: string): string => {
   return '📚';
 };
 
-export const TopicDashboard = ({ 
-  topics, 
-  currentTopic, 
-  getProgress, 
+export const TopicDashboard = ({
+  topics,
+  currentTopic,
+  getProgress,
   onSelectTopic,
   onStartMixedQuiz,
   getTopicLevels,
   isAdmin = false,
   currentSubject = 'math',
-  isLoggedIn = false
+  isLoggedIn = false,
+  dueTopics = []
 }: TopicDashboardProps) => {
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
   const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
+
+  // Create a Set of due topic names for quick lookup
+  const dueTopicNames = useMemo(() => {
+    return new Set(dueTopics.map(dt => dt.topic_name));
+  }, [dueTopics]);
+
+  // Get due topic info for a specific topic
+  const getDueTopicInfo = useCallback((topicName: string): DueTopic | undefined => {
+    return dueTopics.find(dt => dt.topic_name === topicName);
+  }, [dueTopics]);
 
   // Calculate topic stats
   const topicStats = useMemo(() => {
@@ -406,6 +419,24 @@ export const TopicDashboard = ({
                 transition={{ duration: 2, repeat: Infinity }}
               >
                 <Award className="w-4 h-4 text-white" />
+              </motion.div>
+            )}
+
+            {/* Spaced Repetition Review Due Indicator */}
+            {dueTopicNames.has(topic.name) && !topic.isComplete && (
+              <motion.div
+                className={`absolute -top-1 ${topic.isComplete ? '-right-10' : '-right-1'} w-7 h-7 rounded-full flex items-center justify-center shadow-lg ${
+                  getDueTopicInfo(topic.name)?.urgency === 'high'
+                    ? 'bg-gradient-to-br from-red-400 to-red-600'
+                    : getDueTopicInfo(topic.name)?.urgency === 'medium'
+                    ? 'bg-gradient-to-br from-amber-400 to-orange-500'
+                    : 'bg-gradient-to-br from-blue-400 to-blue-600'
+                }`}
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                title={`Review due${getDueTopicInfo(topic.name)?.days_overdue ? ` (${getDueTopicInfo(topic.name)?.days_overdue} days overdue)` : ''}`}
+              >
+                <Bell className="w-3.5 h-3.5 text-white" />
               </motion.div>
             )}
 

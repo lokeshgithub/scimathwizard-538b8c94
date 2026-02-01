@@ -13,21 +13,22 @@ import type {
 } from '@/types/quiz';
 import { fetchAllQuestions, logAnswerToServer } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
+import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
+import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
-const THRESHOLD = 0.9;
-const PER_LEVEL = 5;
+const SCHEMA_VERSION = 2; // Increment when storage format changes
+const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
+const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
 const MAX_SUPPORTED_LEVEL = 7; // Maximum levels we support
 
-// Streak-based star rewards
-const getStreakStars = (streak: number): number => {
-  if (streak >= 5) return 30; // 5+ in a row = 30 stars
-  if (streak >= 3) return 20; // 3-4 in a row = 20 stars
-  if (streak >= 2) return 15; // 2 in a row = 15 stars
-  return 10; // 1st correct = 10 stars
-};
+// Star rewards now use level-based system from masteryRewards.ts
+// getQuestionStars(isCorrect, streak, level) handles:
+// - Base stars (10)
+// - Level multiplier (L1=1x to L7=3x)
+// - Streak multiplier (capped at 3x to prevent grinding)
 
 // Milestone definitions
 const STREAK_MILESTONES = [5, 7, 10, 15, 20];
@@ -69,10 +70,30 @@ const loadFromStorage = (): Partial<QuizState> => {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
       const parsed = JSON.parse(data);
+      const storedVersion = parsed.schemaVersion || 1;
+
+      // Migrate question tracking from v1 to v2 (add masteredCleanly, attemptCount)
+      let questionTracking = parsed.questionTracking || {};
+      if (storedVersion < 2) {
+        const migratedTracking: QuestionTracking = {};
+        for (const [qId, status] of Object.entries(questionTracking)) {
+          const oldStatus = status as { answeredCorrectly?: boolean; solutionViewed?: boolean };
+          migratedTracking[qId] = {
+            answeredCorrectly: oldStatus.answeredCorrectly || false,
+            solutionViewed: oldStatus.solutionViewed || false,
+            // If they answered correctly and didn't view solution, consider it clean
+            masteredCleanly: (oldStatus.answeredCorrectly && !oldStatus.solutionViewed) || false,
+            attemptCount: oldStatus.answeredCorrectly ? 1 : 0,
+          };
+        }
+        questionTracking = migratedTracking;
+      }
+
+      // Progress stays the same - existing mastered levels remain mastered
       return {
         banks: parsed.banks || {},
         progress: parsed.progress || {},
-        questionTracking: parsed.questionTracking || {},
+        questionTracking,
         sessionStats: parsed.sessionStats || initialSessionStats,
       };
     }
@@ -85,6 +106,7 @@ const loadFromStorage = (): Partial<QuizState> => {
 const saveToStorage = (state: Partial<QuizState>) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
       banks: state.banks,
       progress: state.progress,
       questionTracking: state.questionTracking,
@@ -293,12 +315,14 @@ export const useQuizStore = () => {
   const getAvailableQuestions = useCallback((topicName: string, lvl: number): Question[] => {
     const allQuestions = banks[subject]?.[topicName] || [];
     const levelQuestions = allQuestions.filter(q => q.level === lvl);
-    
-    // Filter out questions that have been answered correctly or solution viewed
+
+    // Filter out questions that were mastered cleanly (correct WITHOUT viewing solution)
+    // Questions where solution was viewed should reappear for true mastery
     return levelQuestions.filter(q => {
       const status = questionTracking[q.id];
       if (!status) return true;
-      return !status.answeredCorrectly && !status.solutionViewed;
+      // Only exclude if masteredCleanly - viewing solution doesn't count as mastery
+      return !status.masteredCleanly;
     });
   }, [banks, subject, questionTracking]);
 
@@ -362,25 +386,39 @@ export const useQuizStore = () => {
   }, [banks, subject]);
 
   const markQuestionAnswered = useCallback((questionId: string, correct: boolean) => {
-    setQuestionTracking(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        answeredCorrectly: correct || prev[questionId]?.answeredCorrectly || false,
-        solutionViewed: prev[questionId]?.solutionViewed || false,
-      },
-    }));
+    setQuestionTracking(prev => {
+      const existing = prev[questionId];
+      const previouslyViewed = existing?.solutionViewed || false;
+      const previousAttempts = existing?.attemptCount || 0;
+
+      // Clean mastery = correct answer WITHOUT having viewed the solution
+      const masteredCleanly = correct && !previouslyViewed;
+
+      return {
+        ...prev,
+        [questionId]: {
+          answeredCorrectly: correct || existing?.answeredCorrectly || false,
+          solutionViewed: previouslyViewed,
+          masteredCleanly: masteredCleanly || existing?.masteredCleanly || false,
+          attemptCount: previousAttempts + 1,
+        },
+      };
+    });
   }, []);
 
   const markSolutionViewed = useCallback((questionId: string) => {
-    setQuestionTracking(prev => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        answeredCorrectly: prev[questionId]?.answeredCorrectly || false,
-        solutionViewed: true,
-      },
-    }));
+    setQuestionTracking(prev => {
+      const existing = prev[questionId];
+      return {
+        ...prev,
+        [questionId]: {
+          answeredCorrectly: existing?.answeredCorrectly || false,
+          solutionViewed: true,
+          masteredCleanly: existing?.masteredCleanly || false,
+          attemptCount: existing?.attemptCount || 0,
+        },
+      };
+    });
   }, []);
 
   const answerQuestion = useCallback(async (selectedIndex: number): Promise<{ isCorrect: boolean; correctIndex: number; question: Question | null; timeSpent: number }> => {
@@ -420,13 +458,14 @@ export const useQuizStore = () => {
       total: prev.total + 1,
     }));
 
-    // Update session stats with streak-based stars
+    // Update session stats with level-based star rewards
     setSessionStats(prev => {
       const newStreak = isCorrect ? prev.streak + 1 : 0;
       const newTotalCorrect = prev.totalCorrect + (isCorrect ? 1 : 0);
-      const starsEarned = isCorrect ? getStreakStars(newStreak) : 0;
+      // Use new level-aware star calculation (streak capped at 3x)
+      const starsEarned = getQuestionStars(isCorrect, newStreak, currentQ.level);
       const milestoneBonus = isCorrect ? getMilestoneBonus(newStreak, newTotalCorrect) : 0;
-      
+
       return {
         solved: prev.solved + 1,
         correct: prev.correct + (isCorrect ? 1 : 0),
@@ -444,11 +483,24 @@ export const useQuizStore = () => {
     return { isCorrect, correctIndex, question: currentQ, timeSpent };
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
 
+  // Record topic for spaced repetition (non-blocking)
+  const recordTopicForSpacedRepetition = useCallback((topicName: string, accuracy: number) => {
+    // Fire and forget - don't block quiz flow on SR update
+    updatePracticeSchedule(topicName, subject, accuracy * 100).catch(err => {
+      console.error('Failed to update spaced repetition schedule:', err);
+    });
+  }, [subject]);
+
   const checkMastery = useCallback((): 'passed' | 'failed' | 'continue' => {
     if (levelStats.total < PER_LEVEL) return 'continue';
-    
+
     const accuracy = levelStats.correct / levelStats.total;
-    
+
+    // Always record topic for spaced repetition (both pass and fail)
+    if (topic) {
+      recordTopicForSpacedRepetition(topic, accuracy);
+    }
+
     if (accuracy >= THRESHOLD) {
       // Mark level as mastered
       setProgress(prev => {
@@ -460,18 +512,20 @@ export const useQuizStore = () => {
         };
         return { ...prev, [topic!]: topicProg };
       });
-      
+
+      // Award level-based completion stars (higher levels = more stars)
+      const completionStars = getLevelCompletionStars(level, accuracy);
       setSessionStats(prev => ({
         ...prev,
         mastered: prev.mastered + 1,
-        stars: prev.stars + 100, // Bonus stars for level mastery
+        stars: prev.stars + completionStars,
       }));
-      
+
       return 'passed';
     }
-    
+
     return 'failed';
-  }, [levelStats, level, topic, getTopicProgress]);
+  }, [levelStats, level, topic, getTopicProgress, recordTopicForSpacedRepetition]);
 
   const advanceLevel = useCallback(() => {
     if (level < currentMaxLevel) {

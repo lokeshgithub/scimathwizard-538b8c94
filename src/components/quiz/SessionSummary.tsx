@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { SessionAnalysis } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ const formatName = (name: string) => {
 export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryProps) => {
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [studentName, setStudentName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
@@ -83,6 +84,53 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
     }
   };
 
+  // Generate fallback recommendations based on analysis data
+  const generateFallbackRecommendations = useCallback(() => {
+    const lines: string[] = [];
+
+    lines.push('## Your Practice Summary');
+
+    if (analysis.overallAccuracy >= 0.8) {
+      lines.push(`Great work! You achieved ${Math.round(analysis.overallAccuracy * 100)}% accuracy.`);
+    } else if (analysis.overallAccuracy >= 0.6) {
+      lines.push(`Good progress! You achieved ${Math.round(analysis.overallAccuracy * 100)}% accuracy.`);
+    } else {
+      lines.push(`Keep practicing! You achieved ${Math.round(analysis.overallAccuracy * 100)}% accuracy.`);
+    }
+
+    if (analysis.weaknesses.length > 0) {
+      lines.push('');
+      lines.push('## Focus Areas');
+      lines.push(`The following topics need more practice:`);
+      analysis.weaknesses.forEach(topic => {
+        lines.push(`- ${topic.replace(/_/g, ' ')}`);
+      });
+    }
+
+    if (analysis.strengths.length > 0) {
+      lines.push('');
+      lines.push('## Strengths');
+      lines.push(`You did well in:`);
+      analysis.strengths.forEach(topic => {
+        lines.push(`- ${topic.replace(/_/g, ' ')}`);
+      });
+    }
+
+    if (analysis.slowTopics.length > 0) {
+      lines.push('');
+      lines.push('## Speed Tips');
+      lines.push(`Try timed practice for: ${analysis.slowTopics.map(t => t.replace(/_/g, ' ')).join(', ')}`);
+    }
+
+    lines.push('');
+    lines.push('## Next Steps');
+    lines.push('- Review explanations for questions you missed');
+    lines.push('- Practice weak topics with lower difficulty first');
+    lines.push('- Take breaks between study sessions');
+
+    return lines.join('\n');
+  }, [analysis.overallAccuracy, analysis.weaknesses, analysis.strengths, analysis.slowTopics]);
+
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (analysis.totalQuestions === 0) {
@@ -107,16 +155,18 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
 
         if (error) throw error;
         setRecommendations(data.recommendations || '');
+        setAiError(null);
       } catch (error) {
         console.error('Error fetching AI recommendations:', error);
-        setRecommendations('Keep practicing! Focus on topics where you scored below 80% and review explanations for questions you missed.');
+        setAiError('AI analysis temporarily unavailable. Here are your personalized recommendations:');
+        setRecommendations(generateFallbackRecommendations());
       } finally {
         setIsLoadingAI(false);
       }
     };
 
     fetchRecommendations();
-  }, [analysis, subject]);
+  }, [analysis, subject, generateFallbackRecommendations]);
 
   if (analysis.totalQuestions === 0) {
     return (
@@ -249,8 +299,14 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
           {/* AI Recommendations */}
           <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
             <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" /> AI Coach Recommendations
+              <BookOpen className="w-5 h-5 text-primary" /> {aiError ? 'Recommendations' : 'AI Coach Recommendations'}
             </h3>
+            {aiError && (
+              <div className="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {aiError}
+              </div>
+            )}
             {isLoadingAI ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />

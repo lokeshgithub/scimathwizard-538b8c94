@@ -1,10 +1,10 @@
 /**
  * Feedback Service
- * 
+ *
  * Manages feedback display logic:
  * - Shows either character message OR fun element (not both)
- * - Fun elements appear rarely (~15% chance)
- * - Character "special" messages only for exceptional performance (streak >= 5 or struggling)
+ * - Fun elements appear rarely (~5% chance) - reduced for snappier flow
+ * - Character "special" messages only for exceptional performance (streak >= 7 or major milestones)
  * - Tracks used messages in session to prevent repetition
  */
 
@@ -60,28 +60,26 @@ interface FeedbackContext {
 
 /**
  * Determines if student is performing exceptionally (worth special character message)
+ * Made more selective to reduce interruptions between questions
  */
 function isExceptionalPerformance(context: FeedbackContext): boolean {
-  // Exceptional success: streak of 5+
-  if (context.isCorrect && context.streak >= 4) { // Will become 5 after this answer
+  // Exceptional success: streak of 7+ (reduced frequency)
+  if (context.isCorrect && context.streak >= 6) { // Will become 7 after this answer
     return true;
   }
-  
-  // Exceptional struggle: 3+ wrong in last 5 questions
-  if (!context.isCorrect && context.recentWrongCount >= 2) { // Will become 3 after this answer
+
+  // Exceptional struggle: 4+ wrong in last 5 questions (more lenient)
+  if (!context.isCorrect && context.recentWrongCount >= 3) { // Will become 4 after this answer
     return true;
   }
-  
-  // First question of session (welcome feel)
-  if (context.totalAnswered === 0) {
+
+  // First question of session removed - simple feedback is fine for first question
+
+  // Major milestone: every 15th correct answer (less frequent)
+  if (context.isCorrect && context.streak > 0 && context.streak % 15 === 0) {
     return true;
   }
-  
-  // Major milestone: every 10th correct answer
-  if (context.isCorrect && context.streak > 0 && context.streak % 10 === 0) {
-    return true;
-  }
-  
+
   return false;
 }
 
@@ -168,9 +166,9 @@ export function getFeedback(context: FeedbackContext): FeedbackResult {
   // Check if this is exceptional performance (deserves character message)
   const isExceptional = isExceptionalPerformance(context);
   
-  // Fun elements: ~15% chance, ONLY on correct answers, and ONLY if not showing character
-  // Fun elements are shown INSTEAD of character messages when they appear
-  const showFunElement = isCorrect && !isExceptional && Math.random() < 0.15;
+  // Fun elements: ~5% chance, ONLY on correct answers, and ONLY if not showing character
+  // Reduced from 15% to make question flow snappier
+  const showFunElement = isCorrect && !isExceptional && Math.random() < 0.05;
   
   if (showFunElement) {
     const funElement = getRandomFunElement(level);

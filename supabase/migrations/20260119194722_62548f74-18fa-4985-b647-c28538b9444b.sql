@@ -19,7 +19,7 @@ CREATE TABLE public.topics (
 CREATE TABLE public.questions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   topic_id UUID NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
-  level INTEGER NOT NULL CHECK (level >= 1 AND level <= 5),
+  level INTEGER NOT NULL CHECK (level >= 1 AND level <= 7),
   question TEXT NOT NULL,
   option_a TEXT NOT NULL,
   option_b TEXT NOT NULL,

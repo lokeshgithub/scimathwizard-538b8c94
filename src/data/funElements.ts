@@ -186,29 +186,26 @@ export const getRandomFunElement = (level: number): FunElement | null => {
 };
 
 // Special celebration animations for milestones
+// Rebalanced to focus on mastery over volume
 export const getMilestoneAnimation = (streak: number, totalCorrect: number): { emoji: string; message: string; animation: string } | null => {
-  // Streak milestones take priority
+  // Streak milestones - capped at meaningful levels (no grinding incentive)
   const streakMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    5: { emoji: '🔥', message: "ON FIRE! 5 in a row! +50 bonus stars! ⭐", animation: 'fire' },
-    7: { emoji: '💎', message: "BRILLIANT! 7 streak! +75 bonus stars! 💫", animation: 'diamond' },
-    10: { emoji: '🎆', message: "UNSTOPPABLE! 10 streak! +100 bonus stars! 🌟", animation: 'fireworks' },
-    15: { emoji: '👑', message: "LEGENDARY! 15 streak! +150 bonus stars! ✨", animation: 'crown' },
-    20: { emoji: '🏆', message: "GODLIKE! 20 streak! +200 bonus stars! 🎉", animation: 'trophy' },
+    5: { emoji: '🔥', message: "ON FIRE! 5 in a row! +30 bonus stars! ⭐", animation: 'fire' },
+    10: { emoji: '💎', message: "BRILLIANT! 10 streak! +50 bonus stars! 💫", animation: 'diamond' },
+    // Beyond 10 gives no extra milestone - focus on accuracy, not grinding
   };
 
   if (streakMilestones[streak]) {
     return streakMilestones[streak];
   }
 
-  // Total correct milestones
+  // Total correct milestones - reduced frequency, more meaningful
   const totalMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
     10: { emoji: '🎯', message: "10 total correct! You're getting started! 🌟", animation: 'stars' },
-    25: { emoji: '📚', message: "25 questions mastered! Knowledge is power! 💪", animation: 'books' },
-    50: { emoji: '🚀', message: "50 correct! You're a learning rocket! 🌙", animation: 'rocket' },
-    75: { emoji: '🧠', message: "75 correct! Big brain energy! ⚡", animation: 'brain' },
-    100: { emoji: '💯', message: "100 CORRECT! You're a CHAMPION! 🏆", animation: 'century' },
-    150: { emoji: '🌈', message: "150 correct! Absolutely AMAZING! ✨", animation: 'rainbow' },
-    200: { emoji: '👑', message: "200 correct! You're a TRUE MASTER! 🎓", animation: 'master' },
+    50: { emoji: '📚', message: "50 questions answered! Keep building knowledge! 💪", animation: 'books' },
+    100: { emoji: '🚀', message: "100 correct! You're a learning rocket! 🌙", animation: 'rocket' },
+    200: { emoji: '💯', message: "200 CORRECT! You're a CHAMPION! 🏆", animation: 'century' },
+    // Removed 25, 75, 150 - too frequent, dilutes the feeling
   };
 
   if (totalMilestones[totalCorrect]) {
@@ -219,23 +216,21 @@ export const getMilestoneAnimation = (streak: number, totalCorrect: number): { e
 };
 
 // Get bonus stars for milestones
+// Rebalanced to cap streak bonuses and reduce volume-chasing
 export const getMilestoneBonus = (streak: number, totalCorrect: number): number => {
+  // Streak bonuses capped at reasonable levels
   const streakBonuses: Record<number, number> = {
-    5: 50,
-    7: 75,
-    10: 100,
-    15: 150,
-    20: 200,
+    5: 30,   // Reduced from 50
+    10: 50,  // Reduced from 100
+    // No more bonuses beyond 10 - prevents easy-topic grinding
   };
 
+  // Total correct bonuses - fewer milestones, still rewarding
   const totalBonuses: Record<number, number> = {
-    10: 25,
-    25: 50,
-    50: 100,
-    75: 150,
-    100: 250,
-    150: 350,
-    200: 500,
+    10: 20,   // Reduced
+    50: 75,   // Reduced from 100
+    100: 150, // Reduced from 250
+    200: 300, // Reduced from 500
   };
 
   return (streakBonuses[streak] || 0) + (totalBonuses[totalCorrect] || 0);

@@ -24,7 +24,7 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState('');
   const [grade, setGrade] = useState<number>(7);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string; auth?: string }>({});
 
   // Redirect if already logged in
   useEffect(() => {
@@ -59,19 +59,24 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setErrors(prev => ({ ...prev, auth: undefined }));
 
     if (isSignUp) {
       const { error } = await signUp(email, password, displayName, grade);
-      if (!error) {
+      if (error) {
+        setErrors(prev => ({ ...prev, auth: error.message }));
+      } else {
         navigate('/');
       }
     } else {
       const { error } = await signIn(email, password);
-      if (!error) {
+      if (error) {
+        setErrors(prev => ({ ...prev, auth: error.message }));
+      } else {
         navigate('/');
       }
     }
@@ -124,6 +129,17 @@ const Auth = () => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Auth Error Banner */}
+              {errors.auth && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm"
+                >
+                  {errors.auth}
+                </motion.div>
+              )}
+
               {isSignUp && (
                 <>
                   <div className="space-y-2">

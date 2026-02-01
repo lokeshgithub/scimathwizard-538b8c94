@@ -30,6 +30,7 @@ import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { Button } from '@/components/ui/button';
+import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -42,6 +43,7 @@ const Index = () => {
   const [modalPassed, setModalPassed] = useState(false);
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
   const [wasRetrying, setWasRetrying] = useState(false);
+  const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   
   // Track what we've already synced to avoid duplicate additions
   // Initialize with current session stats to prevent re-syncing on page reload
@@ -95,14 +97,32 @@ const Index = () => {
     achievements.recordSubjectExplored(quiz.subject);
   }, [quiz.subject, achievements]);
 
+  // Fetch due topics for spaced repetition (when user is logged in)
+  useEffect(() => {
+    if (!user) {
+      setDueTopics([]);
+      return;
+    }
+
+    const fetchDueTopics = async () => {
+      const { data } = await getDueTopics(quiz.subject);
+      if (data) {
+        setDueTopics(data);
+      }
+    };
+
+    fetchDueTopics();
+  }, [user, quiz.subject]);
+
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
     
-    // Play sound and confetti effects
+    // Play sound effects (confetti only for major streaks to reduce lag)
     if (result.isCorrect) {
       sound.playCorrect();
       const streak = quiz.sessionStats.streak;
-      if (streak >= 3) {
+      // Only play streak sounds/confetti at 5+ (reduced from 3 for snappier flow)
+      if (streak >= 5) {
         sound.playStreak(streak);
         confetti.fireStreak(streak);
       }
@@ -320,7 +340,7 @@ const Index = () => {
             {/* Show Dashboard when not in a quiz */}
             {!quiz.currentQuestion && (
               <>
-                <TopicDashboard 
+                <TopicDashboard
                   topics={topics}
                   currentTopic={quiz.topic}
                   getProgress={quiz.getTopicProgress}
@@ -330,6 +350,7 @@ const Index = () => {
                   isAdmin={false}
                   currentSubject={quiz.subject}
                   isLoggedIn={!!user}
+                  dueTopics={dueTopics}
                 />
 
                 {/* Spaced Repetition Card - show when logged in */}
@@ -388,7 +409,6 @@ const Index = () => {
                 canGoBack={quiz.canGoBack}
                 onSolutionViewed={quiz.markSolutionViewed}
                 onPrefetchNext={quiz.prefetchNextQuestion}
-                onHintUsed={quiz.deductStars}
               />
             )}
           </>

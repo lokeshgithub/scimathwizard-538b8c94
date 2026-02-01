@@ -35,6 +35,8 @@ export interface Progress {
 export interface QuestionStatus {
   answeredCorrectly: boolean;
   solutionViewed: boolean;
+  masteredCleanly: boolean; // Correct WITHOUT viewing solution first
+  attemptCount: number;
 }
 
 export interface QuestionTracking {

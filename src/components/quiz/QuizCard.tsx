@@ -7,12 +7,12 @@ import { FunElementCard } from './FunElementCard';
 import { SimpleFeedback } from './SimpleFeedback';
 import { MilestoneAnimation } from './MilestoneAnimation';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
-import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle, Star } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
 
-// Progressive hint star costs
-const HINT_COSTS = [5, 10, 15]; // 1st hint: 5 stars, 2nd: 10 stars, 3rd: 15 stars
+// Free hints - struggling students need MORE help, not less
+const MAX_FREE_HINTS = 3;
 
 interface QuizCardProps {
   question: Question;
@@ -25,7 +25,6 @@ interface QuizCardProps {
   canGoBack?: boolean;
   onSolutionViewed: (questionId: string) => void;
   onPrefetchNext?: () => void;
-  onHintUsed?: (cost: number) => void; // Callback to deduct stars
 }
 
 export const QuizCard = ({ 
@@ -38,8 +37,7 @@ export const QuizCard = ({
   onPrevious,
   canGoBack = false,
   onSolutionViewed,
-  onPrefetchNext,
-  onHintUsed
+  onPrefetchNext
 }: QuizCardProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -55,7 +53,9 @@ export const QuizCard = ({
   // Hint state
   const [hintsUsed, setHintsUsed] = useState(0);
   const [showHint, setShowHint] = useState(false);
-  const [totalHintCost, setTotalHintCost] = useState(0);
+
+  // Error state for answer validation
+  const [answerError, setAnswerError] = useState<string | null>(null);
   
   // Timer state
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -100,27 +100,20 @@ export const QuizCard = ({
     // Reset hint state for new question
     setHintsUsed(0);
     setShowHint(false);
-    setTotalHintCost(0);
+    // Reset error state
+    setAnswerError(null);
   }, [question.id]);
 
-  // Get next hint cost
-  const getNextHintCost = () => {
-    if (hintsUsed >= HINT_COSTS.length) return null;
-    return HINT_COSTS[hintsUsed];
-  };
+  // Check if more hints are available
+  const hasMoreHints = () => hintsUsed < MAX_FREE_HINTS;
 
-  // Handle using a hint
+  // Handle using a hint (now free!)
   const handleUseHint = useCallback(() => {
-    if (isAnswered || hintsUsed >= HINT_COSTS.length) return;
-    
-    const cost = HINT_COSTS[hintsUsed];
-    if (sessionStats.stars < cost) return; // Not enough stars
-    
+    if (isAnswered || hintsUsed >= MAX_FREE_HINTS) return;
+
     setHintsUsed(prev => prev + 1);
     setShowHint(true);
-    setTotalHintCost(prev => prev + cost);
-    onHintUsed?.(cost);
-  }, [isAnswered, hintsUsed, sessionStats.stars, onHintUsed]);
+  }, [isAnswered, hintsUsed]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -189,6 +182,7 @@ export const QuizCard = ({
       console.error('Error validating answer:', error);
       setIsValidating(false);
       setSelectedAnswer(null); // Reset on error
+      setAnswerError('Failed to validate answer. Please try again.');
     }
   }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, recentWrongCount, sessionStats.totalCorrect, sessionStats.solved, onPrefetchNext]);
 
@@ -246,8 +240,9 @@ export const QuizCard = ({
   return (
     <motion.div
       className="bg-card rounded-2xl shadow-card overflow-hidden"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0.9 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.1 }}
     >
       {/* Header */}
       <div className={`bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} p-4`}>
@@ -283,14 +278,27 @@ export const QuizCard = ({
 
       {/* Question */}
       <div className="p-6">
-        <motion.p 
-          className="text-lg font-medium text-foreground mb-4 leading-relaxed"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
+        <p className="text-lg font-medium text-foreground mb-4 leading-relaxed">
           {question.question}
-        </motion.p>
+        </p>
+
+        {/* Error Banner */}
+        {answerError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm flex items-center gap-2"
+          >
+            <XCircle className="w-4 h-4 flex-shrink-0" />
+            {answerError}
+            <button
+              onClick={() => setAnswerError(null)}
+              className="ml-auto text-destructive/70 hover:text-destructive"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
 
         {/* Hint Button - Only show before answering */}
         {!isAnswered && (
@@ -298,27 +306,22 @@ export const QuizCard = ({
             {!showHint ? (
               <motion.button
                 onClick={handleUseHint}
-                disabled={getNextHintCost() === null || sessionStats.stars < (getNextHintCost() || 0)}
+                disabled={!hasMoreHints()}
                 className={`
                   flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                  ${getNextHintCost() === null
+                  ${!hasMoreHints()
                     ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                    : sessionStats.stars < (getNextHintCost() || 0)
-                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                      : 'bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300'
+                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300'
                   }
                 `}
-                whileHover={sessionStats.stars >= (getNextHintCost() || 0) && getNextHintCost() !== null ? { scale: 1.02 } : {}}
-                whileTap={sessionStats.stars >= (getNextHintCost() || 0) && getNextHintCost() !== null ? { scale: 0.98 } : {}}
+                whileHover={hasMoreHints() ? { scale: 1.02 } : {}}
+                whileTap={hasMoreHints() ? { scale: 0.98 } : {}}
               >
                 <HelpCircle className="w-4 h-4" />
-                {getNextHintCost() !== null ? (
+                {hasMoreHints() ? (
                   <>
                     Need a hint?
-                    <span className="flex items-center gap-1 ml-1 text-xs opacity-75">
-                      <Star className="w-3 h-3" />
-                      -{getNextHintCost()}
-                    </span>
+                    <span className="text-xs opacity-75 ml-1">(Free)</span>
                   </>
                 ) : (
                   'No more hints available'
@@ -334,36 +337,25 @@ export const QuizCard = ({
                   <Lightbulb className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-amber-700 dark:text-amber-300 text-sm mb-1">
-                      Hint {hintsUsed} of {HINT_COSTS.length}
-                      <span className="text-xs ml-2 opacity-75">(Cost: {totalHintCost} ⭐)</span>
+                      Hint {hintsUsed} of {MAX_FREE_HINTS}
+                      <span className="text-xs ml-2 opacity-75 text-emerald-600 dark:text-emerald-400">(Free!)</span>
                     </p>
                     <p className="text-amber-800 dark:text-amber-200">
                       {question.hint}
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Option to get another hint if available */}
-                {getNextHintCost() !== null && (
+                {hasMoreHints() && (
                   <motion.button
                     onClick={handleUseHint}
-                    disabled={sessionStats.stars < (getNextHintCost() || 0)}
-                    className={`
-                      mt-3 ml-8 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all
-                      ${sessionStats.stars < (getNextHintCost() || 0)
-                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                        : 'bg-amber-200 hover:bg-amber-300 text-amber-800 dark:bg-amber-800/40 dark:hover:bg-amber-800/60 dark:text-amber-200'
-                      }
-                    `}
-                    whileHover={sessionStats.stars >= (getNextHintCost() || 0) ? { scale: 1.02 } : {}}
-                    whileTap={sessionStats.stars >= (getNextHintCost() || 0) ? { scale: 0.98 } : {}}
+                    className="mt-3 ml-8 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-amber-200 hover:bg-amber-300 text-amber-800 dark:bg-amber-800/40 dark:hover:bg-amber-800/60 dark:text-amber-200"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     <HelpCircle className="w-3 h-3" />
-                    Another hint
-                    <span className="flex items-center gap-0.5">
-                      <Star className="w-3 h-3" />
-                      -{getNextHintCost()}
-                    </span>
+                    Another hint (Free)
                   </motion.button>
                 )}
               </motion.div>
@@ -388,23 +380,22 @@ export const QuizCard = ({
                   w-full p-4 rounded-xl text-left transition-colors duration-150 flex items-center gap-3
                   ${isValidating && isSelected
                     ? 'bg-primary/30 ring-2 ring-primary'
-                    : !isAnswered 
-                      ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30' 
-                      : showAsCorrect 
-                        ? 'bg-success/20 ring-2 ring-success' 
-                        : showAsIncorrect 
-                          ? 'bg-destructive/20 ring-2 ring-destructive' 
+                    : !isAnswered
+                      ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30'
+                      : showAsCorrect
+                        ? 'bg-success/20 ring-2 ring-success'
+                        : showAsIncorrect
+                          ? 'bg-destructive/20 ring-2 ring-destructive'
                           : 'bg-muted opacity-60'
                   }
                 `}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ 
-                  opacity: 1, 
-                  x: 0,
+                initial={{ opacity: 0.8 }}
+                animate={{
+                  opacity: 1,
                   scale: isValidating && isSelected ? [1, 1.01, 1] : 1
                 }}
-                transition={{ 
-                  delay: 0.1 * index,
+                transition={{
+                  duration: 0.1,
                   scale: { duration: 0.3, repeat: isValidating && isSelected ? Infinity : 0 }
                 }}
                 whileHover={!isAnswered && !isValidating ? { scale: 1.01 } : undefined}

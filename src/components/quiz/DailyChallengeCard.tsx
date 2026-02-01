@@ -96,9 +96,9 @@ export const DailyChallengeCard = ({
 
   return (
     <>
-      {/* Compact Floating Badge - positioned below pathway nav */}
+      {/* Compact Floating Badge - positioned above the FABs */}
       <motion.div
-        className="fixed bottom-4 right-4 z-30"
+        className="fixed bottom-24 right-4 z-30"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, type: 'spring' }}
