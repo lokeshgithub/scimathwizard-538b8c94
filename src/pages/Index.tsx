@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -297,8 +298,12 @@ const Index = () => {
                     </Link>
                   )}
                   <Link to="/profile">
-                    <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-full px-3 py-1 cursor-pointer">
-                      <User className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-full pl-1 pr-3 py-1 cursor-pointer">
+                      <UserAvatar
+                        userId={user.id}
+                        displayName={profile?.display_name || 'Student'}
+                        size="sm"
+                      />
                       <span className="text-sm font-medium truncate max-w-[100px]">
                         {profile?.display_name || 'Student'}
                       </span>

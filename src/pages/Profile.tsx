@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  User, Award, Trophy, Star, GraduationCap, Download, 
-  ArrowLeft, TrendingUp, Target, Clock, Sparkles, 
-  Medal, Crown, BookOpen, Brain, ChevronRight, Loader2
+import {
+  User, Award, Trophy, Star, GraduationCap, Download,
+  ArrowLeft, TrendingUp, Target, Clock, Sparkles,
+  Medal, Crown, BookOpen, Brain, ChevronRight, Loader2, Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LEVEL_REWARDS, getLevelReward, getHighestUnlockedReward, getTotalBonusStars } from '@/data/levelRewards';
 import { exportCertificateToPdf } from '@/utils/exportCertificate';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { AvatarCustomizer } from '@/components/profile/AvatarCustomizer';
 
 interface AdaptiveResult {
   id: string;
@@ -30,6 +32,8 @@ const Profile = () => {
   const [adaptiveResults, setAdaptiveResults] = useState<AdaptiveResult[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
   const [downloadingCert, setDownloadingCert] = useState<number | null>(null);
+  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
+  const [avatarKey, setAvatarKey] = useState(0); // Force re-render when avatar changes
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -164,11 +168,23 @@ const Profile = () => {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            {/* Avatar */}
+            {/* Avatar - Clickable to customize */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-4xl">
-                {highestReward?.badge.icon || '👤'}
-              </div>
+              <button
+                onClick={() => setShowAvatarCustomizer(!showAvatarCustomizer)}
+                className="relative group"
+                title="Click to customize your avatar"
+              >
+                <UserAvatar
+                  key={avatarKey}
+                  userId={user.id}
+                  displayName={profile.display_name}
+                  size="xl"
+                />
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Settings className="w-8 h-8 text-white" />
+                </div>
+              </button>
               {highestReward && (
                 <motion.div
                   className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs font-bold"
@@ -184,7 +200,7 @@ const Profile = () => {
             <div className="flex-1 text-center sm:text-left">
               <h2 className="text-2xl font-bold text-foreground">{profile.display_name}</h2>
               <p className="text-muted-foreground">Class {profile.grade || 7} Student</p>
-              
+
               {/* Quick Stats */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-4">
                 <div className="flex items-center gap-1.5">
@@ -205,6 +221,26 @@ const Profile = () => {
               </div>
             </div>
           </div>
+
+          {/* Avatar Customizer - Collapsible */}
+          {showAvatarCustomizer && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 pt-6 border-t border-border"
+            >
+              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-primary" />
+                Customize Your Avatar
+              </h3>
+              <AvatarCustomizer
+                userId={user.id}
+                displayName={profile.display_name}
+                onSave={() => setAvatarKey(prev => prev + 1)}
+              />
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Badges & Titles */}
