@@ -1,11 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Trophy, Info, Loader2, Clock, 
-  AlertTriangle, Play, Medal, Eye, EyeOff
+import {
+  Trophy, Info, Loader2, Clock,
+  AlertTriangle, Play, Medal, Eye, EyeOff, X, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useOlympiadTest } from '@/hooks/useOlympiadTest';
@@ -51,6 +61,7 @@ export default function OlympiadTest() {
   const [showInfo, setShowInfo] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [strictMode, setStrictMode] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Timer for active test
   useEffect(() => {
@@ -351,6 +362,20 @@ export default function OlympiadTest() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4"
             >
+              {/* Exit button during active test */}
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExitConfirm(true)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Exit test"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Exit Test
+                </Button>
+              </div>
+
               {/* Progress Bar */}
               <div className="bg-card rounded-xl p-4 shadow-card">
                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
@@ -380,6 +405,32 @@ export default function OlympiadTest() {
             </motion.div>
           ) : null}
         </AnimatePresence>
+
+        {/* Exit Confirmation Dialog */}
+        <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave Test?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You've answered {olympiad.state.currentQuestionIndex} of {olympiad.state.questions.length} questions.
+                Your progress will not be saved if you exit now.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continue Test</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  olympiad.resetTest();
+                  handleHome();
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Exit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

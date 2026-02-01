@@ -19,6 +19,7 @@ import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
+const ANSWERED_IDS_KEY = 'magical-mastery-answered-ids'; // Track answered questions in session
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
@@ -197,7 +198,18 @@ export const useQuizStore = () => {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   // Track questions answered in current session - don't repeat these
-  const [sessionAnsweredIds, setSessionAnsweredIds] = useState<Set<string>>(new Set());
+  // Load from sessionStorage to persist across page refreshes
+  const [sessionAnsweredIds, setSessionAnsweredIds] = useState<Set<string>>(() => {
+    try {
+      const stored = sessionStorage.getItem(ANSWERED_IDS_KEY);
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Failed to load answered IDs:', e);
+    }
+    return new Set();
+  });
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
   // Start with loading=false if we have cached data, true otherwise
@@ -347,6 +359,17 @@ export const useQuizStore = () => {
       });
     }
   }, [topic, subject, level, levelStats]);
+
+  // Save answered question IDs to sessionStorage (persists across page refresh)
+  useEffect(() => {
+    if (sessionAnsweredIds.size > 0) {
+      try {
+        sessionStorage.setItem(ANSWERED_IDS_KEY, JSON.stringify([...sessionAnsweredIds]));
+      } catch (e) {
+        console.error('Failed to save answered IDs:', e);
+      }
+    }
+  }, [sessionAnsweredIds]);
 
   // Reset timer when question changes
   useEffect(() => {

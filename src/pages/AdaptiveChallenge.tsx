@@ -1,19 +1,31 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Brain, 
-  Sparkles, 
-  Play, 
+import {
+  Brain,
+  Sparkles,
+  Play,
   Target,
   Zap,
   Trophy,
   Info,
   Loader2,
   History,
-  Crosshair
+  Crosshair,
+  X,
+  Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuizStore } from '@/hooks/useQuizStore';
@@ -40,6 +52,7 @@ const AdaptiveChallenge = () => {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [showInfo, setShowInfo] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [percentileData, setPercentileData] = useState<{ percentile: number | null; totalResults: number } | null>(null);
@@ -372,16 +385,32 @@ const AdaptiveChallenge = () => {
 
         {/* Active Challenge - key forces full re-mount on question change to prevent answer state bleeding */}
         {adaptive.state.isActive && adaptive.state.currentQuestion && (
-          <AdaptiveQuizCard
-            key={`${adaptive.state.currentQuestion.id}-${adaptive.state.totalQuestions}`}
-            question={adaptive.state.currentQuestion}
-            currentLevel={adaptive.state.currentLevel}
-            progress={adaptive.progressPercentage}
-            questionsAnswered={adaptive.state.totalQuestions}
-            maxQuestions={adaptive.config.maxQuestions}
-            onAnswer={handleAnswer}
-            onNext={handleNext}
-          />
+          <div className="space-y-4">
+            {/* Exit button during active test */}
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExitConfirm(true)}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Exit challenge"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Exit
+              </Button>
+            </div>
+
+            <AdaptiveQuizCard
+              key={`${adaptive.state.currentQuestion.id}-${adaptive.state.totalQuestions}`}
+              question={adaptive.state.currentQuestion}
+              currentLevel={adaptive.state.currentLevel}
+              progress={adaptive.progressPercentage}
+              questionsAnswered={adaptive.state.totalQuestions}
+              maxQuestions={adaptive.config.maxQuestions}
+              onAnswer={handleAnswer}
+              onNext={handleNext}
+            />
+          </div>
         )}
 
         {/* Results */}
@@ -422,6 +451,32 @@ const AdaptiveChallenge = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Exit Confirmation Dialog */}
+        <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave Challenge?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You've answered {adaptive.state.totalQuestions} of {adaptive.config.maxQuestions} questions.
+                Your progress will not be saved if you exit now.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continue Challenge</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  adaptive.resetChallenge();
+                  handleHome();
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Exit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

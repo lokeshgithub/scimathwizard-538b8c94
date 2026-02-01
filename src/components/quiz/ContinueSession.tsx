@@ -37,29 +37,28 @@ export const ContinueSession = ({ currentSubject, onContinue, getTopicProgress }
   const [lastSession, setLastSession] = useState<LastSessionData | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('last-session');
-    if (stored) {
-      const data: LastSessionData = JSON.parse(stored);
-      // Only show if it's for the current subject and not too old (7 days)
-      const isRecent = Date.now() - data.timestamp < 7 * 24 * 60 * 60 * 1000;
-      if (data.subject === currentSubject && isRecent) {
-        setLastSession(data);
-      } else if (data.subject !== currentSubject) {
-        // Check if there's a session for this subject
-        const subjectKey = `last-session-${currentSubject}`;
-        const subjectStored = localStorage.getItem(subjectKey);
-        if (subjectStored) {
-          const subjectData: LastSessionData = JSON.parse(subjectStored);
-          const isSubjectRecent = Date.now() - subjectData.timestamp < 7 * 24 * 60 * 60 * 1000;
-          if (isSubjectRecent) {
-            setLastSession(subjectData);
-          } else {
-            setLastSession(null);
-          }
+    try {
+      // Use subject-specific key as the single source of truth
+      const subjectKey = `last-session-${currentSubject}`;
+      const stored = localStorage.getItem(subjectKey);
+
+      if (stored) {
+        const data: LastSessionData = JSON.parse(stored);
+        // Only show if not too old (7 days)
+        const isRecent = Date.now() - data.timestamp < 7 * 24 * 60 * 60 * 1000;
+        if (isRecent) {
+          setLastSession(data);
         } else {
           setLastSession(null);
+          // Clean up old session
+          localStorage.removeItem(subjectKey);
         }
+      } else {
+        setLastSession(null);
       }
+    } catch (e) {
+      console.error('Failed to load last session:', e);
+      setLastSession(null);
     }
   }, [currentSubject]);
 
@@ -111,13 +110,18 @@ export const ContinueSession = ({ currentSubject, onContinue, getTopicProgress }
 };
 
 // Helper function to save last session - call this when starting a topic
+// Uses single subject-specific key to avoid data divergence
 export const saveLastSession = (subject: string, topic: string, level: number) => {
-  const data: LastSessionData = {
-    subject,
-    topic,
-    level,
-    timestamp: Date.now(),
-  };
-  localStorage.setItem('last-session', JSON.stringify(data));
-  localStorage.setItem(`last-session-${subject}`, JSON.stringify(data));
+  try {
+    const data: LastSessionData = {
+      subject,
+      topic,
+      level,
+      timestamp: Date.now(),
+    };
+    // Use only subject-specific key as single source of truth
+    localStorage.setItem(`last-session-${subject}`, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save last session:', e);
+  }
 };

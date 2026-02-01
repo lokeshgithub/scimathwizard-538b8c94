@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const GUEST_TOPIC_LIMIT = 2;
-const SESSION_KEY = 'guest-topics-used';
+const STORAGE_KEY = 'guest-topics-used';
 
 interface GuestLimits {
   topicsUsed: string[];
@@ -15,20 +15,28 @@ interface GuestLimits {
 export const useGuestLimits = (isLoggedIn: boolean): GuestLimits => {
   const [topicsUsed, setTopicsUsed] = useState<string[]>([]);
 
-  // Load from sessionStorage on mount
+  // Load from localStorage on mount (persists across sessions)
   useEffect(() => {
     if (!isLoggedIn) {
-      const stored = sessionStorage.getItem(SESSION_KEY);
-      if (stored) {
-        setTopicsUsed(JSON.parse(stored));
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setTopicsUsed(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error('Failed to load guest limits:', e);
       }
     }
   }, [isLoggedIn]);
 
-  // Save to sessionStorage when topics change
+  // Save to localStorage when topics change
   useEffect(() => {
     if (!isLoggedIn && topicsUsed.length > 0) {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(topicsUsed));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(topicsUsed));
+      } catch (e) {
+        console.error('Failed to save guest limits:', e);
+      }
     }
   }, [topicsUsed, isLoggedIn]);
 
@@ -54,7 +62,11 @@ export const useGuestLimits = (isLoggedIn: boolean): GuestLimits => {
 
   const resetSession = useCallback(() => {
     setTopicsUsed([]);
-    sessionStorage.removeItem(SESSION_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.error('Failed to clear guest limits:', e);
+    }
   }, []);
 
   const remainingTopics = isLoggedIn ? Infinity : Math.max(0, GUEST_TOPIC_LIMIT - topicsUsed.length);
