@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types/quiz';
 import { Character, themeLevels } from '@/data/characters';
@@ -48,9 +48,8 @@ export const QuizCard = ({
   const [isValidating, setIsValidating] = useState(false);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
   
-  // Hint state
+  // Hint state - tracks how many hints have been revealed
   const [hintsUsed, setHintsUsed] = useState(0);
-  const [showHint, setShowHint] = useState(false);
 
   // Error state for answer validation
   const [answerError, setAnswerError] = useState<string | null>(null);
@@ -96,22 +95,45 @@ export const QuizCard = ({
     setCorrectIndex(-1);
     // Reset hint state for new question
     setHintsUsed(0);
-    setShowHint(false);
     // Reset error state
     setAnswerError(null);
   }, [question.id]);
 
-  // Check if hint is available for this question
-  // - Must be level 4+
-  // - Question must have a hint defined
-  const hasHintAvailable = level >= MIN_LEVEL_FOR_HINTS && question.hint && question.hint.trim().length > 0;
+  // Parse hints from the question - split by "|" or "Hint N:" patterns
+  const parsedHints = useMemo(() => {
+    if (!question.hint) return [];
+    const hint = question.hint.trim();
+    if (!hint) return [];
 
-  // Handle showing the hint
+    // Split by "|" separator
+    if (hint.includes('|')) {
+      return hint.split('|').map(h => h.trim()).filter(h => h.length > 0);
+    }
+
+    // Split by "Hint N:" pattern
+    const hintPattern = /Hint\s*\d+\s*:/gi;
+    if (hintPattern.test(hint)) {
+      // Reset regex lastIndex
+      hintPattern.lastIndex = 0;
+      const parts = hint.split(/Hint\s*\d+\s*:/i).filter(h => h.trim().length > 0);
+      return parts.map(h => h.trim());
+    }
+
+    // Single hint
+    return [hint];
+  }, [question.hint]);
+
+  // Check if hints are available for this question
+  // - Must be level 4+
+  // - Question must have at least one hint
+  const hasHintsAvailable = level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0;
+  const hasMoreHints = hintsUsed < parsedHints.length;
+
+  // Handle revealing the next hint
   const handleUseHint = useCallback(() => {
-    if (isAnswered || showHint || !hasHintAvailable) return;
-    setHintsUsed(1);
-    setShowHint(true);
-  }, [isAnswered, showHint, hasHintAvailable]);
+    if (isAnswered || !hasHintsAvailable || !hasMoreHints) return;
+    setHintsUsed(prev => prev + 1);
+  }, [isAnswered, hasHintsAvailable, hasMoreHints]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -218,26 +240,6 @@ export const QuizCard = ({
       .trim();
   };
 
-  // Format hints that are separated by "|" or "Hint 1:", "Hint 2:", etc.
-  const formatHints = (hint: string): string[] => {
-    if (!hint) return [];
-
-    // Split by "|" separator
-    if (hint.includes('|')) {
-      return hint.split('|').map(h => h.trim()).filter(h => h.length > 0);
-    }
-
-    // Split by "Hint N:" pattern
-    const hintPattern = /Hint\s*\d+\s*:/gi;
-    if (hintPattern.test(hint)) {
-      const parts = hint.split(/Hint\s*\d+\s*:/i).filter(h => h.trim().length > 0);
-      return parts.map((h, i) => `Hint ${i + 1}: ${h.trim()}`);
-    }
-
-    // Single hint - return as array
-    return [hint.trim()];
-  };
-
   const formatExplanation = (explanation: string) => {
     // Parse sections marked with 【TITLE】
     const regex = /【([^】]+)】\s*([\s\S]*?)(?=【|$)/g;
@@ -329,20 +331,11 @@ export const QuizCard = ({
           </motion.div>
         )}
 
-        {/* Hint Button - Only show for levels 4+ and if hint exists */}
-        {!isAnswered && hasHintAvailable && (
-          <div className="mb-4">
-            {!showHint ? (
-              <motion.button
-                onClick={handleUseHint}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <HelpCircle className="w-4 h-4" />
-                Need a hint?
-              </motion.button>
-            ) : (
+        {/* Progressive Hints - Only show for levels 4+ and if hints exist */}
+        {!isAnswered && hasHintsAvailable && (
+          <div className="mb-4 space-y-3">
+            {/* Show revealed hints */}
+            {hintsUsed > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -352,18 +345,38 @@ export const QuizCard = ({
                   <Lightbulb className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-amber-700 dark:text-amber-300 text-sm mb-2">
-                      Hint
+                      {hintsUsed === 1 ? 'Hint' : `Hints (${hintsUsed}/${parsedHints.length})`}
                     </p>
                     <ul className="space-y-2">
-                      {formatHints(question.hint || '').map((hint, idx) => (
-                        <li key={idx} className="text-amber-800 dark:text-amber-200 text-sm">
+                      {parsedHints.slice(0, hintsUsed).map((hint, idx) => (
+                        <motion.li
+                          key={idx}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="text-amber-800 dark:text-amber-200 text-sm"
+                        >
+                          {parsedHints.length > 1 && <span className="font-medium">#{idx + 1}: </span>}
                           {hint}
-                        </li>
+                        </motion.li>
                       ))}
                     </ul>
                   </div>
                 </div>
               </motion.div>
+            )}
+
+            {/* Button to get hint or get more hints */}
+            {hasMoreHints && (
+              <motion.button
+                onClick={handleUseHint}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <HelpCircle className="w-4 h-4" />
+                {hintsUsed === 0 ? 'Need a hint?' : 'Need another hint?'}
+              </motion.button>
             )}
           </div>
         )}
