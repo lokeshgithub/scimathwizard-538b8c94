@@ -862,10 +862,16 @@ export async function uploadQuestionsFromCSV(
       // Ensure correct_answer is a valid uppercase letter A-D
       const answer = q.correctAnswer.trim().toUpperCase();
       const validAnswer = ['A', 'B', 'C', 'D'].includes(answer) ? answer : 'A';
-      
-      // Ensure level is between 1-5
-      // Support levels 1-7 (Fundamentals to Grand Master)
-      const validLevel = Math.min(7, Math.max(1, q.level || 1));
+
+      // Validate level is between 1-7 (throw error if > 7)
+      const rawLevel = q.level || 1;
+      if (rawLevel > 7) {
+        throw new Error(`Question ${index + 1} has invalid level ${rawLevel}. Maximum supported level is 7.`);
+      }
+      if (rawLevel < 1) {
+        throw new Error(`Question ${index + 1} has invalid level ${rawLevel}. Minimum level is 1.`);
+      }
+      const validLevel = Math.max(1, Math.min(7, rawLevel));
       
       // Sanitize and validate text fields with length limits
       const sanitizeText = (text: string, maxLength: number): string => {

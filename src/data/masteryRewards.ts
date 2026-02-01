@@ -45,11 +45,14 @@ export const getImprovementBonus = (previousAccuracy: number, currentAccuracy: n
 /**
  * Calculate stars earned for a single question answer
  *
- * Conservative formula:
- * - Level 1: 1 star
- * - Level 2: 2 stars
- * - Level 3: 3 stars (and so on, linear)
- * - Small streak bonus: +1 at streak 5, +2 at streak 10
+ * Very conservative formula - rewards require real effort:
+ * - Levels 1-3: 1 star (easy questions)
+ * - Levels 4-5: 2 stars (medium questions)
+ * - Levels 6-7: 3 stars (hard questions)
+ * - Small streak bonus: +1 at streak 10 only
+ *
+ * At this rate: ~60-80 correct answers = ~100 stars
+ * Cheapest item (150 stars) = ~120 correct answers = ~2 hours focused practice
  *
  * @param isCorrect - Whether the answer was correct
  * @param streak - Current streak count
@@ -58,11 +61,11 @@ export const getImprovementBonus = (previousAccuracy: number, currentAccuracy: n
 export const getQuestionStars = (isCorrect: boolean, streak: number, level: number): number => {
   if (!isCorrect) return 0;
 
-  // Base stars = level number (1-7 stars, linear)
-  const baseStars = Math.min(level, 7);
+  // Base stars based on difficulty tier (not linear)
+  const baseStars = level <= 3 ? 1 : level <= 5 ? 2 : 3;
 
-  // Small streak bonus (capped at +2)
-  const streakBonus = streak >= 10 ? 2 : streak >= 5 ? 1 : 0;
+  // Very small streak bonus (only at streak 10+)
+  const streakBonus = streak >= 10 ? 1 : 0;
 
   return baseStars + streakBonus;
 };

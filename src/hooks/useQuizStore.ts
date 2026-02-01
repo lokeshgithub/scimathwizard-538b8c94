@@ -179,6 +179,8 @@ export const useQuizStore = () => {
   );
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
+  // Track questions answered in current session - don't repeat these
+  const [sessionAnsweredIds, setSessionAnsweredIds] = useState<Set<string>>(new Set());
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -201,12 +203,12 @@ export const useQuizStore = () => {
     return Math.min(Math.max(maxLevel, MIN_LEVEL), MAX_SUPPORTED_LEVEL);
   }, [banks, subject]);
 
-  // Get all levels available for a topic
+  // Get all levels available for a topic (derived from actual data, not hardcoded)
   const getTopicLevels = useCallback((topicName: string): number[] => {
     const questions = banks[subject]?.[topicName] || [];
-    if (questions.length === 0) return [1, 2, 3, 4, 5];
-    
-    const levelsSet = new Set(questions.map(q => q.level));
+    if (questions.length === 0) return []; // Empty if no questions - don't assume levels
+
+    const levelsSet = new Set(questions.map(q => Math.min(q.level, MAX_SUPPORTED_LEVEL)));
     return Array.from(levelsSet).sort((a, b) => a - b);
   }, [banks, subject]);
 
@@ -378,21 +380,26 @@ export const useQuizStore = () => {
     const allQuestions = banks[subject]?.[topicName] || [];
     const levelQuestions = allQuestions.filter(q => q.level === lvl);
 
-    // Filter out questions that were mastered cleanly (correct WITHOUT viewing solution)
-    // Questions where solution was viewed should reappear for true mastery
+    // Filter out:
+    // 1. Questions answered in current session (no repeats within a session)
+    // 2. Questions mastered cleanly (correct WITHOUT viewing solution)
     return levelQuestions.filter(q => {
+      // Don't repeat questions already answered in this session
+      if (sessionAnsweredIds.has(q.id)) return false;
+
       const status = questionTracking[q.id];
       if (!status) return true;
       // Only exclude if masteredCleanly - viewing solution doesn't count as mastery
       return !status.masteredCleanly;
     });
-  }, [banks, subject, questionTracking]);
+  }, [banks, subject, questionTracking, sessionAnsweredIds]);
 
   const selectTopic = useCallback((topicName: string, startUnlimited: boolean = false) => {
     setTopic(topicName);
     setMixedTopics(null); // Clear mixed mode
     setUnlimitedPractice(startUnlimited);
     setQuestionHistory([]); // Reset question history
+    setSessionAnsweredIds(new Set()); // Clear session tracking - new topic = fresh questions
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
 
@@ -467,6 +474,7 @@ export const useQuizStore = () => {
     setLevelStats({ correct: 0, total: 0 });
     setQuestionHistory([]); // Reset question history
     setUnlimitedPractice(false);
+    setSessionAnsweredIds(new Set()); // Clear session tracking for fresh quiz
     
     // Gather all questions from selected topics
     const allQuestions: Question[] = [];
@@ -576,6 +584,9 @@ export const useQuizStore = () => {
 
     // Mark question as answered
     markQuestionAnswered(currentQ.id, isCorrect);
+
+    // Track this question as answered in current session (no repeats)
+    setSessionAnsweredIds(prev => new Set(prev).add(currentQ.id));
 
     return { isCorrect, correctIndex, question: currentQ, timeSpent };
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic]);
@@ -913,6 +924,7 @@ export const useQuizStore = () => {
       setUnlimitedPractice(false);
       setLevel(1);
       setLevelStats({ correct: 0, total: 0 });
+      setSessionAnsweredIds(new Set()); // Clear session tracking
     }
   }, [subject]);
 
