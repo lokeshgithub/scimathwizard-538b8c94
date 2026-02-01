@@ -134,23 +134,30 @@ const saveToStorage = (state: Partial<QuizState>) => {
   }
 };
 
-// Active session storage - saves current topic/level progress separately
+// Active session storage - saves sessions PER TOPIC (not just one global session)
+// This allows users to switch between topics without losing progress
 interface ActiveSession {
-  topic: string | null;
   subject: Subject;
   level: number;
   levelStats: { correct: number; total: number };
   timestamp: number;
 }
 
-const loadActiveSession = (): ActiveSession | null => {
+interface AllSessions {
+  [topicName: string]: ActiveSession;
+}
+
+const loadActiveSession = (topicName: string): ActiveSession | null => {
   try {
     const data = localStorage.getItem(SESSION_KEY);
     if (data) {
-      const session = JSON.parse(data) as ActiveSession;
-      // Session expires after 24 hours
-      if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
-        return session;
+      const allSessions = JSON.parse(data) as AllSessions;
+      const session = allSessions[topicName];
+      if (session) {
+        // Session expires after 24 hours
+        if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+          return session;
+        }
       }
     }
   } catch (e) {
@@ -159,20 +166,34 @@ const loadActiveSession = (): ActiveSession | null => {
   return null;
 };
 
-const saveActiveSession = (session: ActiveSession) => {
+const saveActiveSession = (topicName: string, session: ActiveSession) => {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
+    const data = localStorage.getItem(SESSION_KEY);
+    const allSessions: AllSessions = data ? JSON.parse(data) : {};
+    allSessions[topicName] = {
       ...session,
       timestamp: Date.now(),
-    }));
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(allSessions));
   } catch (e) {
     console.error('Failed to save active session:', e);
   }
 };
 
-const clearActiveSession = () => {
+const clearActiveSession = (topicName?: string) => {
   try {
-    localStorage.removeItem(SESSION_KEY);
+    if (topicName) {
+      // Clear just one topic's session
+      const data = localStorage.getItem(SESSION_KEY);
+      if (data) {
+        const allSessions = JSON.parse(data) as AllSessions;
+        delete allSessions[topicName];
+        localStorage.setItem(SESSION_KEY, JSON.stringify(allSessions));
+      }
+    } else {
+      // Clear all sessions
+      localStorage.removeItem(SESSION_KEY);
+    }
   } catch (e) {
     console.error('Failed to clear active session:', e);
   }
@@ -349,10 +370,10 @@ export const useQuizStore = () => {
   }, [banks, progress, questionTracking, sessionStats, unlockedLevels]);
 
   // Save active session when topic/level/levelStats change (for resume on refresh)
+  // Sessions are saved PER TOPIC so switching topics doesn't lose progress
   useEffect(() => {
     if (topic && levelStats.total > 0) {
-      saveActiveSession({
-        topic,
+      saveActiveSession(topic, {
         subject,
         level,
         levelStats,
@@ -520,21 +541,21 @@ export const useQuizStore = () => {
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
 
-    // FIRST: Check if there's an active session for this topic - restore their level!
-    const activeSession = loadActiveSession();
+    // FIRST: Check if there's an active session for this specific topic - restore their level!
+    // Sessions are stored PER TOPIC, so switching topics doesn't lose progress
+    const activeSession = loadActiveSession(topicName);
     let currentLevel = 1;
     let restoredLevelStats = { correct: 0, total: 0 };
     let restoredFromSession = false;
 
     if (activeSession &&
-        activeSession.topic === topicName &&
         activeSession.subject === subject &&
         !prog[activeSession.level]?.mastered) {
       // Restore from saved active session - USE THE SESSION'S LEVEL
       currentLevel = activeSession.level;
       restoredLevelStats = activeSession.levelStats;
       restoredFromSession = true;
-      console.log(`[selectTopic] Restored from active session: level ${currentLevel}, stats:`, restoredLevelStats);
+      console.log(`[selectTopic] Restored from active session for "${topicName}": level ${currentLevel}, stats:`, restoredLevelStats);
     } else {
       // No active session - find the appropriate level
       // Check explicitly unlocked levels first
@@ -571,7 +592,8 @@ export const useQuizStore = () => {
         const status = questionTracking[q.id];
         if (status && status.attemptCount > 0) {
           totalCount++;
-          if (status.masteredCleanly) {
+          // Use answeredCorrectly (not masteredCleanly) for accurate progress display
+          if (status.answeredCorrectly) {
             correctCount++;
           }
         }
@@ -772,14 +794,14 @@ export const useQuizStore = () => {
         stars: prev.stars + completionStars,
       }));
 
-      // Clear active session - level completed
-      clearActiveSession();
+      // Clear active session for this topic - level completed
+      if (topic) clearActiveSession(topic);
 
       return 'passed';
     }
 
     // Clear active session on fail too - will restart level
-    clearActiveSession();
+    if (topic) clearActiveSession(topic);
 
     return 'failed';
   }, [levelStats, level, topic, getTopicProgress, recordTopicForSpacedRepetition, isReviewMode]);
@@ -994,8 +1016,8 @@ export const useQuizStore = () => {
       return updated;
     });
 
-    // Clear active session if it was for this topic
-    clearActiveSession();
+    // Clear active session for this topic
+    clearActiveSession(topicName);
   }, [banks, subject]);
 
   // Reset all progress (full reset)
