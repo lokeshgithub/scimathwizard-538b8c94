@@ -753,6 +753,34 @@ export const useQuizStore = () => {
     setShowSessionSummary(false);
   }, []);
 
+  // Start unlimited practice for a specific topic and level
+  // This loads ALL questions for that level (not just 10)
+  const startUnlimitedPractice = useCallback((topicName: string, practiceLevel: number) => {
+    const topicQuestions = banks[subject]?.[topicName] || [];
+    const levelQuestions = topicQuestions.filter(q => q.level === practiceLevel);
+
+    if (levelQuestions.length === 0) return;
+
+    setTopic(topicName);
+    setLevel(practiceLevel);
+    setMixedTopics(null);
+    setUnlimitedPractice(true); // Enable unlimited mode
+
+    // Load ALL questions for this level, not just 10
+    const shuffled = [...levelQuestions].sort(() => Math.random() - 0.5);
+    setCurrentQuestions(shuffled);
+    setQuestionIndex(0);
+    setLevelStats({ correct: 0, total: 0 });
+    setQuestionHistory([]);
+    setQuestionStartTime(Date.now());
+  }, [banks, subject]);
+
+  // Get all questions count for a topic/level (for UI display)
+  const getQuestionsCountForLevel = useCallback((topicName: string, levelNum: number): number => {
+    const topicQuestions = banks[subject]?.[topicName] || [];
+    return topicQuestions.filter(q => q.level === levelNum).length;
+  }, [banks, subject]);
+
   return {
     // State
     banks,
@@ -806,6 +834,8 @@ export const useQuizStore = () => {
     resetAllProgress,
     deductStars,
     syncStarsFromProfile,
+    startUnlimitedPractice,
+    getQuestionsCountForLevel,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {

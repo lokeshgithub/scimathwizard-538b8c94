@@ -29,6 +29,7 @@ import { PathwayProgress } from '@/components/quiz/PathwayProgress';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
+import { StarShop } from '@/components/quiz/StarShop';
 import { Button } from '@/components/ui/button';
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 
@@ -396,6 +397,10 @@ const Index = () => {
                   quiz.resetTopicProgress(quiz.topic!);
                   quiz.selectTopic(quiz.topic!);
                 }}
+                onPracticeLevel={(level) => {
+                  quiz.startUnlimitedPractice(quiz.topic!, level);
+                }}
+                getQuestionsCount={(level) => quiz.getQuestionsCountForLevel(quiz.topic!, level)}
               />
             )}
 
@@ -489,6 +494,12 @@ const Index = () => {
 
       {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
       {/* Achievements still tracked, just no pop-up interruption */}
+
+      {/* Star Shop - Spend stars on rewards */}
+      <StarShop
+        stars={quiz.sessionStats.stars}
+        onPurchase={(cost) => quiz.deductStars(cost)}
+      />
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />

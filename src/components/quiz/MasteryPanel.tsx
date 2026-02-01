@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface MasteryPanelProps {
@@ -24,6 +25,8 @@ interface MasteryPanelProps {
   perLevel: number;
   topicLevels?: number[];
   onResetProgress?: () => void;
+  onPracticeLevel?: (level: number) => void;
+  getQuestionsCount?: (level: number) => number;
 }
 
 const formatName = (name: string) => {
@@ -57,16 +60,19 @@ const getThemeForLevel = (level: number) => {
   return extendedThemes.find(t => t.level === level) || themeLevels[0];
 };
 
-export const MasteryPanel = ({ 
-  topicName, 
-  currentLevel, 
-  progress, 
-  levelStats, 
+export const MasteryPanel = ({
+  topicName,
+  currentLevel,
+  progress,
+  levelStats,
   perLevel,
   topicLevels = [1, 2, 3, 4, 5],
-  onResetProgress
+  onResetProgress,
+  onPracticeLevel,
+  getQuestionsCount
 }: MasteryPanelProps) => {
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number | null>(null);
   const currentTheme = getThemeForLevel(currentLevel);
   const progressPercent = levelStats.total > 0 
     ? Math.round((levelStats.correct / perLevel) * 100)
@@ -78,6 +84,19 @@ export const MasteryPanel = ({
   const handleReset = () => {
     onResetProgress?.();
     setShowResetDialog(false);
+  };
+
+  const handlePracticeLevel = (level: number) => {
+    if (onPracticeLevel) {
+      onPracticeLevel(level);
+      setSelectedPracticeLevel(null);
+    }
+  };
+
+  const handleLevelClick = (level: number, isMastered: boolean) => {
+    if (isMastered && onPracticeLevel && getQuestionsCount) {
+      setSelectedPracticeLevel(level);
+    }
   };
 
   return (
@@ -143,12 +162,12 @@ export const MasteryPanel = ({
               key={level}
               className={`
                 relative px-4 py-3 rounded-xl text-center min-w-[70px] flex-shrink-0
-                ${isMastered 
-                  ? `bg-gradient-to-br ${theme?.bgClass} text-white` 
-                  : isLocked 
-                    ? 'bg-muted text-muted-foreground' 
-                    : isCurrent 
-                      ? `bg-gradient-to-br ${theme?.bgClass} text-white ring-4 ring-accent ring-offset-2` 
+                ${isMastered
+                  ? `bg-gradient-to-br ${theme?.bgClass} text-white ${onPracticeLevel ? 'cursor-pointer' : ''}`
+                  : isLocked
+                    ? 'bg-muted text-muted-foreground'
+                    : isCurrent
+                      ? `bg-gradient-to-br ${theme?.bgClass} text-white ring-4 ring-accent ring-offset-2`
                       : 'bg-muted text-muted-foreground'
                 }
               `}
@@ -156,6 +175,7 @@ export const MasteryPanel = ({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: level * 0.1 }}
               whileHover={!isLocked ? { scale: 1.05 } : undefined}
+              onClick={() => handleLevelClick(level, isMastered)}
             >
               {isCurrent && (
                 <motion.div
@@ -164,6 +184,14 @@ export const MasteryPanel = ({
                   transition={{ duration: 1, repeat: Infinity }}
                 >
                   <Sparkles className="w-5 h-5 text-accent" />
+                </motion.div>
+              )}
+              {isMastered && onPracticeLevel && (
+                <motion.div
+                  className="absolute -top-1 -right-1 bg-white/90 rounded-full p-0.5"
+                  whileHover={{ scale: 1.2 }}
+                >
+                  <PlayCircle className="w-4 h-4 text-success" />
                 </motion.div>
               )}
               <div className="text-xl font-bold">{level}</div>
@@ -204,6 +232,35 @@ export const MasteryPanel = ({
           <span>Accuracy: {accuracy}%</span>
         </div>
       </div>
+
+      {/* Practice Level Dialog */}
+      {selectedPracticeLevel !== null && onPracticeLevel && getQuestionsCount && (
+        <AlertDialog open={selectedPracticeLevel !== null} onOpenChange={(open) => !open && setSelectedPracticeLevel(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Practice Level {selectedPracticeLevel}</AlertDialogTitle>
+              <AlertDialogDescription>
+                You've mastered this level! Would you like to practice more questions?
+                <br /><br />
+                <span className="font-semibold text-foreground">
+                  {getQuestionsCount(selectedPracticeLevel)} questions available
+                </span>
+                {' '}at Level {selectedPracticeLevel}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setSelectedPracticeLevel(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handlePracticeLevel(selectedPracticeLevel)}
+                className="bg-success text-white hover:bg-success/90"
+              >
+                <PlayCircle className="w-4 h-4 mr-2" />
+                Start Practice
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </motion.div>
   );
 };
