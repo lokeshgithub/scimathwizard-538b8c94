@@ -32,6 +32,12 @@ export interface Progress {
   [topic: string]: TopicProgress;
 }
 
+// Track which levels are unlocked per topic (beyond just mastered)
+// Level 1 is always unlocked; higher levels require mastery OR unlock assessment
+export interface UnlockedLevels {
+  [topic: string]: number[]; // Array of unlocked level numbers
+}
+
 export interface QuestionStatus {
   answeredCorrectly: boolean;
   solutionViewed: boolean;

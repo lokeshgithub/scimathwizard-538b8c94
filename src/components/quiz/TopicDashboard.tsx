@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
 import {
-  Sparkles, Flame, Target, TrendingUp, Play,
-  ChevronRight, Zap, Award, BookOpen, Lock, Bell
+  Sparkles, Flame, Target, ChevronDown, ChevronRight,
+  Zap, Award, BookOpen, Lock, Bell, Play, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
@@ -23,53 +23,35 @@ interface TopicDashboardProps {
   currentSubject?: string;
   isLoggedIn?: boolean;
   dueTopics?: DueTopic[];
+  isLevelUnlocked?: (topic: string, level: number) => boolean;
+  onRequestUnlock?: (topic: string, level: number) => void;
 }
 
 const formatName = (name: string) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
-// Get mastery level color based on progress percentage
-const getMasteryColor = (percentage: number): { bg: string; text: string; glow: string; emoji: string } => {
-  if (percentage >= 100) return { 
-    bg: 'from-yellow-400 via-amber-400 to-orange-400', 
-    text: 'text-amber-600', 
-    glow: 'shadow-[0_0_20px_hsl(45,93%,50%,0.4)]',
-    emoji: '🏆' 
-  };
-  if (percentage >= 80) return { 
-    bg: 'from-emerald-400 to-green-500', 
-    text: 'text-emerald-600', 
-    glow: 'shadow-[0_0_15px_hsl(142,72%,45%,0.3)]',
-    emoji: '⭐' 
-  };
-  if (percentage >= 60) return { 
-    bg: 'from-blue-400 to-cyan-500', 
-    text: 'text-blue-600', 
-    glow: '',
-    emoji: '📈' 
-  };
-  if (percentage >= 40) return { 
-    bg: 'from-violet-400 to-purple-500', 
-    text: 'text-violet-600', 
-    glow: '',
-    emoji: '🌱' 
-  };
-  if (percentage > 0) return { 
-    bg: 'from-pink-400 to-rose-500', 
-    text: 'text-pink-600', 
-    glow: '',
-    emoji: '🎯' 
-  };
-  return { 
-    bg: 'from-slate-300 to-slate-400', 
-    text: 'text-slate-500', 
-    glow: '',
-    emoji: '🆕' 
-  };
+// Topic categories for Math
+const MATH_CATEGORIES: { name: string; icon: string; color: string; keywords: string[] }[] = [
+  { name: 'Numbers & Operations', icon: '🔢', color: 'from-blue-500 to-cyan-500', keywords: ['integer', 'decimal', 'fraction', 'rational', 'number', 'percent'] },
+  { name: 'Algebra', icon: '🔤', color: 'from-purple-500 to-pink-500', keywords: ['algebra', 'equation', 'linear', 'exponent', 'power', 'variable', 'polynomial'] },
+  { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest'] },
+  { name: 'Geometry', icon: '📐', color: 'from-green-500 to-emerald-500', keywords: ['geometry', 'triangle', 'circle', 'quadrilateral', 'angle', 'area', 'perimeter', 'volume'] },
+  { name: 'Data & Statistics', icon: '📊', color: 'from-rose-500 to-red-500', keywords: ['data', 'statistic', 'probability', 'graph', 'mean', 'median'] },
+];
+
+// Categorize a topic based on its name
+const categorize = (topicName: string): string => {
+  const lower = topicName.toLowerCase();
+  for (const cat of MATH_CATEGORIES) {
+    if (cat.keywords.some(kw => lower.includes(kw))) {
+      return cat.name;
+    }
+  }
+  return 'Other Topics';
 };
 
-// Topic icons based on name patterns
+// Get topic icon
 const getTopicIcon = (name: string): string => {
   const lower = name.toLowerCase();
   if (lower.includes('decimal')) return '🔢';
@@ -80,17 +62,28 @@ const getTopicIcon = (name: string): string => {
   if (lower.includes('exponent') || lower.includes('power')) return '⚡';
   if (lower.includes('rational')) return '➗';
   if (lower.includes('algebra')) return '🔤';
-  if (lower.includes('geometry')) return '📐';
   if (lower.includes('percent')) return '💯';
   if (lower.includes('integer')) return '🔟';
   if (lower.includes('linear') || lower.includes('equation')) return '📈';
   if (lower.includes('triangle')) return '📐';
   if (lower.includes('circle')) return '⭕';
   if (lower.includes('quadrilateral')) return '🔷';
+  if (lower.includes('geometry')) return '📐';
   if (lower.includes('statistic')) return '📊';
   if (lower.includes('probability')) return '🎲';
-  if (lower.includes('number')) return '🔢';
+  if (lower.includes('profit') || lower.includes('loss')) return '💰';
+  if (lower.includes('interest')) return '🏦';
   return '📚';
+};
+
+// Get mastery color
+const getMasteryColor = (percentage: number): { bg: string; ring: string } => {
+  if (percentage >= 100) return { bg: 'bg-amber-500', ring: 'ring-amber-400' };
+  if (percentage >= 80) return { bg: 'bg-emerald-500', ring: 'ring-emerald-400' };
+  if (percentage >= 60) return { bg: 'bg-blue-500', ring: 'ring-blue-400' };
+  if (percentage >= 40) return { bg: 'bg-violet-500', ring: 'ring-violet-400' };
+  if (percentage > 0) return { bg: 'bg-pink-500', ring: 'ring-pink-400' };
+  return { bg: 'bg-slate-300', ring: 'ring-slate-300' };
 };
 
 export const TopicDashboard = ({
@@ -104,94 +97,105 @@ export const TopicDashboard = ({
   isAdmin = false,
   currentSubject = 'math',
   isLoggedIn = false,
-  dueTopics = []
+  dueTopics = [],
+  isLevelUnlocked,
+  onRequestUnlock,
 }: TopicDashboardProps) => {
-  const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Numbers & Operations', 'Algebra']));
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
 
-  // Create a Set of due topic names for quick lookup
-  const dueTopicNames = useMemo(() => {
-    return new Set(dueTopics.map(dt => dt.topic_name));
-  }, [dueTopics]);
+  // Create Set of due topics for quick lookup
+  const dueTopicNames = useMemo(() => new Set(dueTopics.map(dt => dt.topic_name)), [dueTopics]);
 
-  // Get due topic info for a specific topic
-  const getDueTopicInfo = useCallback((topicName: string): DueTopic | undefined => {
-    return dueTopics.find(dt => dt.topic_name === topicName);
-  }, [dueTopics]);
+  // Calculate topic stats and group by category
+  const { categorizedTopics, overallStats } = useMemo(() => {
+    const categories: { [cat: string]: any[] } = {};
+    let totalMastered = 0;
+    let totalLevels = 0;
 
-  // Calculate topic stats
-  const topicStats = useMemo(() => {
-    return topicEntries.map(([name, questions]) => {
+    for (const [name, questions] of topicEntries) {
       const progress = getProgress(name);
       const levels = getTopicLevels ? getTopicLevels(name) : [1, 2, 3, 4, 5];
       const masteredCount = levels.filter(l => progress[l]?.mastered).length;
-      const percentage = (masteredCount / levels.length) * 100;
-      const colors = getMasteryColor(percentage);
-      
-      return {
+      const percentage = levels.length > 0 ? (masteredCount / levels.length) * 100 : 0;
+
+      totalMastered += masteredCount;
+      totalLevels += levels.length;
+
+      const category = categorize(name);
+      if (!categories[category]) categories[category] = [];
+
+      categories[category].push({
         name,
         questionCount: questions.length,
         levels,
         masteredCount,
         totalLevels: levels.length,
         percentage,
-        colors,
         icon: getTopicIcon(name),
-        isComplete: masteredCount === levels.length,
+        isComplete: masteredCount === levels.length && levels.length > 0,
         progress,
-      };
+        isDue: dueTopicNames.has(name),
+      });
+    }
+
+    // Sort topics within each category by progress
+    for (const cat of Object.keys(categories)) {
+      categories[cat].sort((a, b) => {
+        // Due topics first, then by progress
+        if (a.isDue && !b.isDue) return -1;
+        if (!a.isDue && b.isDue) return 1;
+        return b.percentage - a.percentage;
+      });
+    }
+
+    return {
+      categorizedTopics: categories,
+      overallStats: {
+        totalMastered,
+        totalLevels,
+        percentage: totalLevels > 0 ? (totalMastered / totalLevels) * 100 : 0,
+        completedTopics: Object.values(categories).flat().filter(t => t.isComplete).length,
+        totalTopics: topicEntries.length,
+      },
+    };
+  }, [topicEntries, getProgress, getTopicLevels, dueTopicNames]);
+
+  // Filter by search
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return categorizedTopics;
+
+    const query = searchQuery.toLowerCase();
+    const filtered: { [cat: string]: any[] } = {};
+
+    for (const [cat, topics] of Object.entries(categorizedTopics)) {
+      const matching = topics.filter(t => t.name.toLowerCase().includes(query));
+      if (matching.length > 0) {
+        filtered[cat] = matching;
+      }
+    }
+
+    return filtered;
+  }, [categorizedTopics, searchQuery]);
+
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
     });
-  }, [topicEntries, getProgress, getTopicLevels]);
+  };
 
-  // Overall stats
-  const overallStats = useMemo(() => {
-    const totalMastered = topicStats.reduce((sum, t) => sum + t.masteredCount, 0);
-    const totalLevels = topicStats.reduce((sum, t) => sum + t.totalLevels, 0);
-    const completedTopics = topicStats.filter(t => t.isComplete).length;
-    return { totalMastered, totalLevels, completedTopics, percentage: totalLevels > 0 ? (totalMastered / totalLevels) * 100 : 0 };
-  }, [topicStats]);
-
-  // Topics that need improvement (started but not mastered)
-  const weakestTopics = useMemo(() => {
-    return [...topicStats]
-      .filter(t => t.percentage > 0 && t.percentage < 100) // Only started topics
-      .sort((a, b) => a.percentage - b.percentage)
-      .slice(0, 3);
-  }, [topicStats]);
-
-  // Topics not yet started
-  const notStartedTopics = useMemo(() => {
-    return topicStats.filter(t => t.percentage === 0);
-  }, [topicStats]);
-
-  if (topicEntries.length === 0) {
-    return (
-      <div className="bg-card rounded-2xl p-12 text-center shadow-card mb-6">
-        <motion.div
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-6xl mb-4"
-        >
-          📚
-        </motion.div>
-        <p className="text-muted-foreground">No topics available yet. Check back soon!</p>
-      </div>
-    );
-  }
-
-  // Wrapper to save last session when selecting a topic
   const handleSelectTopic = (topicName: string) => {
-    // Check guest limits
     if (!guestLimits.canAccessTopic(topicName)) {
       setShowSignUpPrompt(true);
       return;
     }
-    
-    // Record topic access for guests
     guestLimits.recordTopicAccess(topicName);
-    
     const progress = getProgress(topicName);
     const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
     const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
@@ -199,382 +203,275 @@ export const TopicDashboard = ({
     onSelectTopic(topicName);
   };
 
-  // Get progress info for continue session
-  const getTopicProgressInfo = (topicName: string) => {
-    const progress = getProgress(topicName);
-    const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
-    const masteredCount = levels.filter(l => progress[l]?.mastered).length;
-    const percentage = (masteredCount / levels.length) * 100;
-    const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
-    return { percentage, currentLevel, maxLevel: levels.length };
+  const handleStartLevel = (topicName: string, level: number) => {
+    if (!guestLimits.canAccessTopic(topicName)) {
+      setShowSignUpPrompt(true);
+      return;
+    }
+
+    const unlocked = isLevelUnlocked ? isLevelUnlocked(topicName, level) : true;
+    if (!unlocked && onRequestUnlock) {
+      onRequestUnlock(topicName, level);
+      return;
+    }
+
+    guestLimits.recordTopicAccess(topicName);
+    if (onStartLevel) onStartLevel(topicName, level);
   };
+
+  if (topicEntries.length === 0) {
+    return (
+      <div className="bg-card rounded-2xl p-12 text-center shadow-card mb-6">
+        <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-6xl mb-4">
+          📚
+        </motion.div>
+        <p className="text-muted-foreground">No topics available yet. Check back soon!</p>
+      </div>
+    );
+  }
+
+  // Get ordered category list
+  const categoryOrder = [...MATH_CATEGORIES.map(c => c.name), 'Other Topics'];
+  const orderedCategories = categoryOrder.filter(cat => filteredCategories[cat]?.length > 0);
 
   return (
     <>
-      <div className="space-y-6 mb-6">
+      <div className="space-y-4 mb-6">
         {/* Guest Limit Banner */}
         {!isLoggedIn && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`p-3 rounded-xl border flex items-center justify-between ${
-              guestLimits.isLimitReached 
-                ? 'bg-destructive/10 border-destructive/20' 
-                : 'bg-muted/50 border-border'
+              guestLimits.isLimitReached ? 'bg-destructive/10 border-destructive/20' : 'bg-muted/50 border-border'
             }`}
           >
             <div className="flex items-center gap-2">
-              {guestLimits.isLimitReached ? (
-                <Lock className="w-4 h-4 text-destructive" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-primary" />
-              )}
+              {guestLimits.isLimitReached ? <Lock className="w-4 h-4 text-destructive" /> : <Sparkles className="w-4 h-4 text-primary" />}
               <span className="text-sm">
                 {guestLimits.isLimitReached ? (
-                  <span className="text-destructive font-medium">
-                    Guest limit reached! Sign up for unlimited access.
-                  </span>
+                  <span className="text-destructive font-medium">Guest limit reached! Sign up for unlimited access.</span>
                 ) : (
                   <>
-                    <span className="text-muted-foreground">Guest mode: </span>
-                    <span className="font-medium text-foreground">
-                      {guestLimits.remainingTopics} of {GUEST_TOPIC_LIMIT_COUNT} topics remaining
-                    </span>
+                    <span className="text-muted-foreground">Guest: </span>
+                    <span className="font-medium">{guestLimits.remainingTopics}/{GUEST_TOPIC_LIMIT_COUNT} topics left</span>
                   </>
                 )}
               </span>
             </div>
-            {!guestLimits.isLimitReached && guestLimits.topicsUsed.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowSignUpPrompt(true)}
-                className="text-xs"
-              >
-                Sign up for more
-              </Button>
-            )}
           </motion.div>
         )}
 
-        {/* Continue Session Button */}
+        {/* Continue Session */}
         <ContinueSession
-        currentSubject={currentSubject}
-        onContinue={handleSelectTopic}
-        getTopicProgress={getTopicProgressInfo}
-      />
+          currentSubject={currentSubject}
+          getTopicProgress={(topicName) => {
+            const progress = getProgress(topicName);
+            const levels = getTopicLevels ? getTopicLevels(topicName) : [1, 2, 3, 4, 5];
+            const masteredCount = levels.filter(l => progress[l]?.mastered).length;
+            const percentage = (masteredCount / levels.length) * 100;
+            const currentLevel = levels.find(l => !progress[l]?.mastered) || levels[0];
+            return { percentage, currentLevel, maxLevel: levels.length };
+          }}
+          onContinue={handleSelectTopic}
+        />
 
-      {/* Quick Start - Mix All Button */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden"
-      >
-        <Button
-          onClick={() => onStartMixedQuiz?.(topicEntries.map(([name]) => name))}
-          className="w-full h-auto py-6 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600 text-white rounded-2xl shadow-lg relative overflow-hidden group"
-        >
-          {/* Animated background particles */}
-          <div className="absolute inset-0 overflow-hidden">
-            {[...Array(6)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute w-2 h-2 bg-white/20 rounded-full"
-                animate={{
-                  x: [0, Math.random() * 100 - 50],
-                  y: [0, -100],
-                  opacity: [0, 1, 0],
-                }}
-                transition={{
-                  duration: 2 + Math.random(),
-                  repeat: Infinity,
-                  delay: i * 0.3,
-                }}
-                style={{
-                  left: `${10 + i * 15}%`,
-                  bottom: 0,
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="relative flex items-center justify-center gap-4">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-            >
-              <Sparkles className="w-8 h-8" />
-            </motion.div>
-            <div className="text-left">
-              <div className="text-xl font-bold">🚀 Start Practice!</div>
-              <div className="text-sm opacity-80">Mix all topics • Random questions</div>
-            </div>
-            <motion.div
-              className="ml-4"
-              animate={{ x: [0, 5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <Play className="w-8 h-8 fill-current" />
-            </motion.div>
-          </div>
-        </Button>
-      </motion.div>
-
-      {/* Progress Overview */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-card rounded-2xl p-5 shadow-card"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg flex items-center gap-2">
-            <Target className="w-5 h-5 text-primary" />
-            Your Progress
-          </h3>
-          <span className="text-sm text-muted-foreground">
-            {overallStats.completedTopics}/{topicStats.length} topics mastered
-          </span>
-        </div>
-
-        {/* Overall progress bar */}
-        <div className="relative h-4 bg-muted rounded-full overflow-hidden mb-4">
-          <motion.div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${overallStats.percentage}%` }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md">
-            {Math.round(overallStats.percentage)}% Complete
-          </div>
-        </div>
-
-        {/* Weak areas suggestion - only for started topics */}
-        {weakestTopics.length > 0 && (
-          <motion.div 
-            className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 p-3 rounded-xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Flame className="w-4 h-4 flex-shrink-0" />
-            <span>
-              <strong>Focus area:</strong> {formatName(weakestTopics[0].name)} needs more practice
-            </span>
-          </motion.div>
-        )}
-
-        {/* Suggestion for not started topics */}
-        {weakestTopics.length === 0 && notStartedTopics.length > 0 && (
-          <motion.div 
-            className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 p-3 rounded-xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Zap className="w-4 h-4 flex-shrink-0" />
-            <span>
-              <strong>Get started:</strong> Try {formatName(notStartedTopics[0].name)} to begin your journey!
-            </span>
-          </motion.div>
-        )}
-      </motion.div>
-
-      {/* Topics Grid - Visual Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {topicStats.map((topic, index) => (
+        {/* Mixed Practice Button */}
+        {onStartMixedQuiz && topicEntries.length > 1 && (
           <motion.button
-            key={topic.name}
-            onClick={() => handleSelectTopic(topic.name)}
-            onMouseEnter={() => setHoveredTopic(topic.name)}
-            onMouseLeave={() => setHoveredTopic(null)}
-            className={`
-              relative p-4 rounded-2xl text-left transition-all overflow-hidden
-              ${currentTopic === topic.name 
-                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
-                : ''
-              }
-              ${topic.colors.glow}
-              bg-card shadow-card hover:shadow-lg
-            `}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.05 }}
-            whileHover={{ scale: 1.03, y: -4 }}
-            whileTap={{ scale: 0.98 }}
+            onClick={() => onStartMixedQuiz(topicEntries.map(([name]) => name))}
+            className="w-full p-4 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-xl text-white font-semibold flex items-center justify-center gap-3 shadow-lg"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
           >
-            {/* Progress background fill - more visible */}
-            <motion.div
-              className={`absolute inset-0 bg-gradient-to-br ${topic.colors.bg} opacity-20`}
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: topic.percentage / 100 }}
-              style={{ transformOrigin: 'bottom' }}
-              transition={{ duration: 0.8, delay: index * 0.05 }}
-            />
-
-            {/* Colored left border indicator */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl bg-gradient-to-b ${topic.colors.bg}`} />
-
-            {/* Complete badge */}
-            {topic.isComplete && (
-              <motion.div
-                className="absolute -top-1 -right-1 w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg"
-                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Award className="w-4 h-4 text-white" />
-              </motion.div>
-            )}
-
-            {/* Spaced Repetition Review Due Indicator */}
-            {dueTopicNames.has(topic.name) && !topic.isComplete && (
-              <motion.div
-                className={`absolute -top-1 ${topic.isComplete ? '-right-10' : '-right-1'} w-7 h-7 rounded-full flex items-center justify-center shadow-lg ${
-                  getDueTopicInfo(topic.name)?.urgency === 'high'
-                    ? 'bg-gradient-to-br from-red-400 to-red-600'
-                    : getDueTopicInfo(topic.name)?.urgency === 'medium'
-                    ? 'bg-gradient-to-br from-amber-400 to-orange-500'
-                    : 'bg-gradient-to-br from-blue-400 to-blue-600'
-                }`}
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                title={`Review due${getDueTopicInfo(topic.name)?.days_overdue ? ` (${getDueTopicInfo(topic.name)?.days_overdue} days overdue)` : ''}`}
-              >
-                <Bell className="w-3.5 h-3.5 text-white" />
-              </motion.div>
-            )}
-
-            {/* Content */}
-            <div className="relative z-10">
-              {/* Icon & Name */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-3xl">{topic.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-foreground truncate">
-                    {formatName(topic.name)}
-                  </h4>
-                  <p className={`text-xs ${topic.colors.text} font-medium`}>
-                    {topic.percentage === 100 ? '🏆 Mastered!' :
-                     topic.percentage >= 80 ? '⭐ Strong' :
-                     topic.percentage >= 60 ? '📈 Good progress' :
-                     topic.percentage >= 40 ? '🌱 Learning' :
-                     topic.percentage > 0 ? '🎯 Keep practicing' : '🆕 Not started'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Level indicators - clickable to jump to specific level */}
-              <div className="flex items-center gap-1 mb-3">
-                {topic.levels.map((level, i) => {
-                  const isMastered = topic.progress[level]?.mastered;
-                  return (
-                    <motion.button
-                      key={level}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Don't trigger parent topic click
-                        if (onStartLevel) {
-                          // Check guest limits first
-                          if (!guestLimits.canAccessTopic(topic.name)) {
-                            setShowSignUpPrompt(true);
-                            return;
-                          }
-                          guestLimits.recordTopicAccess(topic.name);
-                          onStartLevel(topic.name, level);
-                        }
-                      }}
-                      className={`
-                        w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                        transition-all duration-300 hover:scale-110 hover:ring-2 hover:ring-primary/50
-                        ${isMastered
-                          ? `bg-gradient-to-br ${topic.colors.bg} text-white shadow-sm`
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }
-                      `}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: index * 0.05 + i * 0.05 }}
-                      title={`Practice Level ${level}${isMastered ? ' (Mastered)' : ''}`}
-                    >
-                      {level}
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              {/* Progress bar */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <motion.div
-                  className={`h-full bg-gradient-to-r ${topic.colors.bg}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${topic.percentage}%` }}
-                  transition={{ duration: 0.8, delay: index * 0.05 }}
-                />
-              </div>
-
-              {/* Stats on hover */}
-              <AnimatePresence>
-                {hoveredTopic === topic.name && (
-                  <motion.div
-                    className="mt-3 pt-3 border-t border-border flex items-center justify-between"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {topic.masteredCount}/{topic.totalLevels} levels
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-primary" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <Sparkles className="w-5 h-5" />
+            <span>Mix All Topics</span>
+            <Play className="w-5 h-5" />
           </motion.button>
-        ))}
-      </div>
+        )}
 
-      {/* Legend with explanations */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="bg-muted/50 rounded-xl p-4"
-      >
-        <p className="text-xs text-muted-foreground text-center mb-3">Progress Legend (based on levels completed)</p>
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500" />
-            <span>🏆 Mastered (100%)</span>
+        {/* Overall Progress Bar */}
+        <div className="bg-card rounded-xl p-4 shadow-card">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-foreground">Overall Progress</span>
+            <span className="text-sm text-muted-foreground">
+              {overallStats.completedTopics}/{overallStats.totalTopics} topics mastered
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-400 to-green-500" />
-            <span>⭐ Strong (80%+)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-400 to-cyan-500" />
-            <span>📈 Good (60%+)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" />
-            <span>🌱 Learning (40%+)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-pink-400 to-rose-500" />
-            <span>🎯 Started (1-39%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-slate-300 to-slate-400" />
-            <span>🆕 New (0%)</span>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${overallStats.percentage}%` }}
+            />
           </div>
         </div>
-      </motion.div>
+
+        {/* Search (show when 10+ topics) */}
+        {topicEntries.length >= 10 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search topics..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        )}
+
+        {/* Category Groups */}
+        <div className="space-y-3">
+          {orderedCategories.map((categoryName) => {
+            const categoryTopics = filteredCategories[categoryName];
+            const categoryInfo = MATH_CATEGORIES.find(c => c.name === categoryName) || {
+              icon: '📚',
+              color: 'from-slate-500 to-slate-600',
+            };
+            const isExpanded = expandedCategories.has(categoryName);
+            const categoryMastered = categoryTopics.filter(t => t.isComplete).length;
+            const categoryProgress = categoryTopics.length > 0
+              ? (categoryTopics.reduce((sum, t) => sum + t.percentage, 0) / categoryTopics.length)
+              : 0;
+
+            return (
+              <div key={categoryName} className="bg-card rounded-xl shadow-card overflow-hidden">
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(categoryName)}
+                  className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${categoryInfo.color} flex items-center justify-center text-xl`}>
+                      {categoryInfo.icon}
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">{categoryName}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {categoryMastered}/{categoryTopics.length} complete
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* Mini progress */}
+                    <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden hidden sm:block">
+                      <div
+                        className={`h-full bg-gradient-to-r ${categoryInfo.color} rounded-full`}
+                        style={{ width: `${categoryProgress}%` }}
+                      />
+                    </div>
+                    <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}>
+                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                    </motion.div>
+                  </div>
+                </button>
+
+                {/* Topics in Category */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-3 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {categoryTopics.map((topic) => {
+                          const colors = getMasteryColor(topic.percentage);
+
+                          return (
+                            <motion.button
+                              key={topic.name}
+                              onClick={() => handleSelectTopic(topic.name)}
+                              className={`
+                                relative p-3 rounded-lg text-left transition-all
+                                bg-muted/50 hover:bg-muted border border-transparent
+                                ${currentTopic === topic.name ? 'ring-2 ring-primary' : ''}
+                                ${topic.isComplete ? 'border-amber-200 dark:border-amber-800' : ''}
+                              `}
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.99 }}
+                            >
+                              {/* Due indicator */}
+                              {topic.isDue && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                  <Bell className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+
+                              {/* Complete badge */}
+                              {topic.isComplete && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                  <Award className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xl">{topic.icon}</span>
+                                <span className="font-medium text-foreground text-sm truncate flex-1">
+                                  {formatName(topic.name)}
+                                </span>
+                              </div>
+
+                              {/* Level indicators - compact */}
+                              <div className="flex items-center gap-1 mb-2">
+                                {topic.levels.slice(0, 7).map((level: number) => {
+                                  const isMastered = topic.progress[level]?.mastered;
+                                  const unlocked = isLevelUnlocked ? isLevelUnlocked(topic.name, level) : true;
+                                  const isLocked = !unlocked && !isMastered;
+
+                                  return (
+                                    <button
+                                      key={level}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartLevel(topic.name, level);
+                                      }}
+                                      className={`
+                                        w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                                        transition-all hover:scale-110
+                                        ${isMastered
+                                          ? `${colors.bg} text-white`
+                                          : isLocked
+                                          ? 'bg-muted/70 text-muted-foreground/50'
+                                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                        }
+                                      `}
+                                      title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `Practice L${level}`}
+                                    >
+                                      {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${colors.bg} rounded-full`}
+                                  style={{ width: `${topic.percentage}%` }}
+                                />
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Sign Up Prompt Modal */}
-      <SignUpPrompt 
+      {/* Sign Up Prompt */}
+      <SignUpPrompt
         isOpen={showSignUpPrompt}
         onClose={() => setShowSignUpPrompt(false)}
-        topicsUsed={guestLimits.topicsUsed.length}
+        message="Sign up to unlock unlimited topics and track your progress!"
       />
     </>
   );

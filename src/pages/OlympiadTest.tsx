@@ -147,19 +147,11 @@ export default function OlympiadTest() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-4 px-4 sticky top-0 z-10">
+      {/* Header - Compact with navigation */}
+      <header className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-3 px-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-6 h-6" />
-              <h1 className="font-bold text-xl text-white">Olympiad Test</h1>
-            </div>
-          </div>
+          <PathwayNav />
           <div className="flex items-center gap-2">
-            {/* Pathway Navigation */}
-            <PathwayNav />
-            
             {olympiad.state.isActive && !olympiad.state.isComplete && (
               <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
                 timeRemaining < 5 ? 'bg-white/20 text-white animate-pulse' : 'bg-white/10 text-white'
@@ -375,8 +367,9 @@ export default function OlympiadTest() {
                 </div>
               </div>
 
-              {/* Question Card */}
+              {/* Question Card - key forces full re-mount on question change to prevent answer state bleeding */}
               <OlympiadQuizCard
+                key={`${olympiad.currentQuestion.id}-${olympiad.state.currentQuestionIndex}`}
                 question={olympiad.currentQuestion}
                 questionNumber={olympiad.state.currentQuestionIndex + 1}
                 totalQuestions={olympiad.state.questions.length}

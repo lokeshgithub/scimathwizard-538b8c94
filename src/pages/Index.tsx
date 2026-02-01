@@ -16,6 +16,7 @@ import { MasteryPanel } from '@/components/quiz/MasteryPanel';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { LevelCompleteModal } from '@/components/quiz/LevelCompleteModal';
 import { SessionSummary } from '@/components/quiz/SessionSummary';
+import { LevelUnlockModal } from '@/components/quiz/LevelUnlockModal';
 import { AchievementsPanel } from '@/components/quiz/AchievementsPanel';
 import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
 import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
@@ -57,7 +58,12 @@ const Index = () => {
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  
+
+  // Level unlock modal state
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [unlockTarget, setUnlockTarget] = useState<{ topic: string; level: number } | null>(null);
+  const [unlockQuestions, setUnlockQuestions] = useState<typeof quiz.banks[string][string]>([]);
+
   // Track what we've already synced to avoid duplicate additions
   // Initialize with current session stats to prevent re-syncing on page reload
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
@@ -269,6 +275,28 @@ const Index = () => {
     }
   }, [modalPassed, quiz, achievements, wasRetrying, sound, confetti]);
 
+  // Handle request to unlock a level
+  const handleRequestUnlock = useCallback((topicName: string, level: number) => {
+    const questions = quiz.getUnlockAssessmentQuestions(topicName, level);
+    if (questions.length === 0) {
+      // No questions available for assessment, just unlock
+      quiz.unlockLevel(topicName, level);
+      return;
+    }
+    setUnlockTarget({ topic: topicName, level });
+    setUnlockQuestions(questions);
+    setUnlockModalOpen(true);
+  }, [quiz]);
+
+  // Handle successful level unlock
+  const handleUnlockSuccess = useCallback((level: number) => {
+    if (unlockTarget) {
+      quiz.unlockLevel(unlockTarget.topic, level);
+      sound.playLevelUp();
+      confetti.fireLevelUp(false);
+    }
+  }, [unlockTarget, quiz, sound, confetti]);
+
   const topics = quiz.banks[quiz.subject] || {};
   const hasTopics = Object.keys(topics).length > 0;
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
@@ -347,27 +375,41 @@ const Index = () => {
                     <PathwayNav />
                   </div>
 
-                  {/* AI Analysis Button - Always visible, enabled after answering questions */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={quiz.endSession}
-                    disabled={!hasAnsweredQuestions}
-                    className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
-                      hasAnsweredQuestions
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                    title={hasAnsweredQuestions ? 'Get AI-powered analysis of your practice session' : 'Answer some questions first'}
-                  >
-                    <Brain className="w-4 h-4" />
-                    <span className="hidden sm:inline">Analyze</span>
-                    {hasAnsweredQuestions && (
-                      <span className="hidden md:inline bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
+                  {/* AI Analysis Button - Clear UX with explanation */}
+                  <div className="relative group">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={quiz.endSession}
+                      disabled={!hasAnsweredQuestions}
+                      className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
+                        hasAnsweredQuestions
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
+                          : 'bg-muted/50 text-muted-foreground cursor-not-allowed'
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {hasAnsweredQuestions ? 'View Report' : 'Report'}
+                      </span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${
+                        hasAnsweredQuestions ? 'bg-white/20' : 'bg-muted-foreground/20'
+                      }`}>
                         {quiz.sessionPerformance.questionTimings.length}
                       </span>
-                    )}
-                  </Button>
+                    </Button>
+                    {/* Always-visible tooltip on hover */}
+                    <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        {hasAnsweredQuestions ? 'Session Report Ready' : 'Session Report'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {hasAnsweredQuestions
+                          ? `Click to end your session and see a detailed breakdown of your ${quiz.sessionPerformance.questionTimings.length} answered question${quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.`
+                          : 'Start practicing to build your session report. After answering questions, click here to see your performance analysis.'}
+                      </p>
+                    </div>
+                  </div>
 
                   {/* Sound Toggle */}
                   <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
@@ -492,6 +534,8 @@ const Index = () => {
                   currentSubject={quiz.subject}
                   isLoggedIn={!!user}
                   dueTopics={dueTopics}
+                  isLevelUnlocked={quiz.isLevelUnlocked}
+                  onRequestUnlock={handleRequestUnlock}
                 />
 
                 {/* Spaced Repetition Card - show when logged in */}
@@ -653,6 +697,22 @@ const Index = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Level Unlock Assessment Modal */}
+      {unlockTarget && (
+        <LevelUnlockModal
+          isOpen={unlockModalOpen}
+          topic={unlockTarget.topic}
+          targetLevel={unlockTarget.level}
+          questions={unlockQuestions}
+          onClose={() => {
+            setUnlockModalOpen(false);
+            setUnlockTarget(null);
+            setUnlockQuestions([]);
+          }}
+          onUnlock={handleUnlockSuccess}
+        />
+      )}
 
     </div>
   );

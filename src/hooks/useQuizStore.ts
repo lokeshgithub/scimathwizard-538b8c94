@@ -1,15 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { 
-  QuestionBank, 
-  Progress, 
-  QuestionTracking, 
-  SessionStats, 
-  Question, 
+import type {
+  QuestionBank,
+  Progress,
+  QuestionTracking,
+  SessionStats,
+  Question,
   Subject,
   QuestionTiming,
   SessionPerformance,
   SessionAnalysis,
-  TopicAnalysis
+  TopicAnalysis,
+  UnlockedLevels
 } from '@/types/quiz';
 import { fetchAllQuestions, logAnswerToServer } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
@@ -96,6 +97,7 @@ const loadFromStorage = (): Partial<QuizState> => {
         progress: parsed.progress || {},
         questionTracking,
         sessionStats: parsed.sessionStats || initialSessionStats,
+        unlockedLevels: parsed.unlockedLevels || {},
       };
     }
   } catch (e) {
@@ -104,7 +106,7 @@ const loadFromStorage = (): Partial<QuizState> => {
   return {};
 };
 
-const saveToStorage = (state: Partial<QuizState>) => {
+const saveToStorage = (state: Partial<QuizState> & { unlockedLevels?: UnlockedLevels }) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       schemaVersion: SCHEMA_VERSION,
@@ -112,6 +114,7 @@ const saveToStorage = (state: Partial<QuizState>) => {
       progress: state.progress,
       questionTracking: state.questionTracking,
       sessionStats: state.sessionStats,
+      unlockedLevels: state.unlockedLevels || {},
     }));
   } catch (e) {
     console.error('Failed to save quiz state:', e);
@@ -164,7 +167,9 @@ const clearActiveSession = () => {
 
 export const useQuizStore = () => {
   const stored = loadFromStorage();
-  
+  // Check if we have cached data - used to skip loading spinner
+  const hasInitialData = Object.keys(stored.banks || {}).length > 0;
+
   const [banks, setBanks] = useState<QuestionBank>(stored.banks || {});
   const [subject, setSubject] = useState<Subject>('math');
   const [topic, setTopic] = useState<string | null>(null);
@@ -183,10 +188,15 @@ export const useQuizStore = () => {
   const [sessionAnsweredIds, setSessionAnsweredIds] = useState<Set<string>>(new Set());
   const [levelStats, setLevelStats] = useState({ correct: 0, total: 0 });
   const [prefetchedNextIndex, setPrefetchedNextIndex] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start with loading=false if we have cached data, true otherwise
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [loadError, setLoadError] = useState<string | null>(null); // Network/loading error
   const [questionHistory, setQuestionHistory] = useState<number[]>([]); // Track question history for back navigation
   const [unlimitedPractice, setUnlimitedPractice] = useState(false); // Allow unlimited practice
+  // Track which levels are unlocked per topic (Level 1 always unlocked, higher levels need mastery OR unlock assessment)
+  const [unlockedLevels, setUnlockedLevels] = useState<UnlockedLevels>(
+    (stored as any).unlockedLevels || {}
+  );
 
   // Timer tracking
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -212,6 +222,66 @@ export const useQuizStore = () => {
     return Array.from(levelsSet).sort((a, b) => a - b);
   }, [banks, subject]);
 
+  // Check if a level is unlocked for a topic
+  // Level 1 is always unlocked, mastered levels are unlocked, and explicitly unlocked levels
+  const isLevelUnlocked = useCallback((topicName: string, lvl: number): boolean => {
+    // Level 1 is always unlocked
+    if (lvl === 1) return true;
+
+    // Check if previous level is mastered (natural progression)
+    const topicProgress = progress[topicName];
+    if (topicProgress) {
+      // If level below is mastered, this level is unlocked
+      if (topicProgress[lvl - 1]?.mastered) return true;
+      // If this level itself is mastered, it's unlocked
+      if (topicProgress[lvl]?.mastered) return true;
+    }
+
+    // Check if explicitly unlocked via assessment
+    const explicitlyUnlocked = unlockedLevels[topicName] || [];
+    return explicitlyUnlocked.includes(lvl);
+  }, [progress, unlockedLevels]);
+
+  // Unlock a level (and all levels below it) for a topic
+  const unlockLevel = useCallback((topicName: string, lvl: number) => {
+    setUnlockedLevels(prev => {
+      const currentUnlocked = prev[topicName] || [];
+      // Unlock all levels from 1 to lvl
+      const newUnlocked = new Set(currentUnlocked);
+      for (let i = 1; i <= lvl; i++) {
+        newUnlocked.add(i);
+      }
+      return {
+        ...prev,
+        [topicName]: Array.from(newUnlocked).sort((a, b) => a - b),
+      };
+    });
+  }, []);
+
+  // Get questions for level unlock assessment (3 questions from target level)
+  // Prioritizes target level; falls back to level below only if needed
+  const getUnlockAssessmentQuestions = useCallback((topicName: string, targetLevel: number): Question[] => {
+    const allQuestions = banks[subject]?.[topicName] || [];
+
+    // First try to get questions from the target level
+    const targetLevelQuestions = allQuestions.filter(q => q.level === targetLevel);
+
+    // If we have enough at target level, use those
+    if (targetLevelQuestions.length >= 3) {
+      const shuffled = [...targetLevelQuestions].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 3);
+    }
+
+    // Otherwise, supplement with level below
+    const belowLevelQuestions = allQuestions.filter(q => q.level === targetLevel - 1);
+    const combined = [...targetLevelQuestions, ...belowLevelQuestions];
+
+    if (combined.length === 0) return [];
+
+    const shuffled = [...combined].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
+  }, [banks, subject]);
+
   // Current topic's max level
   const currentMaxLevel = useMemo(() => {
     if (!topic) return DEFAULT_MAX_LEVEL;
@@ -219,9 +289,14 @@ export const useQuizStore = () => {
   }, [topic, getTopicMaxLevel]);
 
   // Load questions from database on mount
-  const loadQuestions = useCallback(async () => {
-    setIsLoading(true);
+  // Only show loading spinner if we don't have any cached data
+  const loadQuestions = useCallback(async (showLoading: boolean) => {
+    // Only show loading if we have nothing to display
+    if (showLoading) {
+      setIsLoading(true);
+    }
     setLoadError(null);
+
     try {
       const dbQuestions = await fetchAllQuestions();
       if (Object.keys(dbQuestions).length > 0) {
@@ -229,20 +304,24 @@ export const useQuizStore = () => {
       }
     } catch (error) {
       console.error('Failed to load questions from database:', error);
-      setLoadError('Failed to load questions. Please check your connection and try again.');
+      // Only show error if we have no data at all
+      if (showLoading) {
+        setLoadError('Failed to load questions. Please check your connection and try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+    // Only show loading spinner if we have no initial data from cache
+    loadQuestions(!hasInitialData);
+  }, [loadQuestions, hasInitialData]);
 
   // Save to storage when relevant state changes
   useEffect(() => {
-    saveToStorage({ banks, progress, questionTracking, sessionStats });
-  }, [banks, progress, questionTracking, sessionStats]);
+    saveToStorage({ banks, progress, questionTracking, sessionStats, unlockedLevels });
+  }, [banks, progress, questionTracking, sessionStats, unlockedLevels]);
 
   // Save active session when topic/level/levelStats change (for resume on refresh)
   useEffect(() => {
@@ -944,7 +1023,7 @@ export const useQuizStore = () => {
       : currentQuestions[questionIndex + 1] || null,
     isLoading,
     loadError,
-    retryLoadQuestions: loadQuestions,
+    retryLoadQuestions: () => loadQuestions(true),
     sessionPerformance,
     showSessionSummary,
     questionHistory,
@@ -956,6 +1035,11 @@ export const useQuizStore = () => {
     getTopicMaxLevel,
     getTopicLevels,
     currentMaxLevel,
+
+    // Level locking
+    isLevelUnlocked,
+    unlockLevel,
+    getUnlockAssessmentQuestions,
     
     // Constants
     MAX_LEVEL: currentMaxLevel, // Dynamic based on topic
@@ -987,7 +1071,7 @@ export const useQuizStore = () => {
     getQuestionsCountForLevel,
     exitToTopics,
     refreshQuestions: async () => {
-      setIsLoading(true);
+      // Refresh in background without showing loading spinner
       try {
         const dbQuestions = await fetchAllQuestions();
         if (Object.keys(dbQuestions).length > 0) {
@@ -995,8 +1079,6 @@ export const useQuizStore = () => {
         }
       } catch (error) {
         console.error('Failed to refresh questions:', error);
-      } finally {
-        setIsLoading(false);
       }
     },
   };

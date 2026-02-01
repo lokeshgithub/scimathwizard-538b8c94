@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Trophy, Target, Clock, BarChart3, 
-  TrendingUp, Home, CheckCircle, XCircle, 
+import {
+  Trophy, Target, Clock, BarChart3,
+  TrendingUp, Home, CheckCircle, XCircle,
   ChevronDown, ChevronUp, FileText, Brain,
-  Lightbulb, Footprints, ShieldCheck, AlertTriangle, Key, Sparkles
+  Lightbulb, Footprints, ShieldCheck, AlertTriangle, Key, Sparkles,
+  ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { OlympiadQuestionResult } from '@/hooks/useOlympiadTest';
+import { OlympiadQuestionReview } from './OlympiadQuestionReview';
 
 interface OlympiadResultsProps {
   results: {
@@ -92,6 +94,7 @@ const formatExplanation = (explanation: string) => {
 
 export function OlympiadResults({ results, questionResults, strictMode, onRetry, onHome }: OlympiadResultsProps) {
   const [showReview, setShowReview] = useState(false);
+  const [showFullPaper, setShowFullPaper] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
   
   const toggleExplanation = (index: number) => {
@@ -146,6 +149,24 @@ export function OlympiadResults({ results, questionResults, strictMode, onRetry,
           </div>
         </div>
       </div>
+
+      {/* View Full Question Paper - Prominent CTA */}
+      {questionResults && questionResults.length > 0 && (
+        <motion.button
+          onClick={() => setShowFullPaper(true)}
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-4 flex items-center justify-center gap-3 shadow-lg transition-all"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <ClipboardList className="w-5 h-5" />
+          <span className="font-semibold">View Full Question Paper</span>
+          <span className="bg-white/20 rounded-full px-2 py-0.5 text-sm">
+            {results.correctAnswers}/{results.totalQuestions} correct
+          </span>
+        </motion.button>
+      )}
 
       {/* Performance by Difficulty */}
       <div className="bg-card rounded-xl p-5 shadow-card">
@@ -391,6 +412,16 @@ export function OlympiadResults({ results, questionResults, strictMode, onRetry,
           Try Again
         </Button>
       </div>
+
+      {/* Full Question Paper Review Modal */}
+      <AnimatePresence>
+        {showFullPaper && questionResults && (
+          <OlympiadQuestionReview
+            questionResults={questionResults}
+            onClose={() => setShowFullPaper(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

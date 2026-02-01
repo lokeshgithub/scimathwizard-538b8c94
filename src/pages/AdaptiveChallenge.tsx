@@ -167,59 +167,46 @@ const AdaptiveChallenge = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header 
-        className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white py-6 px-4"
+      {/* Header - Compact with navigation */}
+      <motion.header
+        className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white py-3 px-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Brain className="w-8 h-8" />
-                <h1 className="text-2xl md:text-3xl font-bold">Adaptive Challenge</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Pathway Navigation */}
-              <PathwayNav />
-              
-              <Link to="/adaptive/focus">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-white hover:bg-white/20"
-                >
-                  <Crosshair className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">Focus</span>
-                </Button>
-              </Link>
-              <Link to="/adaptive/history">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-white hover:bg-white/20"
-                >
-                  <History className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">History</span>
-                </Button>
-              </Link>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-white hover:bg-white/20"
-                onClick={() => setShowLeaderboard(true)}
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <PathwayNav />
+          <div className="flex items-center gap-1">
+            <Link to="/adaptive/focus">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 px-2"
               >
-                <Trophy className="w-4 h-4 mr-1" />
-                <span className="hidden sm:inline">Leaderboard</span>
+                <Crosshair className="w-4 h-4" />
+                <span className="hidden md:inline ml-1">Focus</span>
               </Button>
-              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
-            </div>
+            </Link>
+            <Link to="/adaptive/history">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 px-2"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden md:inline ml-1">History</span>
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 px-2"
+              onClick={() => setShowLeaderboard(true)}
+            >
+              <Trophy className="w-4 h-4" />
+              <span className="hidden md:inline ml-1">Ranks</span>
+            </Button>
+            <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
           </div>
-          <p className="text-white/80 text-sm mt-2 ml-2">
-            📋 Take this 20-question assessment to discover your skill level and get a score out of 100
-          </p>
         </div>
       </motion.header>
 
@@ -383,9 +370,10 @@ const AdaptiveChallenge = () => {
           </motion.div>
         )}
 
-        {/* Active Challenge */}
+        {/* Active Challenge - key forces full re-mount on question change to prevent answer state bleeding */}
         {adaptive.state.isActive && adaptive.state.currentQuestion && (
           <AdaptiveQuizCard
+            key={`${adaptive.state.currentQuestion.id}-${adaptive.state.totalQuestions}`}
             question={adaptive.state.currentQuestion}
             currentLevel={adaptive.state.currentLevel}
             progress={adaptive.progressPercentage}

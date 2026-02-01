@@ -54,8 +54,64 @@ interface DBQuestion {
 // In-memory cache for instant answer validation
 const answerCache = new Map<string, { correctIndex: number; explanation: string }>();
 
+// LocalStorage cache for questions to speed up initial load
+const QUESTIONS_CACHE_KEY = 'magical-mastery-questions-cache';
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache TTL
+
+interface CachedQuestions {
+  bank: QuestionBank;
+  timestamp: number;
+}
+
+function loadQuestionsFromCache(): QuestionBank | null {
+  try {
+    const cached = localStorage.getItem(QUESTIONS_CACHE_KEY);
+    if (!cached) return null;
+
+    const parsed: CachedQuestions = JSON.parse(cached);
+    // Check if cache is still valid
+    if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+      // Rebuild answer cache from stored data
+      for (const subjectKey of Object.keys(parsed.bank)) {
+        for (const topicName of Object.keys(parsed.bank[subjectKey])) {
+          for (const q of parsed.bank[subjectKey][topicName]) {
+            answerCache.set(q.id, {
+              correctIndex: q.correct,
+              explanation: q.explanation || '',
+            });
+          }
+        }
+      }
+      console.log('Loaded questions from localStorage cache');
+      return parsed.bank;
+    }
+  } catch (e) {
+    console.error('Failed to load questions cache:', e);
+  }
+  return null;
+}
+
+function saveQuestionsToCache(bank: QuestionBank): void {
+  try {
+    const cached: CachedQuestions = {
+      bank,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(cached));
+  } catch (e) {
+    console.error('Failed to save questions cache:', e);
+  }
+}
+
 // Fetch all questions organized by subject and topic (with answers for instant validation)
 export async function fetchAllQuestions(): Promise<QuestionBank> {
+  // Try to load from cache first for instant display
+  const cachedBank = loadQuestionsFromCache();
+  if (cachedBank && Object.keys(cachedBank).length > 0) {
+    // Refresh in background for next time (non-blocking)
+    refreshQuestionsInBackground();
+    return cachedBank;
+  }
   const bank: QuestionBank = {};
 
   // Fetch subjects
@@ -177,7 +233,89 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
   }
 
   console.log(`Loaded ${questions.length} questions into memory for instant validation`);
+
+  // Save to cache for faster subsequent loads
+  saveQuestionsToCache(bank);
+
   return bank;
+}
+
+// Background refresh - fetches latest questions without blocking UI
+async function refreshQuestionsInBackground(): Promise<void> {
+  try {
+    // Fetch from database silently
+    const { data: subjects } = await supabase.from('subjects').select('*');
+    const { data: topics } = await supabase.from('topics').select('*');
+
+    if (!subjects || !topics) return;
+
+    let allQuestions: DBQuestion[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch } = await supabase
+        .rpc('get_public_questions')
+        .range(offset, offset + pageSize - 1) as { data: DBQuestion[] | null; error: any };
+
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allQuestions = [...allQuestions, ...batch];
+        offset += pageSize;
+        hasMore = batch.length === pageSize;
+      }
+    }
+
+    if (allQuestions.length > 0) {
+      // Build new bank (same logic as fetchAllQuestions)
+      const bank: QuestionBank = {};
+      const subjectMap = new Map<string, DBSubject>(
+        (subjects as DBSubject[]).map(s => [s.id, s])
+      );
+      const topicMap = new Map<string, DBTopic>(
+        (topics as DBTopic[]).map(t => [t.id, t])
+      );
+
+      for (const q of allQuestions) {
+        const topic = topicMap.get(q.topic_id);
+        if (!topic) continue;
+        const subject = subjectMap.get(topic.subject_id);
+        if (!subject) continue;
+
+        const subjectKey = subject.name.toLowerCase() as Subject;
+        const topicName = topic.name;
+
+        if (!bank[subjectKey]) bank[subjectKey] = {};
+        if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
+
+        const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
+        const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
+        const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
+        const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+
+        bank[subjectKey][topicName].push({
+          id: q.id,
+          level: q.level,
+          question: q.question,
+          options: shuffledOptions,
+          correct: shuffledCorrectIndex,
+          explanation: q.explanation || '',
+          concepts: [],
+          hint: q.hint || undefined,
+          shuffleMap,
+        });
+      }
+
+      // Update cache for next load
+      saveQuestionsToCache(bank);
+      console.log('Background refresh completed - cache updated');
+    }
+  } catch (e) {
+    // Silent fail - background refresh is optional
+    console.error('Background refresh failed:', e);
+  }
 }
 
 // Instant local answer validation - no network call needed!
