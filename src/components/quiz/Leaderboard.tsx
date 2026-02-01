@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Star, Medal, Crown, ChevronRight, X, Users } from 'lucide-react';
+import { Trophy, Star, Medal, Crown, ChevronRight, X, Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -102,6 +102,7 @@ export const Leaderboard = ({ currentUserId }: LeaderboardProps) => {
         <Button
           onClick={() => setIsOpen(true)}
           className="rounded-full w-14 h-14 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 shadow-lg"
+          aria-label="Open leaderboard"
         >
           <Trophy className="w-6 h-6 text-white" />
         </Button>
@@ -165,7 +166,7 @@ export const Leaderboard = ({ currentUserId }: LeaderboardProps) => {
               <div className="overflow-y-auto max-h-[50vh] p-4 space-y-2">
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : entries.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">

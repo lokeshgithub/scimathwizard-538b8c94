@@ -5,9 +5,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { FriendProfile } from '@/types/friends';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
-  X, Star, Trophy, Flame, BookOpen, Target, 
-  TrendingUp, Award, Zap
+import {
+  X, Star, Trophy, Flame, BookOpen, Target,
+  TrendingUp, Award, Zap, Loader2
 } from 'lucide-react';
 
 interface FriendCompareModalProps {
@@ -184,7 +184,7 @@ export const FriendCompareModal = ({ friend, onClose }: FriendCompareModalProps)
         <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
             comparisons.map((comp, index) => {

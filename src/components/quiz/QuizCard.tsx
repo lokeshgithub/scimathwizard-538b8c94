@@ -100,14 +100,22 @@ export const QuizCard = ({
   }, [question.id]);
 
   // Parse hints from the question - split by "|" or "Hint N:" patterns
+  // Strips "Hint N:" prefixes for clean display
   const parsedHints = useMemo(() => {
     if (!question.hint) return [];
     const hint = question.hint.trim();
     if (!hint) return [];
 
+    // Helper to strip "Hint N:" prefix from a string
+    const stripHintPrefix = (h: string): string => {
+      return h.replace(/^Hint\s*\d+\s*:\s*/i, '').trim();
+    };
+
     // Split by "|" separator
     if (hint.includes('|')) {
-      return hint.split('|').map(h => h.trim()).filter(h => h.length > 0);
+      return hint.split('|')
+        .map(h => stripHintPrefix(h.trim()))
+        .filter(h => h.length > 0);
     }
 
     // Split by "Hint N:" pattern
@@ -119,8 +127,8 @@ export const QuizCard = ({
       return parts.map(h => h.trim());
     }
 
-    // Single hint
-    return [hint];
+    // Single hint - also strip any prefix
+    return [stripHintPrefix(hint)];
   }, [question.hint]);
 
   // Check if hints are available for this question
@@ -231,13 +239,27 @@ export const QuizCard = ({
 
   // Format content that has numbered steps (e.g., "1. Step one. 2. Step two.")
   // Returns content with proper line breaks between steps
+  // Handles multiple formats: "1. ", "1) ", "(1) ", and bullet points
   const formatStepContent = (content: string): string => {
-    // Match patterns like "1. ...", "2. ...", etc. and add line breaks before each
-    // But don't break if it's at the start
-    return content
-      .replace(/\s+(\d+)\.\s+/g, '\n$1. ') // Add newline before numbered steps
-      .replace(/^\n/, '') // Remove leading newline if any
+    // First, normalize existing newlines (remove duplicates)
+    let formatted = content.replace(/\n{2,}/g, '\n');
+
+    // Check if content already has proper line breaks (has newlines before numbers)
+    const hasProperBreaks = /\n\s*\d+[.)]\s/.test(formatted);
+    if (hasProperBreaks) {
+      return formatted.trim();
+    }
+
+    // Add line breaks before numbered patterns: "1. ", "2. ", etc.
+    // But not at the very start
+    formatted = formatted
+      .replace(/(?<!^)(\s)(\d+)\.\s+/g, '\n$2. ') // "1. " format
+      .replace(/(?<!^)(\s)(\d+)\)\s+/g, '\n$2) ') // "1) " format
+      .replace(/(?<!^)(\s)\((\d+)\)\s+/g, '\n($2) ') // "(1) " format
+      .replace(/^\n/, '') // Remove leading newline if added
       .trim();
+
+    return formatted;
   };
 
   const formatExplanation = (explanation: string) => {
@@ -432,7 +454,7 @@ export const QuizCard = ({
                    showAsIncorrect ? <XCircle className="w-5 h-5" /> :
                    String.fromCharCode(65 + index)}
                 </span>
-                <span className="flex-1 text-foreground">{option}</span>
+                <span className="flex-1 text-foreground break-words">{option}</span>
               </motion.button>
             );
           })}
@@ -552,7 +574,7 @@ export const QuizCard = ({
                 </div>
               )}
 
-              <div className="space-y-5">
+              <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
                 {formatExplanation(question.explanation).map((section, index) => (
                   <motion.div
                     key={index}
@@ -565,7 +587,7 @@ export const QuizCard = ({
                       {sectionIcons[section.title] || <Sparkles className="w-4 h-4" />}
                       {section.title}
                     </h5>
-                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm">
+                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm break-words">
                       {section.content}
                     </div>
                   </motion.div>

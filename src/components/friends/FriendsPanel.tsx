@@ -78,6 +78,7 @@ export const FriendsPanel = ({ currentSubject, topics, onJoinBattle }: FriendsPa
         className="fixed bottom-4 right-20 z-40 bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-4 rounded-full shadow-lg"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
+        aria-label={`Open friends panel${totalPending > 0 ? `, ${totalPending} pending` : ''}`}
       >
         <Users className="w-6 h-6" />
         {totalPending > 0 && (
