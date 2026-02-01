@@ -511,12 +511,20 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
     'Circles', 'Constructions', 'Data Handling', 'Probability',
   ],
   'Physics': [
+    // Core topics matching actual data files
+    'Physical Quantities Measurement', 'Force and Motion', 'Energy',
+    // Additional common physics topics
     'Motion', 'Force', 'Gravitation', 'Work and Energy', 'Sound',
-    'Light', 'Electricity', 'Magnetism', 'Heat',
+    'Light', 'Electricity', 'Magnetism', 'Heat', 'Waves',
+    'Reflection', 'Refraction', 'Current Electricity',
   ],
   'Chemistry': [
+    // Core topics
     'Matter', 'Atoms and Molecules', 'Chemical Reactions', 'Acids and Bases',
     'Metals and Non-metals', 'Carbon Compounds', 'Periodic Table',
+    // Additional common chemistry topics
+    'Elements and Compounds', 'Mixtures and Solutions', 'Chemical Bonding',
+    'States of Matter', 'Atomic Structure',
   ],
 };
 
@@ -634,6 +642,99 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   // Constructions
   'constructions': 'Constructions',
   'construction': 'Constructions',
+
+  // ============ PHYSICS TOPICS ============
+  // Physical Quantities and Measurement
+  'physicalquantitiesmeasurement': 'Physical Quantities Measurement',
+  'physical quantities measurement': 'Physical Quantities Measurement',
+  'physical quantities and measurement': 'Physical Quantities Measurement',
+  'physicalquantitiesandmeasurement': 'Physical Quantities Measurement',
+  'physical quantities': 'Physical Quantities Measurement',
+  'physicalquantities': 'Physical Quantities Measurement',
+  'measurement': 'Physical Quantities Measurement',
+  // Force and Motion
+  'forceandmotion': 'Force and Motion',
+  'force and motion': 'Force and Motion',
+  'forcemotion': 'Force and Motion',
+  'force motion': 'Force and Motion',
+  'motion': 'Force and Motion',
+  'force': 'Force and Motion',
+  // Energy
+  'energy': 'Energy',
+  'work and energy': 'Energy',
+  'workandenergyspeed': 'Energy',
+  'work energy': 'Energy',
+  // Gravitation
+  'gravitation': 'Gravitation',
+  'gravity': 'Gravitation',
+  // Sound
+  'sound': 'Sound',
+  'waves and sound': 'Sound',
+  // Light
+  'light': 'Light',
+  'optics': 'Light',
+  // Reflection
+  'reflection': 'Reflection',
+  'reflection of light': 'Reflection',
+  // Refraction
+  'refraction': 'Refraction',
+  'refraction of light': 'Refraction',
+  // Electricity
+  'electricity': 'Electricity',
+  'current electricity': 'Current Electricity',
+  'currentelectricity': 'Current Electricity',
+  // Magnetism
+  'magnetism': 'Magnetism',
+  'magnets': 'Magnetism',
+  // Heat
+  'heat': 'Heat',
+  'thermal energy': 'Heat',
+  // Waves
+  'waves': 'Waves',
+
+  // ============ CHEMISTRY TOPICS ============
+  // Acids, Bases and Salts
+  'acidsbasesandsalts': 'Acids Bases and Salts',
+  'acids bases and salts': 'Acids Bases and Salts',
+  'acids bases salts': 'Acids Bases and Salts',
+  'acidbasesalt': 'Acids Bases and Salts',
+  'acids': 'Acids Bases and Salts',
+  'bases': 'Acids Bases and Salts',
+  'salts': 'Acids Bases and Salts',
+  // Metals and Non-metals
+  'metalsandnonmetals': 'Metals and Non-metals',
+  'metals and nonmetals': 'Metals and Non-metals',
+  'metals and non-metals': 'Metals and Non-metals',
+  'metals nonmetals': 'Metals and Non-metals',
+  'metals': 'Metals and Non-metals',
+  'nonmetals': 'Metals and Non-metals',
+  // Atomic Structure
+  'atomicstructure': 'Atomic Structure',
+  'atomic structure': 'Atomic Structure',
+  'atoms': 'Atomic Structure',
+  'atom': 'Atomic Structure',
+  // Chemical Reactions
+  'chemicalreactions': 'Chemical Reactions',
+  'chemical reactions': 'Chemical Reactions',
+  'reactions': 'Chemical Reactions',
+  // Periodic Table
+  'periodictable': 'Periodic Table',
+  'periodic table': 'Periodic Table',
+  'elements': 'Periodic Table',
+  // Carbon and its Compounds
+  'carbonanditscompounds': 'Carbon Compounds',
+  'carbon and its compounds': 'Carbon Compounds',
+  'carbon compounds': 'Carbon Compounds',
+  'carbon': 'Carbon Compounds',
+  // Fibres and Plastics
+  'fibresandplastics': 'Fibres and Plastics',
+  'fibres and plastics': 'Fibres and Plastics',
+  'fibres': 'Fibres and Plastics',
+  'plastics': 'Fibres and Plastics',
+  // Chemical Bonding
+  'chemicalbonding': 'Chemical Bonding',
+  'chemical bonding': 'Chemical Bonding',
+  'bonding': 'Chemical Bonding',
 };
 
 /**

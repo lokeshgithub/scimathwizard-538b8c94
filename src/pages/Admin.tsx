@@ -182,9 +182,12 @@ const Admin = () => {
 
   const detectSubjectFromName = (name: string): string => {
     const lowerName = name.toLowerCase();
-    if (/physics|heat|motion|light|electric/i.test(lowerName)) {
+    // Physics keywords - include variations
+    if (/physics|physical|heat|motion|force|light|electric|magnet|sound|energy|gravit|optic|wave/i.test(lowerName)) {
       return 'Physics';
-    } else if (/chemistry|acid|chemical|fibre/i.test(lowerName)) {
+    }
+    // Chemistry keywords
+    if (/chemistry|chemical|acid|base|metal|atom|molecule|element|periodic|compound|reaction|carbon|fibre/i.test(lowerName)) {
       return 'Chemistry';
     }
     return 'Math';
