@@ -207,25 +207,62 @@ export const QuizCard = ({
     'KEY CONCEPT': 'text-purple-600',
   };
 
+  // Format content that has numbered steps (e.g., "1. Step one. 2. Step two.")
+  // Returns content with proper line breaks between steps
+  const formatStepContent = (content: string): string => {
+    // Match patterns like "1. ...", "2. ...", etc. and add line breaks before each
+    // But don't break if it's at the start
+    return content
+      .replace(/\s+(\d+)\.\s+/g, '\n$1. ') // Add newline before numbered steps
+      .replace(/^\n/, '') // Remove leading newline if any
+      .trim();
+  };
+
+  // Format hints that are separated by "|" or "Hint 1:", "Hint 2:", etc.
+  const formatHints = (hint: string): string[] => {
+    if (!hint) return [];
+
+    // Split by "|" separator
+    if (hint.includes('|')) {
+      return hint.split('|').map(h => h.trim()).filter(h => h.length > 0);
+    }
+
+    // Split by "Hint N:" pattern
+    const hintPattern = /Hint\s*\d+\s*:/gi;
+    if (hintPattern.test(hint)) {
+      const parts = hint.split(/Hint\s*\d+\s*:/i).filter(h => h.trim().length > 0);
+      return parts.map((h, i) => `Hint ${i + 1}: ${h.trim()}`);
+    }
+
+    // Single hint - return as array
+    return [hint.trim()];
+  };
+
   const formatExplanation = (explanation: string) => {
     // Parse sections marked with 【TITLE】
     const regex = /【([^】]+)】\s*([\s\S]*?)(?=【|$)/g;
     const formatted: { title: string; content: string }[] = [];
     let match;
-    
+
     while ((match = regex.exec(explanation)) !== null) {
       const title = match[1].trim();
-      const content = match[2].trim();
+      let content = match[2].trim();
+
+      // For STEP-BY-STEP sections, format the numbered steps
+      if (title === 'STEP-BY-STEP') {
+        content = formatStepContent(content);
+      }
+
       if (content) {
         formatted.push({ title, content });
       }
     }
-    
+
     // Fallback if no sections found
     if (formatted.length === 0 && explanation.trim()) {
       formatted.push({ title: 'Explanation', content: explanation.trim() });
     }
-    
+
     return formatted;
   };
 
@@ -313,13 +350,17 @@ export const QuizCard = ({
               >
                 <div className="flex items-start gap-3">
                   <Lightbulb className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-700 dark:text-amber-300 text-sm mb-1">
+                  <div className="flex-1">
+                    <p className="font-medium text-amber-700 dark:text-amber-300 text-sm mb-2">
                       Hint
                     </p>
-                    <p className="text-amber-800 dark:text-amber-200">
-                      {question.hint}
-                    </p>
+                    <ul className="space-y-2">
+                      {formatHints(question.hint || '').map((hint, idx) => (
+                        <li key={idx} className="text-amber-800 dark:text-amber-200 text-sm">
+                          {hint}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </motion.div>

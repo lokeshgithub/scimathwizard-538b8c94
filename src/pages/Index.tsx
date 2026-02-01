@@ -119,24 +119,30 @@ const Index = () => {
     const solvedToAdd = solved - lastSynced.solved;
     const masteredToAdd = mastered - lastSynced.mastered;
 
-    // Only sync if there's something new AND positive (prevent negative/huge jumps)
-    // Also cap maximum stars per sync to 100 to prevent runaway bugs
-    if (starsToAdd > 0 && starsToAdd <= 100) {
-      updateStats({
-        total_stars: (profile.total_stars || 0) + starsToAdd,
-        questions_answered: (profile.questions_answered || 0) + Math.max(0, solvedToAdd),
-        topics_mastered: (profile.topics_mastered || 0) + Math.max(0, masteredToAdd),
-      });
+    // Sync if there's anything positive to add
+    // Cap at 5000 stars per sync as sanity check (should never hit this in normal play)
+    const hasStarsToSync = starsToAdd > 0 && starsToAdd <= 5000;
+    const hasStatsToSync = solvedToAdd > 0 || masteredToAdd > 0;
 
-      // Update what we've synced
+    if (hasStarsToSync || hasStatsToSync) {
+      const updates: Record<string, number> = {};
+
+      if (hasStarsToSync) {
+        updates.total_stars = (profile.total_stars || 0) + starsToAdd;
+      }
+      if (solvedToAdd > 0) {
+        updates.questions_answered = (profile.questions_answered || 0) + solvedToAdd;
+      }
+      if (masteredToAdd > 0) {
+        updates.topics_mastered = (profile.topics_mastered || 0) + masteredToAdd;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateStats(updates);
+      }
+
+      // Always update lastSyncedRef to prevent desync
       lastSyncedRef.current = { stars, solved, mastered };
-    } else if (solvedToAdd > 0 || masteredToAdd > 0) {
-      // Sync non-star stats even if stars look suspicious
-      updateStats({
-        questions_answered: (profile.questions_answered || 0) + Math.max(0, solvedToAdd),
-        topics_mastered: (profile.topics_mastered || 0) + Math.max(0, masteredToAdd),
-      });
-      lastSyncedRef.current = { stars: lastSynced.stars, solved, mastered };
     }
   }, [quiz.sessionStats.stars, quiz.sessionStats.solved, quiz.sessionStats.mastered, user, profile, updateStats]);
 
