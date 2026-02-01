@@ -19,7 +19,7 @@ import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
-const SCHEMA_VERSION = 3; // v3: Reset stars due to sync bug fix
+const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
@@ -92,15 +92,15 @@ const loadFromStorage = (): Partial<QuizState> => {
         questionTracking = migratedTracking;
       }
 
-      // Migrate from v2 to v3: Reset stars due to sync bug fix
+      // Migrate from v2 to v3/v4: Reset stars due to sync bug fix
       // Stars will be re-synced from database when user logs in
       let sessionStats = parsed.sessionStats || initialSessionStats;
-      if (storedVersion < 3) {
+      if (storedVersion < 4) {
         sessionStats = {
           ...sessionStats,
           stars: 0, // Reset stars - will sync from database
         };
-        console.log('[Migration v3] Reset localStorage stars to 0 - will sync from database');
+        console.log('[Migration v4] Reset localStorage stars to 0 - will sync from database');
       }
 
       // Progress stays the same - existing mastered levels remain mastered
