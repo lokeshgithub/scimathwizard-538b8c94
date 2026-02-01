@@ -190,20 +190,20 @@ export const getRandomFunElement = (level: number): FunElement | null => {
 export const getMilestoneAnimation = (streak: number, totalCorrect: number): { emoji: string; message: string; animation: string } | null => {
   // Streak milestones - only at 10+ to avoid frequent interruptions
   const streakMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    10: { emoji: '💎', message: "BRILLIANT! 10 streak! +50 bonus stars! 💫", animation: 'diamond' },
-    // Removed streak 5 - too frequent, interrupts flow
+    10: { emoji: '💎', message: "BRILLIANT! 10 in a row! Keep going! 💫", animation: 'diamond' },
+    20: { emoji: '🌟', message: "AMAZING! 20 streak! You're on fire! 🔥", animation: 'star' },
   };
 
   if (streakMilestones[streak]) {
     return streakMilestones[streak];
   }
 
-  // Total correct milestones - only major ones (50, 100, 200)
+  // Total correct milestones - only major ones
   const totalMilestones: Record<number, { emoji: string; message: string; animation: string }> = {
-    50: { emoji: '📚', message: "50 questions correct! Keep building knowledge! 💪", animation: 'books' },
-    100: { emoji: '🚀', message: "100 correct! You're a learning rocket! 🌙", animation: 'rocket' },
-    200: { emoji: '💯', message: "200 CORRECT! You're a CHAMPION! 🏆", animation: 'century' },
-    // Removed 10 - too early and frequent
+    50: { emoji: '📚', message: "50 questions correct! Keep building! 💪", animation: 'books' },
+    100: { emoji: '🚀', message: "100 correct! Great progress! 🌙", animation: 'rocket' },
+    200: { emoji: '💯', message: "200 CORRECT! Amazing dedication! 🏆", animation: 'century' },
+    500: { emoji: '👑', message: "500 CORRECT! You're a true scholar! 🎓", animation: 'crown' },
   };
 
   if (totalMilestones[totalCorrect]) {
@@ -214,20 +214,20 @@ export const getMilestoneAnimation = (streak: number, totalCorrect: number): { e
 };
 
 // Get bonus stars for milestones
-// Only major milestones give bonuses to avoid frequent interruptions
+// Conservative bonuses - stars should require effort
 export const getMilestoneBonus = (streak: number, totalCorrect: number): number => {
-  // Streak bonuses - only at 10+
+  // Streak bonuses - small, only at 10+
   const streakBonuses: Record<number, number> = {
-    10: 50,
-    // Removed streak 5 bonus - keep flow snappy
+    10: 5,   // Small bonus for 10 streak
+    20: 10,  // Slightly bigger for 20 streak
   };
 
-  // Total correct bonuses - only major ones
+  // Total correct bonuses - small, only major milestones
   const totalBonuses: Record<number, number> = {
-    50: 75,
-    100: 150,
-    200: 300,
-    // Removed 10 - too early
+    50: 10,   // 50 correct
+    100: 20,  // 100 correct
+    200: 40,  // 200 correct
+    500: 100, // 500 correct - dedicated practice
   };
 
   return (streakBonuses[streak] || 0) + (totalBonuses[totalCorrect] || 0);

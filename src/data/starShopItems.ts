@@ -2,11 +2,17 @@
  * Star Shop Items
  *
  * Digital rewards students can purchase with earned stars.
- * Prices are balanced so:
- * - Cheap items: achievable with 5 level 1 completions (~500 stars)
- * - Medium items: need 1-2 chapters complete (~2000-5000 stars)
- * - Expensive items: need 3-4 chapters complete (~10000+ stars)
- * - Legendary items: dedicated practice required (~25000+ stars)
+ *
+ * Star earning rate (conservative):
+ * - ~1-7 stars per correct answer (based on level)
+ * - ~100-200 stars per hour of practice
+ *
+ * Pricing tiers (effort required):
+ * - Common: 2-3 hours → 150-250 stars
+ * - Uncommon: 5-8 hours → 400-700 stars
+ * - Rare: 12-20 hours → 1000-1800 stars
+ * - Epic: 30-50 hours → 3000-5000 stars
+ * - Legendary: 80-150 hours → 8000-15000 stars
  */
 
 export interface ShopItem {
@@ -21,13 +27,13 @@ export interface ShopItem {
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
-  // === COMMON (100-500 stars) - Easy to get ===
+  // === COMMON (150-250 stars) - 2-3 hours of practice ===
   {
     id: 'avatar_wizard_hat',
     name: 'Wizard Hat',
     description: 'A magical pointy hat for your profile',
     emoji: '🧙',
-    price: 100,
+    price: 150,
     category: 'avatar',
     rarity: 'common',
     unlockMessage: 'You got a magical wizard hat!',
@@ -37,7 +43,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Star Collector',
     description: 'Shows you love collecting stars',
     emoji: '⭐',
-    price: 150,
+    price: 175,
     category: 'badge',
     rarity: 'common',
     unlockMessage: 'Star Collector badge unlocked!',
@@ -57,7 +63,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Early Bird',
     description: 'For students who start early',
     emoji: '🐦',
-    price: 250,
+    price: 220,
     category: 'badge',
     rarity: 'common',
     unlockMessage: 'Early Bird badge earned!',
@@ -67,19 +73,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Apprentice Title',
     description: 'Display "Apprentice" on your profile',
     emoji: '🎓',
-    price: 300,
+    price: 250,
     category: 'title',
     rarity: 'common',
     unlockMessage: 'You are now an Apprentice!',
   },
 
-  // === UNCOMMON (500-1500 stars) - Some effort needed ===
+  // === UNCOMMON (400-700 stars) - 5-8 hours of practice ===
   {
     id: 'pet_owl',
     name: 'Wise Owl',
     description: 'A magical owl companion',
     emoji: '🦉',
-    price: 500,
+    price: 400,
     category: 'pet',
     rarity: 'uncommon',
     unlockMessage: 'Wise Owl joins your journey!',
@@ -89,7 +95,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Streak Master',
     description: 'For those who keep their streaks going',
     emoji: '🔥',
-    price: 750,
+    price: 500,
     category: 'badge',
     rarity: 'uncommon',
     unlockMessage: 'Streak Master badge unlocked!',
@@ -99,7 +105,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Lightning Bolt',
     description: 'Show your quick thinking',
     emoji: '⚡',
-    price: 800,
+    price: 550,
     category: 'avatar',
     rarity: 'uncommon',
     unlockMessage: 'Lightning speed unlocked!',
@@ -109,7 +115,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Ocean Theme',
     description: 'Cool blue ocean vibes',
     emoji: '🌊',
-    price: 1000,
+    price: 600,
     category: 'theme',
     rarity: 'uncommon',
     unlockMessage: 'Ocean Theme activated!',
@@ -119,7 +125,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Baby Dragon',
     description: 'A tiny dragon friend',
     emoji: '🐉',
-    price: 1200,
+    price: 650,
     category: 'pet',
     rarity: 'uncommon',
     unlockMessage: 'Baby Dragon hatched!',
@@ -129,19 +135,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Scholar Title',
     description: 'Display "Scholar" on your profile',
     emoji: '📖',
-    price: 1500,
+    price: 700,
     category: 'title',
     rarity: 'uncommon',
     unlockMessage: 'You are now a Scholar!',
   },
 
-  // === RARE (2000-5000 stars) - 1-2 chapters needed ===
+  // === RARE (1000-1800 stars) - 12-20 hours of practice ===
   {
     id: 'badge_perfectionist',
     name: 'Perfectionist',
     description: 'For those who aim for 100%',
     emoji: '💯',
-    price: 2000,
+    price: 1000,
     category: 'badge',
     rarity: 'rare',
     unlockMessage: 'Perfectionist badge earned!',
@@ -151,7 +157,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Phoenix',
     description: 'Rise from mistakes stronger',
     emoji: '🔥',
-    price: 2500,
+    price: 1200,
     category: 'pet',
     rarity: 'rare',
     unlockMessage: 'Phoenix rises with you!',
@@ -161,7 +167,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Galaxy Theme',
     description: 'Stars and cosmic beauty',
     emoji: '🌌',
-    price: 3000,
+    price: 1400,
     category: 'theme',
     rarity: 'rare',
     unlockMessage: 'Galaxy Theme unlocked!',
@@ -171,7 +177,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Silver Crown',
     description: 'A shiny silver crown',
     emoji: '👑',
-    price: 3500,
+    price: 1600,
     category: 'avatar',
     rarity: 'rare',
     unlockMessage: 'Silver Crown is yours!',
@@ -181,29 +187,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Expert Title',
     description: 'Display "Expert" on your profile',
     emoji: '🏆',
-    price: 4000,
+    price: 1800,
     category: 'title',
     rarity: 'rare',
     unlockMessage: 'You are now an Expert!',
   },
-  {
-    id: 'special_double_stars',
-    name: 'Star Doubler (1 Day)',
-    description: 'Double stars for 24 hours!',
-    emoji: '✨',
-    price: 5000,
-    category: 'special',
-    rarity: 'rare',
-    unlockMessage: 'Star Doubler activated for 24 hours!',
-  },
 
-  // === EPIC (7500-15000 stars) - 3-4 chapters needed ===
+  // === EPIC (3000-5000 stars) - 30-50 hours of practice ===
   {
     id: 'pet_unicorn',
     name: 'Magical Unicorn',
     description: 'A rare and beautiful companion',
     emoji: '🦄',
-    price: 7500,
+    price: 3000,
     category: 'pet',
     rarity: 'epic',
     unlockMessage: 'Magical Unicorn is yours!',
@@ -213,7 +209,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Aurora Theme',
     description: 'Beautiful northern lights',
     emoji: '🌈',
-    price: 8500,
+    price: 3500,
     category: 'theme',
     rarity: 'epic',
     unlockMessage: 'Aurora Theme glows!',
@@ -223,7 +219,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Golden Crown',
     description: 'The ultimate crown',
     emoji: '👑',
-    price: 10000,
+    price: 4000,
     category: 'avatar',
     rarity: 'epic',
     unlockMessage: 'Golden Crown achieved!',
@@ -233,7 +229,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Champion Badge',
     description: 'Only for true champions',
     emoji: '🏅',
-    price: 12000,
+    price: 4500,
     category: 'badge',
     rarity: 'epic',
     unlockMessage: 'Champion Badge unlocked!',
@@ -243,19 +239,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Master Title',
     description: 'Display "Master" on your profile',
     emoji: '🎖️',
-    price: 15000,
+    price: 5000,
     category: 'title',
     rarity: 'epic',
     unlockMessage: 'You are now a Master!',
   },
 
-  // === LEGENDARY (20000+ stars) - Dedicated practice needed ===
+  // === LEGENDARY (8000-15000 stars) - 80-150 hours of practice ===
   {
     id: 'pet_galaxy_dragon',
     name: 'Galaxy Dragon',
     description: 'A dragon made of stars',
     emoji: '🐲',
-    price: 20000,
+    price: 8000,
     category: 'pet',
     rarity: 'legendary',
     unlockMessage: 'Galaxy Dragon descends!',
@@ -265,7 +261,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Enchanted Forest',
     description: 'Magical forest theme',
     emoji: '🌳',
-    price: 25000,
+    price: 10000,
     category: 'theme',
     rarity: 'legendary',
     unlockMessage: 'Enchanted Forest unlocked!',
@@ -275,7 +271,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Legend Badge',
     description: 'The rarest badge of all',
     emoji: '💎',
-    price: 30000,
+    price: 12000,
     category: 'badge',
     rarity: 'legendary',
     unlockMessage: 'LEGENDARY! You are a true Legend!',
@@ -285,7 +281,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Grandmaster Title',
     description: 'Display "Grandmaster" - the highest honor',
     emoji: '🌟',
-    price: 50000,
+    price: 15000,
     category: 'title',
     rarity: 'legendary',
     unlockMessage: 'GRANDMASTER! The ultimate achievement!',

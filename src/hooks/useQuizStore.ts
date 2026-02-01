@@ -17,6 +17,7 @@ import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
+const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
 const SCHEMA_VERSION = 2; // Increment when storage format changes
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
@@ -24,11 +25,11 @@ const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
 const MAX_SUPPORTED_LEVEL = 7; // Maximum levels we support
 
-// Star rewards now use level-based system from masteryRewards.ts
-// getQuestionStars(isCorrect, streak, level) handles:
-// - Base stars (10)
-// - Level multiplier (L1=1x to L7=3x)
-// - Streak multiplier (capped at 3x to prevent grinding)
+// Star rewards use conservative level-based system from masteryRewards.ts
+// getQuestionStars(isCorrect, streak, level) = level + small streak bonus
+// - Level 1-7: 1-7 stars (linear, NOT multiplicative)
+// - Streak bonus: +1 at 5+, +2 at 10+ (small, capped)
+// Earning rate: ~100-200 stars per hour of practice
 
 // Milestone definitions
 const STREAK_MILESTONES = [5, 7, 10, 15, 20];
@@ -117,6 +118,50 @@ const saveToStorage = (state: Partial<QuizState>) => {
   }
 };
 
+// Active session storage - saves current topic/level progress separately
+interface ActiveSession {
+  topic: string | null;
+  subject: Subject;
+  level: number;
+  levelStats: { correct: number; total: number };
+  timestamp: number;
+}
+
+const loadActiveSession = (): ActiveSession | null => {
+  try {
+    const data = localStorage.getItem(SESSION_KEY);
+    if (data) {
+      const session = JSON.parse(data) as ActiveSession;
+      // Session expires after 24 hours
+      if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+        return session;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load active session:', e);
+  }
+  return null;
+};
+
+const saveActiveSession = (session: ActiveSession) => {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      ...session,
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    console.error('Failed to save active session:', e);
+  }
+};
+
+const clearActiveSession = () => {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch (e) {
+    console.error('Failed to clear active session:', e);
+  }
+};
+
 export const useQuizStore = () => {
   const stored = loadFromStorage();
   
@@ -192,6 +237,19 @@ export const useQuizStore = () => {
   useEffect(() => {
     saveToStorage({ banks, progress, questionTracking, sessionStats });
   }, [banks, progress, questionTracking, sessionStats]);
+
+  // Save active session when topic/level/levelStats change (for resume on refresh)
+  useEffect(() => {
+    if (topic && levelStats.total > 0) {
+      saveActiveSession({
+        topic,
+        subject,
+        level,
+        levelStats,
+        timestamp: Date.now(),
+      });
+    }
+  }, [topic, subject, level, levelStats]);
 
   // Reset timer when question changes
   useEffect(() => {
@@ -333,7 +391,7 @@ export const useQuizStore = () => {
     setQuestionHistory([]); // Reset question history
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
-    
+
     // Find the current level (first non-mastered level)
     let currentLevel = 1;
     for (let i = 1; i <= maxLevel; i++) {
@@ -345,22 +403,57 @@ export const useQuizStore = () => {
         currentLevel = maxLevel;
       }
     }
-    
+
     setLevel(currentLevel);
-    setLevelStats({ correct: 0, total: 0 });
-    
+
+    // Try to restore in-progress level stats from active session
+    const activeSession = loadActiveSession();
+    let restoredLevelStats = { correct: 0, total: 0 };
+
+    if (activeSession &&
+        activeSession.topic === topicName &&
+        activeSession.subject === subject &&
+        activeSession.level === currentLevel &&
+        !prog[currentLevel]?.mastered) {
+      // Restore from saved active session
+      restoredLevelStats = activeSession.levelStats;
+    } else {
+      // Reconstruct from questionTracking as fallback
+      // Count questions already answered correctly for this topic/level
+      const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
+      let correctCount = 0;
+      let totalCount = 0;
+
+      for (const q of allForLevel) {
+        const status = questionTracking[q.id];
+        if (status && status.attemptCount > 0) {
+          totalCount++;
+          if (status.masteredCleanly) {
+            correctCount++;
+          }
+        }
+      }
+
+      // Only restore if there's meaningful progress (but not completed level)
+      if (totalCount > 0 && totalCount < PER_LEVEL) {
+        restoredLevelStats = { correct: correctCount, total: totalCount };
+      }
+    }
+
+    setLevelStats(restoredLevelStats);
+
     // Get available questions for this level
     const available = getAvailableQuestions(topicName, currentLevel);
     const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
-    
+
     // If unlimited practice mode or no new questions available, use all questions
     const questionsToUse = (startUnlimited || available.length === 0) ? allForLevel : available;
     const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
-    
+
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
-  }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject]);
+  }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking]);
 
   // Start a mixed topics quiz
   const startMixedQuiz = useCallback((selectedTopics: string[]) => {
@@ -521,8 +614,14 @@ export const useQuizStore = () => {
         stars: prev.stars + completionStars,
       }));
 
+      // Clear active session - level completed
+      clearActiveSession();
+
       return 'passed';
     }
+
+    // Clear active session on fail too - will restart level
+    clearActiveSession();
 
     return 'failed';
   }, [levelStats, level, topic, getTopicProgress, recordTopicForSpacedRepetition]);
@@ -712,7 +811,7 @@ export const useQuizStore = () => {
       delete updated[topicName];
       return updated;
     });
-    
+
     // Also clear question tracking for this topic's questions
     const topicQuestions = banks[subject]?.[topicName] || [];
     const questionIds = topicQuestions.map(q => q.id);
@@ -723,6 +822,9 @@ export const useQuizStore = () => {
       }
       return updated;
     });
+
+    // Clear active session if it was for this topic
+    clearActiveSession();
   }, [banks, subject]);
 
   // Reset all progress (full reset)
@@ -733,6 +835,7 @@ export const useQuizStore = () => {
     setLevelStats({ correct: 0, total: 0 });
     setQuestionHistory([]);
     localStorage.removeItem(STORAGE_KEY);
+    clearActiveSession();
   }, []);
 
   // End session and show summary
