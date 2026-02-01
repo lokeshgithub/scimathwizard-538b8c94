@@ -603,6 +603,22 @@ export const useQuizStore = () => {
     }));
   }, []);
 
+  // Sync stars from database profile (call when user logs in)
+  // This ensures stars are consistent across devices
+  const syncStarsFromProfile = useCallback((profileStars: number) => {
+    setSessionStats(prev => {
+      // Only update if profile has more stars (user earned on another device)
+      // or if local stars is 0 (fresh device)
+      if (profileStars > prev.stars || prev.stars === 0) {
+        return {
+          ...prev,
+          stars: profileStars,
+        };
+      }
+      return prev;
+    });
+  }, []);
+
   // Check if we can go back
   const canGoBack = questionHistory.length > 0;
 
@@ -789,6 +805,7 @@ export const useQuizStore = () => {
     resetTopicProgress,
     resetAllProgress,
     deductStars,
+    syncStarsFromProfile,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {

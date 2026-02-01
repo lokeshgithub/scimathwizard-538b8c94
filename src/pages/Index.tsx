@@ -48,26 +48,39 @@ const Index = () => {
   // Track what we've already synced to avoid duplicate additions
   // Initialize with current session stats to prevent re-syncing on page reload
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
+  const hasInitializedStars = useRef(false);
 
-  // Sync stats to database incrementally - on every answer
+  // Sync stars FROM database when user logs in (for cross-device consistency)
+  useEffect(() => {
+    if (!user || !profile || hasInitializedStars.current) return;
+
+    // Initialize local stars from database profile
+    const profileStars = profile.total_stars || 0;
+    if (profileStars > 0) {
+      quiz.syncStarsFromProfile(profileStars);
+    }
+    hasInitializedStars.current = true;
+  }, [user, profile, quiz]);
+
+  // Sync stats TO database incrementally - on every answer
   useEffect(() => {
     if (!user || !profile) return;
-    
+
     const { stars, solved, mastered } = quiz.sessionStats;
-    
+
     // On first run, initialize the ref with current values to prevent re-sync of old data
     if (lastSyncedRef.current === null) {
       lastSyncedRef.current = { stars, solved, mastered };
       return; // Don't sync on first mount - data was already synced previously
     }
-    
+
     const lastSynced = lastSyncedRef.current;
-    
+
     // Calculate incremental changes since last sync
     const starsToAdd = stars - lastSynced.stars;
     const solvedToAdd = solved - lastSynced.solved;
     const masteredToAdd = mastered - lastSynced.mastered;
-    
+
     // Only sync if there's something new (positive increment)
     if (starsToAdd > 0 || solvedToAdd > 0 || masteredToAdd > 0) {
       updateStats({
@@ -75,7 +88,7 @@ const Index = () => {
         questions_answered: (profile.questions_answered || 0) + solvedToAdd,
         topics_mastered: (profile.topics_mastered || 0) + masteredToAdd,
       });
-      
+
       // Update what we've synced
       lastSyncedRef.current = { stars, solved, mastered };
     }
