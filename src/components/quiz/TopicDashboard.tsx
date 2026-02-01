@@ -17,6 +17,7 @@ interface TopicDashboardProps {
   getProgress: (topic: string) => TopicProgress;
   onSelectTopic: (topic: string) => void;
   onStartMixedQuiz?: (topics: string[]) => void;
+  onStartLevel?: (topic: string, level: number) => void;
   getTopicLevels?: (topic: string) => number[];
   isAdmin?: boolean;
   currentSubject?: string;
@@ -98,6 +99,7 @@ export const TopicDashboard = ({
   getProgress,
   onSelectTopic,
   onStartMixedQuiz,
+  onStartLevel,
   getTopicLevels,
   isAdmin = false,
   currentSubject = 'math',
@@ -462,27 +464,40 @@ export const TopicDashboard = ({
                 </div>
               </div>
 
-              {/* Level indicators */}
+              {/* Level indicators - clickable to jump to specific level */}
               <div className="flex items-center gap-1 mb-3">
                 {topic.levels.map((level, i) => {
                   const isMastered = topic.progress[level]?.mastered;
                   return (
-                    <motion.div
+                    <motion.button
                       key={level}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Don't trigger parent topic click
+                        if (onStartLevel) {
+                          // Check guest limits first
+                          if (!guestLimits.canAccessTopic(topic.name)) {
+                            setShowSignUpPrompt(true);
+                            return;
+                          }
+                          guestLimits.recordTopicAccess(topic.name);
+                          onStartLevel(topic.name, level);
+                        }
+                      }}
                       className={`
                         w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                        transition-all duration-300
-                        ${isMastered 
-                          ? `bg-gradient-to-br ${topic.colors.bg} text-white shadow-sm` 
-                          : 'bg-muted text-muted-foreground'
+                        transition-all duration-300 hover:scale-110 hover:ring-2 hover:ring-primary/50
+                        ${isMastered
+                          ? `bg-gradient-to-br ${topic.colors.bg} text-white shadow-sm`
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
                         }
                       `}
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: index * 0.05 + i * 0.05 }}
+                      title={`Practice Level ${level}${isMastered ? ' (Mastered)' : ''}`}
                     >
                       {level}
-                    </motion.div>
+                    </motion.button>
                   );
                 })}
               </div>

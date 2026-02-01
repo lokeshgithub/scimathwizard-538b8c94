@@ -900,6 +900,22 @@ export const useQuizStore = () => {
     // Don't clear active session - they may want to resume later
   }, []);
 
+  // Change subject and reset topic state
+  const changeSubject = useCallback((newSubject: Subject) => {
+    if (newSubject !== subject) {
+      setSubject(newSubject);
+      // Reset topic state when switching subjects
+      setTopic(null);
+      setMixedTopics(null);
+      setCurrentQuestions([]);
+      setQuestionIndex(0);
+      setQuestionHistory([]);
+      setUnlimitedPractice(false);
+      setLevel(1);
+      setLevelStats({ correct: 0, total: 0 });
+    }
+  }, [subject]);
+
   return {
     // State
     banks,
@@ -935,7 +951,7 @@ export const useQuizStore = () => {
     THRESHOLD,
     
     // Actions
-    setSubject,
+    setSubject: changeSubject, // Use changeSubject to properly reset state
     selectTopic,
     startMixedQuiz,
     answerQuestion,

@@ -486,6 +486,7 @@ const Index = () => {
                   getProgress={quiz.getTopicProgress}
                   onSelectTopic={quiz.selectTopic}
                   onStartMixedQuiz={quiz.startMixedQuiz}
+                  onStartLevel={quiz.startUnlimitedPractice}
                   getTopicLevels={quiz.getTopicLevels}
                   isAdmin={false}
                   currentSubject={quiz.subject}
