@@ -884,6 +884,18 @@ export const useQuizStore = () => {
     return topicQuestions.filter(q => q.level === levelNum).length;
   }, [banks, subject]);
 
+  // Exit current quiz and go back to topic selection
+  const exitToTopics = useCallback(() => {
+    setTopic(null);
+    setMixedTopics(null);
+    setCurrentQuestions([]);
+    setQuestionIndex(0);
+    setQuestionHistory([]);
+    setUnlimitedPractice(false);
+    // Don't reset levelStats or progress - keep their work
+    // Don't clear active session - they may want to resume later
+  }, []);
+
   return {
     // State
     banks,
@@ -939,6 +951,7 @@ export const useQuizStore = () => {
     syncStarsFromProfile,
     startUnlimitedPractice,
     getQuestionsCountForLevel,
+    exitToTopics,
     refreshQuestions: async () => {
       setIsLoading(true);
       try {

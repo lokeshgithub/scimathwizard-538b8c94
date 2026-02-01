@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, User, GraduationCap, Brain, Settings, ArrowLeft } from 'lucide-react';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useDailyChallenge } from '@/hooks/useDailyChallenge';
@@ -385,6 +385,20 @@ const Index = () => {
               </motion.div>
             )}
 
+            {/* Back to Topics Button - shown when in a quiz */}
+            {quiz.topic && quiz.currentQuestion && (
+              <motion.button
+                onClick={quiz.exitToTopics}
+                className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                whileHover={{ x: -3 }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Topics
+              </motion.button>
+            )}
+
             {quiz.topic && quiz.currentQuestion && (
               <MasteryPanel
                 topicName={quiz.topic}
@@ -405,16 +419,28 @@ const Index = () => {
             )}
 
             {quiz.mixedTopics && quiz.mixedTopics.length > 0 && quiz.currentQuestion && (
-              <motion.div 
-                className="bg-gradient-magical text-white p-4 rounded-xl mb-4"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="flex items-center gap-2 font-medium">
-                  <span>🎲 Mixed Mode:</span>
-                  <span>{quiz.mixedTopics.length} topics selected</span>
-                </div>
-              </motion.div>
+              <>
+                <motion.button
+                  onClick={quiz.exitToTopics}
+                  className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ x: -3 }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Topics
+                </motion.button>
+                <motion.div
+                  className="bg-gradient-magical text-white p-4 rounded-xl mb-4"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    <span>🎲 Mixed Mode:</span>
+                    <span>{quiz.mixedTopics.length} topics selected</span>
+                  </div>
+                </motion.div>
+              </>
             )}
 
             {quiz.currentQuestion && (
