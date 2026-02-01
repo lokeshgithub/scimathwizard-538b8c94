@@ -893,15 +893,22 @@ export async function findMatchingTopic(
 }
 
 // Sanitize database error messages for user display
-function sanitizeDbError(error: { message?: string } | null): string {
+function sanitizeDbError(error: { message?: string; code?: string; details?: string } | null): string {
   if (!error?.message) return 'Database operation failed';
   const msg = error.message.toLowerCase();
+
+  // Log full error for debugging
+  console.error('[DB Error]', { message: error.message, code: error.code, details: error.details });
+
   if (msg.includes('duplicate') || msg.includes('unique')) return 'Item already exists';
   if (msg.includes('foreign key')) return 'Invalid reference - related item not found';
-  if (msg.includes('not-null') || msg.includes('null value')) return 'Missing required field';
+  if (msg.includes('not-null') || msg.includes('null value')) return `Missing required field: ${error.message}`;
   if (msg.includes('violates check')) return 'Invalid data format';
-  if (msg.includes('permission denied') || msg.includes('rls')) return 'Permission denied';
-  return 'Database operation failed';
+  if (msg.includes('permission denied') || msg.includes('rls')) return 'Permission denied - check RLS policies';
+  if (msg.includes('column') && msg.includes('does not exist')) return `Column missing: ${error.message}`;
+
+  // For unknown errors, show more detail in dev
+  return `Database error: ${error.message.slice(0, 100)}`;
 }
 
 // Admin function to upload questions from CSV
@@ -1060,9 +1067,20 @@ export async function uploadQuestionsFromCSV(
     }
 
     if (questionsToInsert.length > 0) {
-      const { error: insertError } = await supabase
+      // Try insert with sub_topic first
+      let { error: insertError } = await supabase
         .from('questions')
         .insert(questionsToInsert);
+
+      // If sub_topic column doesn't exist, retry without it
+      if (insertError && insertError.message?.includes('sub_topic')) {
+        console.log('sub_topic column not found, retrying without it...');
+        const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
+        const retryResult = await supabase
+          .from('questions')
+          .insert(questionsWithoutSubTopic);
+        insertError = retryResult.error;
+      }
 
       if (insertError) {
         console.error('Question insert error:', insertError);
@@ -1331,7 +1349,7 @@ export async function smartUploadQuestions(
 
           if (changes.length > 0) {
             // Has changes - update the question
-            const { error: updateError } = await supabase
+            let { error: updateError } = await supabase
               .from('questions')
               .update({
                 level: rawLevel,
@@ -1345,6 +1363,24 @@ export async function smartUploadQuestions(
                 sub_topic: subTopic,
               })
               .eq('id', existing.id);
+
+            // If sub_topic column doesn't exist, retry without it
+            if (updateError && updateError.message?.includes('sub_topic')) {
+              const retryResult = await supabase
+                .from('questions')
+                .update({
+                  level: rawLevel,
+                  option_a: optionA,
+                  option_b: optionB,
+                  option_c: optionC,
+                  option_d: optionD,
+                  correct_answer: validAnswer,
+                  explanation,
+                  hint,
+                })
+                .eq('id', existing.id);
+              updateError = retryResult.error;
+            }
 
             if (updateError) {
               report.errors.push({ rowNumber, error: `Update failed: ${sanitizeDbError(updateError)}` });
@@ -1392,9 +1428,19 @@ export async function smartUploadQuestions(
 
     // Batch insert new questions
     if (questionsToInsert.length > 0) {
-      const { error: insertError } = await supabase
+      let { error: insertError } = await supabase
         .from('questions')
         .insert(questionsToInsert);
+
+      // If sub_topic column doesn't exist, retry without it
+      if (insertError && insertError.message?.includes('sub_topic')) {
+        console.log('sub_topic column not found, retrying without it...');
+        const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
+        const retryResult = await supabase
+          .from('questions')
+          .insert(questionsWithoutSubTopic);
+        insertError = retryResult.error;
+      }
 
       if (insertError) {
         report.error = `Failed to insert new questions: ${sanitizeDbError(insertError)}`;
