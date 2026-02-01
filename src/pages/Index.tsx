@@ -644,7 +644,14 @@ const Index = () => {
                       You've answered all {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level)} questions in this level correctly.
                     </p>
                     <div className="flex gap-3 justify-center">
-                      <Button onClick={() => quiz.startReviewMode(quiz.topic!, quiz.level)} variant="outline">
+                      <Button onClick={() => {
+                        if (quiz.topic) {
+                          const started = quiz.startReviewMode(quiz.topic, quiz.level);
+                          if (!started) {
+                            toast.error('No solved questions to review');
+                          }
+                        }
+                      }} variant="outline">
                         Review Solved Questions
                       </Button>
                       <Button onClick={quiz.exitToTopics}>

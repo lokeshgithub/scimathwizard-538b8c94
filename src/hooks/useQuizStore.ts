@@ -740,6 +740,9 @@ export const useQuizStore = () => {
   }, [subject]);
 
   const checkMastery = useCallback((): 'passed' | 'failed' | 'continue' => {
+    // In review mode, never trigger level completion - just continue
+    if (isReviewMode) return 'continue';
+
     if (levelStats.total < PER_LEVEL) return 'continue';
 
     const accuracy = levelStats.correct / levelStats.total;
@@ -779,7 +782,7 @@ export const useQuizStore = () => {
     clearActiveSession();
 
     return 'failed';
-  }, [levelStats, level, topic, getTopicProgress, recordTopicForSpacedRepetition]);
+  }, [levelStats, level, topic, getTopicProgress, recordTopicForSpacedRepetition, isReviewMode]);
 
   const advanceLevel = useCallback(() => {
     if (level < currentMaxLevel) {
@@ -966,12 +969,28 @@ export const useQuizStore = () => {
 
     // Also clear question tracking for this topic's questions
     const topicQuestions = banks[subject]?.[topicName] || [];
-    const questionIds = topicQuestions.map(q => q.id);
+    const questionIds = new Set(topicQuestions.map(q => q.id));
     setQuestionTracking(prev => {
       const updated = { ...prev };
       for (const id of questionIds) {
         delete updated[id];
       }
+      return updated;
+    });
+
+    // Clear session answered IDs for this topic's questions
+    setSessionAnsweredIds(prev => {
+      const updated = new Set(prev);
+      for (const id of questionIds) {
+        updated.delete(id);
+      }
+      return updated;
+    });
+
+    // Clear unlocked levels for this topic (reset to default: only level 1 unlocked)
+    setUnlockedLevels(prev => {
+      const updated = { ...prev };
+      delete updated[topicName];
       return updated;
     });
 
@@ -1033,7 +1052,8 @@ export const useQuizStore = () => {
 
   // Start Review Mode - load only SOLVED questions for review
   // Answers in review mode do NOT affect progress or tracking
-  const startReviewMode = useCallback((topicName: string, reviewLevel?: number) => {
+  // Returns true if review started, false if no questions to review
+  const startReviewMode = useCallback((topicName: string, reviewLevel?: number): boolean => {
     const topicQuestions = banks[subject]?.[topicName] || [];
 
     // Filter to only correctly answered questions
@@ -1047,7 +1067,11 @@ export const useQuizStore = () => {
       solvedQuestions = solvedQuestions.filter(q => q.level === reviewLevel);
     }
 
-    if (solvedQuestions.length === 0) return;
+    // No solved questions to review
+    if (solvedQuestions.length === 0) {
+      console.log('[startReviewMode] No solved questions found for', topicName, 'level:', reviewLevel);
+      return false;
+    }
 
     setTopic(topicName);
     setLevel(reviewLevel || 1);
@@ -1062,6 +1086,7 @@ export const useQuizStore = () => {
     setLevelStats({ correct: 0, total: 0 });
     setQuestionHistory([]);
     setQuestionStartTime(Date.now());
+    return true;
   }, [banks, subject, questionTracking]);
 
   // Get count of solved questions for a topic (or specific level)

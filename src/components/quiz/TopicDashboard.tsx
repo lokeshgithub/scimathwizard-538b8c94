@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { TopicProgress } from '@/types/quiz';
 import {
   Sparkles, Flame, Target, ChevronDown, ChevronRight,
@@ -42,7 +43,7 @@ interface TopicDashboardProps {
   isLevelUnlocked?: (topic: string, level: number) => boolean;
   onRequestUnlock?: (topic: string, level: number) => void;
   // Review mode and reset
-  onStartReview?: (topic: string) => void;
+  onStartReview?: (topic: string) => boolean | void;
   onResetProgress?: (topic: string) => void;
   getSolvedCount?: (topic: string) => number;
 }
@@ -552,7 +553,12 @@ export const TopicDashboard = ({
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                         {hasSolvedQuestions && onStartReview && (
-                                          <DropdownMenuItem onClick={() => onStartReview(topic.name)}>
+                                          <DropdownMenuItem onClick={() => {
+                                            const started = onStartReview(topic.name);
+                                            if (started === false) {
+                                              toast.error('No solved questions to review');
+                                            }
+                                          }}>
                                             <Eye className="w-4 h-4 mr-2" />
                                             Review Solved ({solvedCount})
                                           </DropdownMenuItem>
@@ -648,6 +654,7 @@ export const TopicDashboard = ({
               onClick={() => {
                 if (resetConfirmTopic && onResetProgress) {
                   onResetProgress(resetConfirmTopic);
+                  toast.success(`Progress reset for ${formatName(resetConfirmTopic)}`);
                 }
                 setResetConfirmTopic(null);
               }}
