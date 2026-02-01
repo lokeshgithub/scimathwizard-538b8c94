@@ -214,20 +214,29 @@ export const getMilestoneAnimation = (streak: number, totalCorrect: number): { e
 };
 
 // Get bonus stars for milestones
-// Conservative bonuses - stars should require effort
+// Progressive bonuses to celebrate achievements
 export const getMilestoneBonus = (streak: number, totalCorrect: number): number => {
-  // Streak bonuses - small, only at 10+
+  // Streak milestone bonuses (one-time when hitting exact number)
   const streakBonuses: Record<number, number> = {
-    10: 5,   // Small bonus for 10 streak
-    20: 10,  // Slightly bigger for 20 streak
+    5: 10,    // First milestone!
+    10: 25,   // Double digits!
+    15: 40,   // Impressive!
+    20: 60,   // Amazing focus!
+    25: 80,   // Quarter century!
+    30: 100,  // Legendary!
   };
 
-  // Total correct bonuses - small, only major milestones
+  // Total correct milestone bonuses (celebrate progress)
   const totalBonuses: Record<number, number> = {
-    50: 10,   // 50 correct
-    100: 20,  // 100 correct
-    200: 40,  // 200 correct
-    500: 100, // 500 correct - dedicated practice
+    25: 15,    // Getting started
+    50: 30,    // Half century
+    75: 45,    // Making progress
+    100: 75,   // Century! Big milestone
+    150: 100,  // Dedicated learner
+    200: 150,  // Serious practice
+    300: 200,  // Power learner
+    500: 350,  // Master in training
+    1000: 750, // True dedication!
   };
 
   return (streakBonuses[streak] || 0) + (totalBonuses[totalCorrect] || 0);

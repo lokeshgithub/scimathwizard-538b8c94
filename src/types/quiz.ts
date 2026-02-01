@@ -10,6 +10,11 @@ export interface Question {
   // Maps shuffled index to original index: shuffleMap[shuffledIdx] = originalIdx
   // e.g., if shuffleMap = [2, 0, 3, 1], shuffled option 0 was originally option 2
   shuffleMap?: number[];
+  // Sub-topic within a chapter (for Physics/Chemistry chapter hierarchy)
+  // NULL or same as topic name for Math (backward compatible)
+  subTopic?: string;
+  // Parent chapter name (same as topic for flat structure, different for hierarchical)
+  chapter?: string;
 }
 
 export interface QuestionBank {

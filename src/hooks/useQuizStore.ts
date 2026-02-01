@@ -19,7 +19,7 @@ import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
-const SCHEMA_VERSION = 2; // Increment when storage format changes
+const SCHEMA_VERSION = 3; // v3: Reset stars due to sync bug fix
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
@@ -92,12 +92,23 @@ const loadFromStorage = (): Partial<QuizState> => {
         questionTracking = migratedTracking;
       }
 
+      // Migrate from v2 to v3: Reset stars due to sync bug fix
+      // Stars will be re-synced from database when user logs in
+      let sessionStats = parsed.sessionStats || initialSessionStats;
+      if (storedVersion < 3) {
+        sessionStats = {
+          ...sessionStats,
+          stars: 0, // Reset stars - will sync from database
+        };
+        console.log('[Migration v3] Reset localStorage stars to 0 - will sync from database');
+      }
+
       // Progress stays the same - existing mastered levels remain mastered
       return {
         banks: parsed.banks || {},
         progress: parsed.progress || {},
         questionTracking,
-        sessionStats: parsed.sessionStats || initialSessionStats,
+        sessionStats,
         unlockedLevels: parsed.unlockedLevels || {},
       };
     }
@@ -483,34 +494,49 @@ export const useQuizStore = () => {
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
 
-    // Find the current level (first non-mastered level)
-    let currentLevel = 1;
-    for (let i = 1; i <= maxLevel; i++) {
-      if (!prog[i]?.mastered) {
-        currentLevel = i;
-        break;
-      }
-      if (i === maxLevel && prog[i]?.mastered) {
-        currentLevel = maxLevel;
-      }
-    }
-
-    setLevel(currentLevel);
-
-    // Try to restore in-progress level stats from active session
+    // FIRST: Check if there's an active session for this topic - restore their level!
     const activeSession = loadActiveSession();
+    let currentLevel = 1;
     let restoredLevelStats = { correct: 0, total: 0 };
+    let restoredFromSession = false;
 
     if (activeSession &&
         activeSession.topic === topicName &&
         activeSession.subject === subject &&
-        activeSession.level === currentLevel &&
-        !prog[currentLevel]?.mastered) {
-      // Restore from saved active session
+        !prog[activeSession.level]?.mastered) {
+      // Restore from saved active session - USE THE SESSION'S LEVEL
+      currentLevel = activeSession.level;
       restoredLevelStats = activeSession.levelStats;
+      restoredFromSession = true;
+      console.log(`[selectTopic] Restored from active session: level ${currentLevel}, stats:`, restoredLevelStats);
     } else {
-      // Reconstruct from questionTracking as fallback
-      // Count questions already answered correctly for this topic/level
+      // No active session - find the appropriate level
+      // Check explicitly unlocked levels first
+      const explicitlyUnlocked = unlockedLevels[topicName] || [];
+      const highestUnlocked = explicitlyUnlocked.length > 0 ? Math.max(...explicitlyUnlocked) : 0;
+
+      // Find the first non-mastered level
+      let firstNonMastered = 1;
+      for (let i = 1; i <= maxLevel; i++) {
+        if (!prog[i]?.mastered) {
+          firstNonMastered = i;
+          break;
+        }
+        if (i === maxLevel && prog[i]?.mastered) {
+          firstNonMastered = maxLevel;
+        }
+      }
+
+      // Use whichever is higher: first non-mastered OR highest explicitly unlocked
+      // This handles the case where user unlocked level 4 but didn't master 2 & 3
+      currentLevel = Math.max(firstNonMastered, highestUnlocked > 0 ? highestUnlocked : 1);
+
+      // But cap at maxLevel
+      currentLevel = Math.min(currentLevel, maxLevel);
+
+      console.log(`[selectTopic] Calculated level: ${currentLevel} (firstNonMastered: ${firstNonMastered}, highestUnlocked: ${highestUnlocked})`);
+
+      // Try to reconstruct progress from questionTracking
       const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
       let correctCount = 0;
       let totalCount = 0;
@@ -531,6 +557,7 @@ export const useQuizStore = () => {
       }
     }
 
+    setLevel(currentLevel);
     setLevelStats(restoredLevelStats);
 
     // Get available questions for this level
@@ -544,7 +571,7 @@ export const useQuizStore = () => {
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
-  }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking]);
+  }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking, unlockedLevels]);
 
   // Start a mixed topics quiz
   const startMixedQuiz = useCallback((selectedTopics: string[]) => {
@@ -798,18 +825,15 @@ export const useQuizStore = () => {
   }, []);
 
   // Sync stars from database profile (call when user logs in)
-  // This ensures stars are consistent across devices
+  // DATABASE IS THE SOURCE OF TRUTH - always use profile stars
   const syncStarsFromProfile = useCallback((profileStars: number) => {
     setSessionStats(prev => {
-      // Only update if profile has more stars (user earned on another device)
-      // or if local stars is 0 (fresh device)
-      if (profileStars > prev.stars || prev.stars === 0) {
-        return {
-          ...prev,
-          stars: profileStars,
-        };
-      }
-      return prev;
+      // Always sync to database value - database is source of truth
+      // This prevents localStorage from having divergent values
+      return {
+        ...prev,
+        stars: profileStars,
+      };
     });
   }, []);
 

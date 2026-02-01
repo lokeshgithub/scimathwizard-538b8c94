@@ -31,8 +31,11 @@ const formatName = (name: string) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
+// Category type definition
+type CategoryDef = { name: string; icon: string; color: string; keywords: string[] };
+
 // Topic categories for Math
-const MATH_CATEGORIES: { name: string; icon: string; color: string; keywords: string[] }[] = [
+const MATH_CATEGORIES: CategoryDef[] = [
   { name: 'Numbers & Operations', icon: '🔢', color: 'from-blue-500 to-cyan-500', keywords: ['integer', 'decimal', 'fraction', 'rational', 'number', 'percent'] },
   { name: 'Algebra', icon: '🔤', color: 'from-purple-500 to-pink-500', keywords: ['algebra', 'equation', 'linear', 'exponent', 'power', 'variable', 'polynomial'] },
   { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest'] },
@@ -40,10 +43,44 @@ const MATH_CATEGORIES: { name: string; icon: string; color: string; keywords: st
   { name: 'Data & Statistics', icon: '📊', color: 'from-rose-500 to-red-500', keywords: ['data', 'statistic', 'probability', 'graph', 'mean', 'median'] },
 ];
 
-// Categorize a topic based on its name
-const categorize = (topicName: string): string => {
+// Topic categories for Physics (Class 7 onwards)
+const PHYSICS_CATEGORIES: CategoryDef[] = [
+  { name: 'Motion & Forces', icon: '🚀', color: 'from-blue-600 to-indigo-500', keywords: ['motion', 'force', 'speed', 'velocity', 'acceleration', 'momentum', 'friction', 'gravity', 'newton'] },
+  { name: 'Energy & Work', icon: '⚡', color: 'from-amber-500 to-yellow-500', keywords: ['energy', 'work', 'power', 'kinetic', 'potential', 'conservation', 'joule'] },
+  { name: 'Heat & Temperature', icon: '🌡️', color: 'from-red-500 to-orange-500', keywords: ['heat', 'temperature', 'thermal', 'conduction', 'convection', 'radiation', 'celsius', 'fahrenheit'] },
+  { name: 'Light & Optics', icon: '💡', color: 'from-yellow-400 to-amber-400', keywords: ['light', 'optic', 'reflection', 'refraction', 'lens', 'mirror', 'prism', 'color', 'spectrum'] },
+  { name: 'Sound & Waves', icon: '🔊', color: 'from-teal-500 to-cyan-500', keywords: ['sound', 'wave', 'vibration', 'frequency', 'amplitude', 'echo', 'resonance', 'pitch'] },
+  { name: 'Electricity & Magnetism', icon: '🔌', color: 'from-violet-500 to-purple-500', keywords: ['electric', 'current', 'voltage', 'resistance', 'circuit', 'magnet', 'magnetic', 'ohm', 'charge'] },
+];
+
+// Topic categories for Chemistry (Class 7 onwards)
+const CHEMISTRY_CATEGORIES: CategoryDef[] = [
+  { name: 'Matter & Materials', icon: '🧱', color: 'from-slate-500 to-gray-600', keywords: ['matter', 'state', 'solid', 'liquid', 'gas', 'material', 'property', 'physical', 'change'] },
+  { name: 'Atoms & Elements', icon: '⚛️', color: 'from-blue-500 to-cyan-500', keywords: ['atom', 'element', 'periodic', 'proton', 'neutron', 'electron', 'nucleus', 'atomic'] },
+  { name: 'Compounds & Mixtures', icon: '🧪', color: 'from-green-500 to-emerald-500', keywords: ['compound', 'mixture', 'molecule', 'solution', 'separation', 'pure', 'impure'] },
+  { name: 'Chemical Reactions', icon: '💥', color: 'from-orange-500 to-red-500', keywords: ['reaction', 'chemical', 'reactant', 'product', 'equation', 'balance', 'synthesis', 'decomposition'] },
+  { name: 'Acids, Bases & Salts', icon: '🫧', color: 'from-lime-500 to-green-500', keywords: ['acid', 'base', 'salt', 'ph', 'neutral', 'indicator', 'alkali', 'corrosive'] },
+  { name: 'Metals & Non-metals', icon: '🔩', color: 'from-amber-600 to-yellow-600', keywords: ['metal', 'non-metal', 'metalloid', 'conductor', 'malleable', 'ductile', 'lustre'] },
+];
+
+// Get categories for a specific subject
+const getCategoriesForSubject = (subject: string): CategoryDef[] => {
+  switch (subject.toLowerCase()) {
+    case 'physics':
+      return PHYSICS_CATEGORIES;
+    case 'chemistry':
+      return CHEMISTRY_CATEGORIES;
+    case 'math':
+    default:
+      return MATH_CATEGORIES;
+  }
+};
+
+// Categorize a topic based on its name and subject
+const categorize = (topicName: string, subject: string = 'math'): string => {
   const lower = topicName.toLowerCase();
-  for (const cat of MATH_CATEGORIES) {
+  const categories = getCategoriesForSubject(subject);
+  for (const cat of categories) {
     if (cat.keywords.some(kw => lower.includes(kw))) {
       return cat.name;
     }
@@ -51,9 +88,11 @@ const categorize = (topicName: string): string => {
   return 'Other Topics';
 };
 
-// Get topic icon
-const getTopicIcon = (name: string): string => {
+// Get topic icon based on name and subject
+const getTopicIcon = (name: string, subject: string = 'math'): string => {
   const lower = name.toLowerCase();
+
+  // Math icons
   if (lower.includes('decimal')) return '🔢';
   if (lower.includes('fraction')) return '🍕';
   if (lower.includes('ratio') && lower.includes('proportion')) return '⚖️';
@@ -73,6 +112,40 @@ const getTopicIcon = (name: string): string => {
   if (lower.includes('probability')) return '🎲';
   if (lower.includes('profit') || lower.includes('loss')) return '💰';
   if (lower.includes('interest')) return '🏦';
+
+  // Physics icons
+  if (lower.includes('motion') || lower.includes('velocity') || lower.includes('speed')) return '🚀';
+  if (lower.includes('force') || lower.includes('newton')) return '💪';
+  if (lower.includes('friction')) return '🛑';
+  if (lower.includes('gravity')) return '🌍';
+  if (lower.includes('energy')) return '⚡';
+  if (lower.includes('work') || lower.includes('power')) return '🔋';
+  if (lower.includes('heat') || lower.includes('temperature') || lower.includes('thermal')) return '🌡️';
+  if (lower.includes('light') || lower.includes('optic')) return '💡';
+  if (lower.includes('reflection')) return '🪞';
+  if (lower.includes('refraction') || lower.includes('lens')) return '🔍';
+  if (lower.includes('sound') || lower.includes('wave')) return '🔊';
+  if (lower.includes('electric') || lower.includes('current') || lower.includes('circuit')) return '🔌';
+  if (lower.includes('magnet')) return '🧲';
+
+  // Chemistry icons
+  if (lower.includes('matter') || lower.includes('state')) return '🧱';
+  if (lower.includes('atom') || lower.includes('element')) return '⚛️';
+  if (lower.includes('periodic')) return '📋';
+  if (lower.includes('compound') || lower.includes('molecule')) return '🧬';
+  if (lower.includes('mixture') || lower.includes('solution')) return '🧪';
+  if (lower.includes('reaction') || lower.includes('chemical')) return '💥';
+  if (lower.includes('acid')) return '🫧';
+  if (lower.includes('base') || lower.includes('alkali')) return '🧴';
+  if (lower.includes('salt')) return '🧂';
+  if (lower.includes('metal')) return '🔩';
+  if (lower.includes('gas')) return '💨';
+  if (lower.includes('liquid')) return '💧';
+  if (lower.includes('solid')) return '🧊';
+
+  // Default icons per subject
+  if (subject === 'physics') return '🔬';
+  if (subject === 'chemistry') return '⚗️';
   return '📚';
 };
 
@@ -101,11 +174,31 @@ export const TopicDashboard = ({
   isLevelUnlocked,
   onRequestUnlock,
 }: TopicDashboardProps) => {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Numbers & Operations', 'Algebra']));
+  // Get default expanded categories based on subject
+  const getDefaultExpandedCategories = useCallback((subject: string): Set<string> => {
+    switch (subject.toLowerCase()) {
+      case 'physics':
+        return new Set(['Motion & Forces', 'Energy & Work']);
+      case 'chemistry':
+        return new Set(['Matter & Materials', 'Atoms & Elements']);
+      case 'math':
+      default:
+        return new Set(['Numbers & Operations', 'Algebra']);
+    }
+  }, []);
+
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => getDefaultExpandedCategories(currentSubject));
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
+
+  // Reset expanded categories when subject changes
+  const [prevSubject, setPrevSubject] = useState(currentSubject);
+  if (prevSubject !== currentSubject) {
+    setPrevSubject(currentSubject);
+    setExpandedCategories(getDefaultExpandedCategories(currentSubject));
+  }
 
   // Create Set of due topics for quick lookup
   const dueTopicNames = useMemo(() => new Set(dueTopics.map(dt => dt.topic_name)), [dueTopics]);
@@ -125,7 +218,7 @@ export const TopicDashboard = ({
       totalMastered += masteredCount;
       totalLevels += levels.length;
 
-      const category = categorize(name);
+      const category = categorize(name, currentSubject);
       if (!categories[category]) categories[category] = [];
 
       categories[category].push({
@@ -135,7 +228,7 @@ export const TopicDashboard = ({
         masteredCount,
         totalLevels: levels.length,
         percentage,
-        icon: getTopicIcon(name),
+        icon: getTopicIcon(name, currentSubject),
         isComplete: masteredCount === levels.length && levels.length > 0,
         progress,
         isDue: dueTopicNames.has(name),
@@ -162,7 +255,7 @@ export const TopicDashboard = ({
         totalTopics: topicEntries.length,
       },
     };
-  }, [topicEntries, getProgress, getTopicLevels, dueTopicNames]);
+  }, [topicEntries, getProgress, getTopicLevels, dueTopicNames, currentSubject]);
 
   // Filter by search
   const filteredCategories = useMemo(() => {
@@ -230,8 +323,9 @@ export const TopicDashboard = ({
     );
   }
 
-  // Get ordered category list
-  const categoryOrder = [...MATH_CATEGORIES.map(c => c.name), 'Other Topics'];
+  // Get ordered category list based on subject
+  const subjectCategories = getCategoriesForSubject(currentSubject);
+  const categoryOrder = [...subjectCategories.map(c => c.name), 'Other Topics'];
   const orderedCategories = categoryOrder.filter(cat => filteredCategories[cat]?.length > 0);
 
   return (
@@ -325,8 +419,8 @@ export const TopicDashboard = ({
         <div className="space-y-3">
           {orderedCategories.map((categoryName) => {
             const categoryTopics = filteredCategories[categoryName];
-            const categoryInfo = MATH_CATEGORIES.find(c => c.name === categoryName) || {
-              icon: '📚',
+            const categoryInfo = subjectCategories.find(c => c.name === categoryName) || {
+              icon: currentSubject === 'physics' ? '🔬' : currentSubject === 'chemistry' ? '⚗️' : '📚',
               color: 'from-slate-500 to-slate-600',
             };
             const isExpanded = expandedCategories.has(categoryName);

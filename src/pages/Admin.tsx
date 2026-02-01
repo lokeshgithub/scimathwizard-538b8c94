@@ -8,15 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { 
-  uploadQuestionsFromCSV, 
-  parseCSVContent, 
-  parseExcelFile, 
-  fetchAllQuestionsForAdmin, 
+import {
+  uploadQuestionsFromCSV,
+  parseCSVContent,
+  parseExcelFile,
+  fetchAllQuestionsForAdmin,
   exportQuestionBankToExcel,
   deleteAllQuestionData,
   parseTopicFromName,
   findBlueprintMatch,
+  smartUploadQuestions,
+  SmartUploadReport,
 } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -50,7 +52,7 @@ const Admin = () => {
   const [subject, setSubject] = useState('Math');
   const [topicName, setTopicName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadMode, setUploadMode] = useState<'append' | 'replace'>('append');
+  const [uploadMode, setUploadMode] = useState<'append' | 'replace' | 'smart'>('smart');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isCleaningAll, setIsCleaningAll] = useState(false);
   const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
@@ -63,6 +65,7 @@ const Admin = () => {
     error?: string;
     blueprintMatch?: boolean;
   }>>([]);
+  const [smartUploadReports, setSmartUploadReports] = useState<SmartUploadReport[]>([]);
 
   // Check admin role
   const checkAdminRole = async (userId: string) => {
@@ -248,17 +251,19 @@ const Admin = () => {
 
     setIsUploading(true);
     setUploadResults([]);
+    setSmartUploadReports([]);
     const results: typeof uploadResults = [];
+    const smartReports: SmartUploadReport[] = [];
 
     for (const file of Array.from(files)) {
       const fileName = file.name.replace(/\.(csv|tsv|txt|xlsx|xls)$/i, '');
       const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-      
+
       if (isExcel) {
         try {
           const buffer = await file.arrayBuffer();
           const sheets = parseExcelFile(buffer);
-          
+
           if (sheets.length === 0) {
             results.push({
               topic: fileName,
@@ -267,34 +272,43 @@ const Admin = () => {
             });
             continue;
           }
-          
+
           for (const sheet of sheets) {
-            // Smart parsing: extract topic name from sheet name (e.g., "Data Handling Level 1" → "Data Handling")
             const rawSheetName = topicName || sheet.name || fileName;
             const { topic: parsedTopic } = parseTopicFromName(rawSheetName);
             const detectedSubject = detectSubjectFromName(rawSheetName) || subject;
-            
-            // Check against blueprint for validation
             const blueprintMatch = findBlueprintMatch(parsedTopic, detectedSubject);
-            const finalTopicName = blueprintMatch || parsedTopic;
-            
-            const result = await uploadQuestionsFromCSV(
-              detectedSubject, 
-              rawSheetName, // Pass raw name - upload function will parse it
-              sheet.questions,
-              { replaceExisting: uploadMode === 'replace' }
-            );
-            
-            const wasMatched = blueprintMatch !== null;
-            results.push({
-              topic: `${fileName} → ${sheet.name}`,
-              normalizedTopic: result.normalizedTopicName,
-              success: result.success,
-              count: result.count,
-              skipped: result.skipped,
-              error: result.error,
-              blueprintMatch: wasMatched,
-            });
+
+            if (uploadMode === 'smart') {
+              // Use smart upload with change detection
+              const report = await smartUploadQuestions(detectedSubject, rawSheetName, sheet.questions);
+              smartReports.push(report);
+              results.push({
+                topic: `${fileName} → ${sheet.name}`,
+                normalizedTopic: report.topicName,
+                success: report.success,
+                count: report.summary.inserted,
+                skipped: report.summary.unchanged,
+                error: report.error,
+                blueprintMatch: blueprintMatch !== null,
+              });
+            } else {
+              const result = await uploadQuestionsFromCSV(
+                detectedSubject,
+                rawSheetName,
+                sheet.questions,
+                { replaceExisting: uploadMode === 'replace' }
+              );
+              results.push({
+                topic: `${fileName} → ${sheet.name}`,
+                normalizedTopic: result.normalizedTopicName,
+                success: result.success,
+                count: result.count,
+                skipped: result.skipped,
+                error: result.error,
+                blueprintMatch: blueprintMatch !== null,
+              });
+            }
           }
         } catch (error) {
           results.push({
@@ -307,9 +321,8 @@ const Admin = () => {
         const content = await file.text();
         const detectedSubject = topicName ? subject : detectSubjectFromName(fileName);
         const finalTopicName = topicName || fileName;
-
         const questions = parseCSVContent(content);
-        
+
         if (questions.length === 0) {
           results.push({
             topic: finalTopicName,
@@ -319,40 +332,69 @@ const Admin = () => {
           continue;
         }
 
-        const result = await uploadQuestionsFromCSV(
-          detectedSubject, 
-          finalTopicName, 
-          questions,
-          { replaceExisting: uploadMode === 'replace' }
-        );
-        
-        results.push({
-          topic: finalTopicName,
-          normalizedTopic: result.normalizedTopicName,
-          success: result.success,
-          count: result.count,
-          skipped: result.skipped,
-          error: result.error,
-        });
+        if (uploadMode === 'smart') {
+          // Use smart upload with change detection
+          const report = await smartUploadQuestions(detectedSubject, finalTopicName, questions);
+          smartReports.push(report);
+          results.push({
+            topic: finalTopicName,
+            normalizedTopic: report.topicName,
+            success: report.success,
+            count: report.summary.inserted,
+            skipped: report.summary.unchanged,
+            error: report.error,
+          });
+        } else {
+          const result = await uploadQuestionsFromCSV(
+            detectedSubject,
+            finalTopicName,
+            questions,
+            { replaceExisting: uploadMode === 'replace' }
+          );
+          results.push({
+            topic: finalTopicName,
+            normalizedTopic: result.normalizedTopicName,
+            success: result.success,
+            count: result.count,
+            skipped: result.skipped,
+            error: result.error,
+          });
+        }
       }
     }
 
     setUploadResults(results);
+    setSmartUploadReports(smartReports);
     setIsUploading(false);
     setTopicName('');
     event.target.value = '';
 
-    const successCount = results.filter(r => r.success).length;
-    const totalInserted = results.reduce((acc, r) => acc + (r.count || 0), 0);
-    const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
-    
-    if (successCount > 0) {
-      let message = `Uploaded ${totalInserted} question(s)`;
-      if (totalSkipped > 0) {
-        message += `, skipped ${totalSkipped} duplicate(s)`;
-      }
-      toast.success(message);
+    // Show appropriate toast based on upload mode
+    if (uploadMode === 'smart' && smartReports.length > 0) {
+      const totalInserted = smartReports.reduce((acc, r) => acc + r.summary.inserted, 0);
+      const totalUpdated = smartReports.reduce((acc, r) => acc + r.summary.updated, 0);
+      const totalUnchanged = smartReports.reduce((acc, r) => acc + r.summary.unchanged, 0);
+
+      let message = '';
+      if (totalInserted > 0) message += `${totalInserted} new`;
+      if (totalUpdated > 0) message += `${message ? ', ' : ''}${totalUpdated} updated`;
+      if (totalUnchanged > 0) message += `${message ? ', ' : ''}${totalUnchanged} unchanged`;
+
+      toast.success(`Smart upload: ${message || 'No changes'}`);
       setSummaryRefreshKey(prev => prev + 1);
+    } else {
+      const successCount = results.filter(r => r.success).length;
+      const totalInserted = results.reduce((acc, r) => acc + (r.count || 0), 0);
+      const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
+
+      if (successCount > 0) {
+        let message = `Uploaded ${totalInserted} question(s)`;
+        if (totalSkipped > 0) {
+          message += `, skipped ${totalSkipped} duplicate(s)`;
+        }
+        toast.success(message);
+        setSummaryRefreshKey(prev => prev + 1);
+      }
     }
   }, [subject, topicName, uploadMode]);
 
@@ -533,9 +575,16 @@ const Admin = () => {
                 <label className="text-sm font-medium mb-3 block">Upload Mode</label>
                 <RadioGroup
                   value={uploadMode}
-                  onValueChange={(value) => setUploadMode(value as 'append' | 'replace')}
-                  className="flex gap-6"
+                  onValueChange={(value) => setUploadMode(value as 'append' | 'replace' | 'smart')}
+                  className="flex flex-wrap gap-4"
                 >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="smart" id="smart" />
+                    <Label htmlFor="smart" className="cursor-pointer">
+                      <span className="font-medium text-primary">Smart Update</span>
+                      <span className="text-muted-foreground text-sm ml-1">(detect changes)</span>
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="append" id="append" />
                     <Label htmlFor="append" className="cursor-pointer">
@@ -547,7 +596,7 @@ const Admin = () => {
                     <RadioGroupItem value="replace" id="replace" />
                     <Label htmlFor="replace" className="cursor-pointer">
                       <span className="font-medium">Replace</span>
-                      <span className="text-muted-foreground text-sm ml-1">(delete existing first)</span>
+                      <span className="text-muted-foreground text-sm ml-1">(delete all first)</span>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -592,7 +641,9 @@ const Admin = () => {
                         Supports: CSV, TSV, Excel (.xlsx, .xls)
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {uploadMode === 'append' 
+                        {uploadMode === 'smart'
+                          ? 'Detects changes and only updates modified questions - shows detailed report'
+                          : uploadMode === 'append'
                           ? 'Duplicate questions will be automatically skipped'
                           : 'All existing questions in the topic will be deleted first'}
                       </p>
@@ -605,9 +656,9 @@ const Admin = () => {
         </Card>
 
         {uploadResults.length > 0 && (
-          <Card>
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Upload Results</CardTitle>
+              <CardTitle>Upload Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -615,10 +666,10 @@ const Admin = () => {
                   <motion.div
                     key={index}
                     className={`flex items-center gap-3 p-3 rounded-lg ${
-                      result.success 
-                        ? result.blueprintMatch === false 
-                          ? 'bg-amber-100 dark:bg-amber-950/30 border border-amber-300' 
-                          : 'bg-primary/10' 
+                      result.success
+                        ? result.blueprintMatch === false
+                          ? 'bg-amber-100 dark:bg-amber-950/30 border border-amber-300'
+                          : 'bg-primary/10'
                         : 'bg-destructive/10'
                     }`}
                     initial={{ opacity: 0, x: -20 }}
@@ -650,11 +701,19 @@ const Admin = () => {
                       </p>
                       {result.success ? (
                         <p className="text-sm text-muted-foreground">
-                          {result.count} questions uploaded
-                          {result.skipped && result.skipped > 0 && (
-                            <span className="text-muted-foreground/70 ml-1">
-                              ({result.skipped} duplicates skipped)
-                            </span>
+                          {uploadMode === 'smart' ? (
+                            <>
+                              {result.count || 0} new, {result.skipped || 0} unchanged
+                            </>
+                          ) : (
+                            <>
+                              {result.count} questions uploaded
+                              {result.skipped && result.skipped > 0 && (
+                                <span className="text-muted-foreground/70 ml-1">
+                                  ({result.skipped} duplicates skipped)
+                                </span>
+                              )}
+                            </>
                           )}
                         </p>
                       ) : (
@@ -664,6 +723,149 @@ const Admin = () => {
                   </motion.div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Smart Upload Detailed Reports */}
+        {smartUploadReports.length > 0 && smartUploadReports.some(r => r.updated.length > 0 || r.inserted.length > 0 || r.errors.length > 0) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Detailed Change Report
+              </CardTitle>
+              <CardDescription>
+                Smart upload detected the following changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {smartUploadReports.map((report, reportIndex) => (
+                <div key={reportIndex} className="space-y-4">
+                  {report.topicName && smartUploadReports.length > 1 && (
+                    <h3 className="font-semibold text-lg border-b pb-2">{report.topicName}</h3>
+                  )}
+
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-blue-600">{report.summary.total}</div>
+                      <div className="text-muted-foreground">Total</div>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-green-600">{report.summary.inserted}</div>
+                      <div className="text-muted-foreground">New</div>
+                    </div>
+                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-amber-600">{report.summary.updated}</div>
+                      <div className="text-muted-foreground">Updated</div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-gray-500">{report.summary.unchanged}</div>
+                      <div className="text-muted-foreground">Unchanged</div>
+                    </div>
+                  </div>
+
+                  {/* Updated Questions with Changes */}
+                  {report.updated.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Updated Questions ({report.updated.length})
+                      </h4>
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {report.updated.map((item, idx) => (
+                          <motion.div
+                            key={idx}
+                            className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-xs font-mono bg-amber-200 dark:bg-amber-800 px-2 py-0.5 rounded">
+                                Row {item.rowNumber}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                ID: {item.questionId.slice(0, 8)}...
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium mb-2 line-clamp-2">{item.questionPreview}</p>
+                            <div className="space-y-1">
+                              {item.changes.map((change, changeIdx) => (
+                                <div key={changeIdx} className="text-xs bg-white dark:bg-gray-900 rounded p-2">
+                                  <span className="font-semibold text-amber-700 dark:text-amber-400">{change.field}:</span>
+                                  <div className="flex flex-col sm:flex-row gap-1 mt-1">
+                                    <span className="text-red-600 dark:text-red-400 line-through">
+                                      {change.oldValue || '(empty)'}
+                                    </span>
+                                    <span className="hidden sm:inline text-muted-foreground">→</span>
+                                    <span className="text-green-600 dark:text-green-400">
+                                      {change.newValue || '(empty)'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inserted Questions */}
+                  {report.inserted.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        New Questions ({report.inserted.length})
+                      </h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {report.inserted.map((item, idx) => (
+                          <motion.div
+                            key={idx}
+                            className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-2 flex items-center gap-3"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.03 }}
+                          >
+                            <span className="text-xs font-mono bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded shrink-0">
+                              Row {item.rowNumber}
+                            </span>
+                            <span className="text-xs bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded shrink-0">
+                              L{item.level}
+                            </span>
+                            <span className="text-sm truncate">{item.questionPreview}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Errors */}
+                  {report.errors.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        Errors ({report.errors.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {report.errors.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 flex items-center gap-3"
+                          >
+                            <span className="text-xs font-mono bg-red-200 dark:bg-red-800 px-2 py-0.5 rounded">
+                              Row {item.rowNumber}
+                            </span>
+                            <span className="text-sm text-red-700 dark:text-red-400">{item.error}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

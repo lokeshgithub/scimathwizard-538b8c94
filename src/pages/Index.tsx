@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAchievements } from '@/hooks/useAchievements';
@@ -65,35 +66,50 @@ const Index = () => {
   const [unlockQuestions, setUnlockQuestions] = useState<typeof quiz.banks[string][string]>([]);
 
   // Track what we've already synced to avoid duplicate additions
-  // Initialize with current session stats to prevent re-syncing on page reload
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
   const hasInitializedStars = useRef(false);
 
   // Ref for auto-scrolling to quiz card
   const quizCardRef = useRef<HTMLDivElement>(null);
 
-  // Sync stars FROM database when user logs in (for cross-device consistency)
+  // Sync stars FROM database when user logs in (DATABASE IS SOURCE OF TRUTH)
   useEffect(() => {
     if (!user || !profile || hasInitializedStars.current) return;
 
-    // Initialize local stars from database profile
+    // DATABASE IS THE SOURCE OF TRUTH - always sync from profile
     const profileStars = profile.total_stars || 0;
-    if (profileStars > 0) {
-      quiz.syncStarsFromProfile(profileStars);
-    }
+    quiz.syncStarsFromProfile(profileStars);
+
+    // Initialize lastSyncedRef to the profile value to prevent re-syncing old localStorage data
+    lastSyncedRef.current = {
+      stars: profileStars,
+      solved: profile.questions_answered || 0,
+      mastered: profile.topics_mastered || 0
+    };
+
     hasInitializedStars.current = true;
+
+    // Show confirmation toast that stars synced from database
+    toast.success(`Stars synced: ${profileStars.toLocaleString()}`, {
+      description: 'Your star count has been loaded from the cloud',
+      duration: 3000,
+    });
+    console.log(`[Star Sync] Synced ${profileStars} stars from database for user ${user.id}`);
   }, [user, profile, quiz]);
 
   // Sync stats TO database incrementally - on every answer
   useEffect(() => {
     if (!user || !profile) return;
 
+    // Don't sync until we've initialized from profile
+    if (!hasInitializedStars.current) return;
+
     const { stars, solved, mastered } = quiz.sessionStats;
 
-    // On first run, initialize the ref with current values to prevent re-sync of old data
+    // Safety: lastSyncedRef should be initialized by the FROM effect above
     if (lastSyncedRef.current === null) {
       lastSyncedRef.current = { stars, solved, mastered };
-      return; // Don't sync on first mount - data was already synced previously
+      return;
     }
 
     const lastSynced = lastSyncedRef.current;
@@ -103,16 +119,24 @@ const Index = () => {
     const solvedToAdd = solved - lastSynced.solved;
     const masteredToAdd = mastered - lastSynced.mastered;
 
-    // Only sync if there's something new (positive increment)
-    if (starsToAdd > 0 || solvedToAdd > 0 || masteredToAdd > 0) {
+    // Only sync if there's something new AND positive (prevent negative/huge jumps)
+    // Also cap maximum stars per sync to 100 to prevent runaway bugs
+    if (starsToAdd > 0 && starsToAdd <= 100) {
       updateStats({
         total_stars: (profile.total_stars || 0) + starsToAdd,
-        questions_answered: (profile.questions_answered || 0) + solvedToAdd,
-        topics_mastered: (profile.topics_mastered || 0) + masteredToAdd,
+        questions_answered: (profile.questions_answered || 0) + Math.max(0, solvedToAdd),
+        topics_mastered: (profile.topics_mastered || 0) + Math.max(0, masteredToAdd),
       });
 
       // Update what we've synced
       lastSyncedRef.current = { stars, solved, mastered };
+    } else if (solvedToAdd > 0 || masteredToAdd > 0) {
+      // Sync non-star stats even if stars look suspicious
+      updateStats({
+        questions_answered: (profile.questions_answered || 0) + Math.max(0, solvedToAdd),
+        topics_mastered: (profile.topics_mastered || 0) + Math.max(0, masteredToAdd),
+      });
+      lastSyncedRef.current = { stars: lastSynced.stars, solved, mastered };
     }
   }, [quiz.sessionStats.stars, quiz.sessionStats.solved, quiz.sessionStats.mastered, user, profile, updateStats]);
 

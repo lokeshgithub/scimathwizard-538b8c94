@@ -49,6 +49,7 @@ interface DBQuestion {
   correct_answer: string;
   explanation: string | null;
   hint: string | null;
+  sub_topic: string | null; // Sub-topic within a chapter (Physics/Chemistry hierarchy)
 }
 
 // In-memory cache for instant answer validation
@@ -219,6 +220,7 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     const hint = q.hint || undefined;
 
     // Store shuffled correct index locally for instant validation
+    // For sub-topic: if null, same as topic name (backward compat for Math)
     bank[subjectKey][topicName].push({
       id: q.id,
       level: q.level,
@@ -229,6 +231,8 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       concepts: [],
       hint,
       shuffleMap,
+      subTopic: q.sub_topic || undefined, // Sub-topic within chapter (Physics/Chemistry)
+      chapter: topicName, // Parent chapter/topic name
     });
   }
 
@@ -305,6 +309,8 @@ async function refreshQuestionsInBackground(): Promise<void> {
           concepts: [],
           hint: q.hint || undefined,
           shuffleMap,
+          subTopic: q.sub_topic || undefined,
+          chapter: topicName,
         });
       }
 
@@ -912,6 +918,7 @@ export async function uploadQuestionsFromCSV(
     correctAnswer: string;
     explanation: string;
     hint?: string;
+    subTopic?: string; // Sub-topic within chapter (Physics/Chemistry hierarchy)
   }>,
   options: { replaceExisting?: boolean } = {}
 ): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string; blueprintMatch?: boolean }> {
@@ -986,6 +993,7 @@ export async function uploadQuestionsFromCSV(
       correct_answer: string;
       explanation: string | null;
       hint: string | null;
+      sub_topic: string | null; // Sub-topic within chapter (Physics/Chemistry)
     }> = [];
 
     for (let index = 0; index < questions.length; index++) {
@@ -1033,6 +1041,9 @@ export async function uploadQuestionsFromCSV(
         throw new Error(`Question ${index + 1} is missing required fields`);
       }
       
+      // Sanitize sub_topic if provided
+      const subTopic = q.subTopic ? sanitizeText(q.subTopic, 200) : null;
+
       questionsToInsert.push({
         topic_id: topic!.id,
         level: validLevel,
@@ -1044,6 +1055,7 @@ export async function uploadQuestionsFromCSV(
         correct_answer: validAnswer,
         explanation: explanation || null,
         hint: hint,
+        sub_topic: subTopic, // NULL for Math (backward compat), set for Physics/Chemistry
       });
     }
 
@@ -1058,14 +1070,348 @@ export async function uploadQuestionsFromCSV(
       }
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       count: questionsToInsert.length,
       skipped: skippedCount,
       normalizedTopicName: topic.name,
     };
   } catch (error) {
     return { success: false, error: (error as Error).message };
+  }
+}
+
+// ============================================
+// SMART UPLOAD WITH CHANGE DETECTION
+// ============================================
+
+// Types for smart upload report
+export interface FieldChange {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface UpdatedQuestion {
+  rowNumber: number;
+  questionId: string;
+  questionPreview: string; // First 80 chars of question text
+  changes: FieldChange[];
+}
+
+export interface InsertedQuestion {
+  rowNumber: number;
+  questionPreview: string;
+  level: number;
+}
+
+export interface SmartUploadReport {
+  success: boolean;
+  error?: string;
+  topicName: string;
+  summary: {
+    total: number;
+    inserted: number;
+    updated: number;
+    unchanged: number;
+    errors: number;
+  };
+  inserted: InsertedQuestion[];
+  updated: UpdatedQuestion[];
+  errors: Array<{ rowNumber: number; error: string }>;
+}
+
+// Existing question from database for comparison
+interface ExistingQuestion {
+  id: string;
+  topic_id: string;
+  level: number;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: string;
+  explanation: string | null;
+  hint: string | null;
+  sub_topic: string | null;
+}
+
+// Smart upload that detects changes and only updates modified questions
+export async function smartUploadQuestions(
+  subjectName: string,
+  topicName: string,
+  questions: Array<{
+    level: number;
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: string;
+    explanation: string;
+    hint?: string;
+    subTopic?: string;
+  }>
+): Promise<SmartUploadReport> {
+  const report: SmartUploadReport = {
+    success: false,
+    topicName: '',
+    summary: { total: questions.length, inserted: 0, updated: 0, unchanged: 0, errors: 0 },
+    inserted: [],
+    updated: [],
+    errors: [],
+  };
+
+  try {
+    // Parse and normalize topic name
+    const { topic: parsedTopic } = parseTopicFromName(topicName);
+    const blueprintMatch = findBlueprintMatch(parsedTopic, subjectName);
+    const normalizedTopicName = blueprintMatch || normalizeTopicName(parsedTopic);
+    report.topicName = normalizedTopicName;
+
+    // Get or create subject
+    let { data: subject } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('name', subjectName)
+      .maybeSingle();
+
+    if (!subject) {
+      const { data: newSubject, error: subjectError } = await supabase
+        .from('subjects')
+        .insert({ name: subjectName })
+        .select('id')
+        .single();
+
+      if (subjectError) {
+        report.error = `Failed to create subject: ${sanitizeDbError(subjectError)}`;
+        return report;
+      }
+      subject = newSubject;
+    }
+
+    // Get or create topic
+    let topic = await findMatchingTopic(subject.id, topicName);
+
+    if (!topic) {
+      const { data: newTopic, error: topicError } = await supabase
+        .from('topics')
+        .insert({ subject_id: subject.id, name: normalizedTopicName })
+        .select('id, name')
+        .single();
+
+      if (topicError) {
+        report.error = `Failed to create topic: ${sanitizeDbError(topicError)}`;
+        return report;
+      }
+      topic = newTopic;
+    }
+
+    // Fetch ALL existing questions for this topic
+    const { data: existingQuestions, error: fetchError } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('topic_id', topic.id);
+
+    if (fetchError) {
+      report.error = `Failed to fetch existing questions: ${sanitizeDbError(fetchError)}`;
+      return report;
+    }
+
+    // Create a map for quick lookup by normalized question text
+    const existingMap = new Map<string, ExistingQuestion>();
+    for (const eq of (existingQuestions || [])) {
+      const key = eq.question.trim().toLowerCase();
+      existingMap.set(key, eq as ExistingQuestion);
+    }
+
+    // Sanitize helper
+    const sanitizeText = (text: string, maxLength: number): string => {
+      if (!text) return '';
+      return text
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .trim()
+        .slice(0, maxLength);
+    };
+
+    // Process each question
+    const questionsToInsert: Array<{
+      topic_id: string;
+      level: number;
+      question: string;
+      option_a: string;
+      option_b: string;
+      option_c: string;
+      option_d: string;
+      correct_answer: string;
+      explanation: string | null;
+      hint: string | null;
+      sub_topic: string | null;
+    }> = [];
+
+    for (let index = 0; index < questions.length; index++) {
+      const q = questions[index];
+      const rowNumber = index + 2; // +2 because index 0 = row 2 (after header)
+
+      try {
+        // Validate and sanitize
+        const rawLevel = q.level || 1;
+        if (rawLevel < 1 || rawLevel > 7) {
+          report.errors.push({ rowNumber, error: `Invalid level ${rawLevel}. Must be 1-7.` });
+          report.summary.errors++;
+          continue;
+        }
+
+        const questionText = sanitizeText(q.question, 2000);
+        const optionA = sanitizeText(q.optionA, 500);
+        const optionB = sanitizeText(q.optionB, 500);
+        const optionC = sanitizeText(q.optionC, 500);
+        const optionD = sanitizeText(q.optionD, 500);
+        const explanation = sanitizeText(q.explanation, 5000) || null;
+        const hint = q.hint ? sanitizeText(q.hint, 2000) : null;
+        const subTopic = q.subTopic ? sanitizeText(q.subTopic, 200) : null;
+        const correctAnswer = q.correctAnswer.trim().toUpperCase();
+        const validAnswer = ['A', 'B', 'C', 'D'].includes(correctAnswer) ? correctAnswer : 'A';
+
+        if (!questionText || !optionA || !optionB || !optionC || !optionD) {
+          report.errors.push({ rowNumber, error: 'Missing required fields (question or options)' });
+          report.summary.errors++;
+          continue;
+        }
+
+        // Check if this question exists
+        const key = questionText.trim().toLowerCase();
+        const existing = existingMap.get(key);
+
+        if (existing) {
+          // Question exists - check for changes
+          const changes: FieldChange[] = [];
+
+          if (existing.level !== rawLevel) {
+            changes.push({ field: 'Level', oldValue: String(existing.level), newValue: String(rawLevel) });
+          }
+          if (existing.option_a !== optionA) {
+            changes.push({ field: 'Option A', oldValue: existing.option_a, newValue: optionA });
+          }
+          if (existing.option_b !== optionB) {
+            changes.push({ field: 'Option B', oldValue: existing.option_b, newValue: optionB });
+          }
+          if (existing.option_c !== optionC) {
+            changes.push({ field: 'Option C', oldValue: existing.option_c, newValue: optionC });
+          }
+          if (existing.option_d !== optionD) {
+            changes.push({ field: 'Option D', oldValue: existing.option_d, newValue: optionD });
+          }
+          if (existing.correct_answer !== validAnswer) {
+            changes.push({ field: 'Correct Answer', oldValue: existing.correct_answer, newValue: validAnswer });
+          }
+          if ((existing.explanation || '') !== (explanation || '')) {
+            changes.push({
+              field: 'Explanation',
+              oldValue: (existing.explanation || '').slice(0, 100) + (existing.explanation && existing.explanation.length > 100 ? '...' : ''),
+              newValue: (explanation || '').slice(0, 100) + (explanation && explanation.length > 100 ? '...' : '')
+            });
+          }
+          if ((existing.hint || '') !== (hint || '')) {
+            changes.push({
+              field: 'Hint',
+              oldValue: existing.hint || '(none)',
+              newValue: hint || '(none)'
+            });
+          }
+          if ((existing.sub_topic || '') !== (subTopic || '')) {
+            changes.push({
+              field: 'Sub-Topic',
+              oldValue: existing.sub_topic || '(none)',
+              newValue: subTopic || '(none)'
+            });
+          }
+
+          if (changes.length > 0) {
+            // Has changes - update the question
+            const { error: updateError } = await supabase
+              .from('questions')
+              .update({
+                level: rawLevel,
+                option_a: optionA,
+                option_b: optionB,
+                option_c: optionC,
+                option_d: optionD,
+                correct_answer: validAnswer,
+                explanation,
+                hint,
+                sub_topic: subTopic,
+              })
+              .eq('id', existing.id);
+
+            if (updateError) {
+              report.errors.push({ rowNumber, error: `Update failed: ${sanitizeDbError(updateError)}` });
+              report.summary.errors++;
+            } else {
+              report.updated.push({
+                rowNumber,
+                questionId: existing.id,
+                questionPreview: questionText.slice(0, 80) + (questionText.length > 80 ? '...' : ''),
+                changes,
+              });
+              report.summary.updated++;
+            }
+          } else {
+            // No changes
+            report.summary.unchanged++;
+          }
+        } else {
+          // New question - add to insert batch
+          questionsToInsert.push({
+            topic_id: topic!.id,
+            level: rawLevel,
+            question: questionText,
+            option_a: optionA,
+            option_b: optionB,
+            option_c: optionC,
+            option_d: optionD,
+            correct_answer: validAnswer,
+            explanation,
+            hint,
+            sub_topic: subTopic,
+          });
+
+          report.inserted.push({
+            rowNumber,
+            questionPreview: questionText.slice(0, 80) + (questionText.length > 80 ? '...' : ''),
+            level: rawLevel,
+          });
+        }
+      } catch (err) {
+        report.errors.push({ rowNumber, error: (err as Error).message });
+        report.summary.errors++;
+      }
+    }
+
+    // Batch insert new questions
+    if (questionsToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('questions')
+        .insert(questionsToInsert);
+
+      if (insertError) {
+        report.error = `Failed to insert new questions: ${sanitizeDbError(insertError)}`;
+        // Mark all pending inserts as errors
+        report.summary.errors += questionsToInsert.length;
+        report.inserted = []; // Clear since they failed
+        return report;
+      }
+      report.summary.inserted = questionsToInsert.length;
+    }
+
+    report.success = true;
+    return report;
+
+  } catch (error) {
+    report.error = (error as Error).message;
+    return report;
   }
 }
 
@@ -1204,6 +1550,7 @@ export function parseCSVContent(text: string): Array<{
   correctAnswer: string;
   explanation: string;
   hint?: string;
+  subTopic?: string; // Sub-topic within chapter (Physics/Chemistry hierarchy)
 }> {
   const questions: Array<{
     level: number;
@@ -1215,6 +1562,7 @@ export function parseCSVContent(text: string): Array<{
     correctAnswer: string;
     explanation: string;
     hint?: string;
+    subTopic?: string;
   }> = [];
 
   // Auto-detect delimiter: check first line for tabs vs commas
@@ -1282,6 +1630,7 @@ export function parseCSVContent(text: string): Array<{
   const rows = parseDelimited(text, delimiter);
 
   // Skip header row
+  // Column layout: 0=#, 1=Level, 2=Question, 3-6=Options A-D, 7=Correct, 8=Explanation, 9=Hint, 10=SubTopic
   for (let i = 1; i < rows.length; i++) {
     const values = rows[i];
     if (values.length >= 9) {
@@ -1295,6 +1644,7 @@ export function parseCSVContent(text: string): Array<{
         correctAnswer: values[7],
         explanation: values[8],
         hint: values[9] || undefined, // hints column (index 9)
+        subTopic: values[10] || undefined, // sub-topic column (index 10) - for Physics/Chemistry hierarchy
       });
     }
   }
@@ -1303,6 +1653,7 @@ export function parseCSVContent(text: string): Array<{
 }
 
 // Parse question data from a single row (used by both CSV/TSV and Excel parsers)
+// Column layout: 0=#, 1=Level, 2=Question, 3-6=Options A-D, 7=Correct, 8=Explanation, 9=Hint, 10=SubTopic
 function parseQuestionRow(values: string[]): {
   level: number;
   question: string;
@@ -1313,9 +1664,10 @@ function parseQuestionRow(values: string[]): {
   correctAnswer: string;
   explanation: string;
   hint?: string;
+  subTopic?: string;
 } | null {
   if (values.length < 9) return null;
-  
+
   const level = parseInt(values[1]) || 1;
   const question = values[2]?.trim();
   const optionA = values[3]?.trim();
@@ -1325,12 +1677,13 @@ function parseQuestionRow(values: string[]): {
   const correctAnswer = values[7]?.trim();
   const explanation = values[8]?.trim() || '';
   const hint = values[9]?.trim() || undefined;
-  
+  const subTopic = values[10]?.trim() || undefined;
+
   if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
     return null;
   }
-  
-  return { level, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, hint };
+
+  return { level, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, hint, subTopic };
 }
 
 // Parse Excel file and return sheets with their questions
@@ -1346,6 +1699,7 @@ export interface ExcelSheet {
     correctAnswer: string;
     explanation: string;
     hint?: string;
+    subTopic?: string; // Sub-topic within chapter (Physics/Chemistry hierarchy)
   }>;
 }
 
