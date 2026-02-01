@@ -205,7 +205,7 @@ export const LevelCompleteModal = ({
                   ? (isTopicComplete 
                       ? "Congratulations! You've mastered this topic! 🌟" 
                       : `Ready for Level ${level + 1}? ${progressMessage}`)
-                  : "You need 90% accuracy to advance. Let's try again!"
+                  : "You need 80% accuracy (8/10) to advance. Let's try again!"
                 }
               </p>
 

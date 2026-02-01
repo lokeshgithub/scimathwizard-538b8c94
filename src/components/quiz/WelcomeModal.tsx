@@ -14,7 +14,7 @@ const pathways = [
     emoji: '📚',
     title: 'Practice Mode',
     subtitle: 'Master the Basics',
-    description: 'Pick topics and work through 4-7 levels per topic. Each level requires 90% accuracy to advance. Perfect for structured learning.',
+    description: 'Pick topics and work through 4-7 levels per topic. Each level requires 80% accuracy (8/10) to advance. Perfect for structured learning.',
     colorClass: 'bg-success',
     features: ['Topic-by-topic progression', 'Level-based mastery', 'Detailed explanations'],
   },

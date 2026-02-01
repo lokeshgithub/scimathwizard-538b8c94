@@ -28,7 +28,7 @@ export const WelcomeScreen = () => {
         {[
           { step: '1', text: '📚 Choose a subject from the tabs above', color: 'from-blue-400 to-cyan-400', icon: BookOpen },
           { step: '2', text: '🎯 Select a topic to start practicing', color: 'from-purple-400 to-pink-400', icon: Target },
-          { step: '3', text: '✅ Answer questions and get 90% to level up!', color: 'from-orange-400 to-red-400', icon: Trophy },
+          { step: '3', text: '✅ Answer 10 questions, get 80% to level up!', color: 'from-orange-400 to-red-400', icon: Trophy },
           { step: '4', text: '⭐ Master all levels to complete a topic!', color: 'from-yellow-400 to-orange-400', icon: Wand },
         ].map((item, index) => (
           <motion.div
