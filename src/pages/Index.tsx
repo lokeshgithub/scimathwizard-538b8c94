@@ -63,6 +63,9 @@ const Index = () => {
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
   const hasInitializedStars = useRef(false);
 
+  // Ref for auto-scrolling to quiz card
+  const quizCardRef = useRef<HTMLDivElement>(null);
+
   // Sync stars FROM database when user logs in (for cross-device consistency)
   useEffect(() => {
     if (!user || !profile || hasInitializedStars.current) return;
@@ -146,6 +149,18 @@ const Index = () => {
 
     fetchDueTopics();
   }, [user, quiz.subject]);
+
+  // Auto-scroll to quiz card when question loads so user sees question immediately
+  // Other info is still accessible by scrolling up
+  useEffect(() => {
+    if (quiz.currentQuestion && quizCardRef.current) {
+      // Small delay to ensure DOM is updated
+      const timeout = setTimeout(() => {
+        quizCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [quiz.currentQuestion?.id]);
 
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
@@ -487,18 +502,20 @@ const Index = () => {
             )}
 
             {quiz.currentQuestion && (
-              <QuizCard
-                question={quiz.currentQuestion}
-                level={quiz.level}
-                levelStats={quiz.levelStats}
-                sessionStats={quiz.sessionStats}
-                onAnswer={handleAnswer}
-                onNext={handleNext}
-                onPrevious={quiz.previousQuestion}
-                canGoBack={quiz.canGoBack}
-                onSolutionViewed={quiz.markSolutionViewed}
-                onPrefetchNext={quiz.prefetchNextQuestion}
-              />
+              <div ref={quizCardRef} className="scroll-mt-4">
+                <QuizCard
+                  question={quiz.currentQuestion}
+                  level={quiz.level}
+                  levelStats={quiz.levelStats}
+                  sessionStats={quiz.sessionStats}
+                  onAnswer={handleAnswer}
+                  onNext={handleNext}
+                  onPrevious={quiz.previousQuestion}
+                  canGoBack={quiz.canGoBack}
+                  onSolutionViewed={quiz.markSolutionViewed}
+                  onPrefetchNext={quiz.prefetchNextQuestion}
+                />
+              </div>
             )}
 
             {/* No questions available for this topic/level */}
