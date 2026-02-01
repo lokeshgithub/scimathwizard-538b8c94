@@ -402,14 +402,17 @@ export const TopicDashboard = ({
             whileHover={{ scale: 1.03, y: -4 }}
             whileTap={{ scale: 0.98 }}
           >
-            {/* Progress background fill */}
+            {/* Progress background fill - more visible */}
             <motion.div
-              className={`absolute inset-0 bg-gradient-to-br ${topic.colors.bg} opacity-10`}
+              className={`absolute inset-0 bg-gradient-to-br ${topic.colors.bg} opacity-20`}
               initial={{ scaleY: 0 }}
               animate={{ scaleY: topic.percentage / 100 }}
               style={{ transformOrigin: 'bottom' }}
               transition={{ duration: 0.8, delay: index * 0.05 }}
             />
+
+            {/* Colored left border indicator */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl bg-gradient-to-b ${topic.colors.bg}`} />
 
             {/* Complete badge */}
             {topic.isComplete && (
@@ -450,9 +453,11 @@ export const TopicDashboard = ({
                     {formatName(topic.name)}
                   </h4>
                   <p className={`text-xs ${topic.colors.text} font-medium`}>
-                    {topic.percentage === 100 ? 'Mastered!' : 
-                     topic.percentage >= 60 ? 'Good progress' :
-                     topic.percentage > 0 ? 'Keep practicing' : 'Not started'}
+                    {topic.percentage === 100 ? '🏆 Mastered!' :
+                     topic.percentage >= 80 ? '⭐ Strong' :
+                     topic.percentage >= 60 ? '📈 Good progress' :
+                     topic.percentage >= 40 ? '🌱 Learning' :
+                     topic.percentage > 0 ? '🎯 Keep practicing' : '🆕 Not started'}
                   </p>
                 </div>
               </div>
@@ -513,32 +518,39 @@ export const TopicDashboard = ({
         ))}
       </div>
 
-      {/* Legend */}
+      {/* Legend with explanations */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground bg-muted/50 rounded-xl p-3"
+        className="bg-muted/50 rounded-xl p-4"
       >
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500" />
-          <span>Mastered</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-400 to-green-500" />
-          <span>Strong (80%+)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-400 to-cyan-500" />
-          <span>Good (60%+)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" />
-          <span>Learning</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-slate-300 to-slate-400" />
-          <span>New</span>
+        <p className="text-xs text-muted-foreground text-center mb-3">Progress Legend (based on levels completed)</p>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500" />
+            <span>🏆 Mastered (100%)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-400 to-green-500" />
+            <span>⭐ Strong (80%+)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-400 to-cyan-500" />
+            <span>📈 Good (60%+)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" />
+            <span>🌱 Learning (40%+)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-pink-400 to-rose-500" />
+            <span>🎯 Started (1-39%)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-slate-300 to-slate-400" />
+            <span>🆕 New (0%)</span>
+          </div>
         </div>
       </motion.div>
       </div>
