@@ -238,88 +238,90 @@ const Index = () => {
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
-      <motion.header 
-        className="bg-gradient-magical text-white py-6 px-4"
+      <motion.header
+        className="bg-gradient-magical text-white py-4 px-4 overflow-hidden"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <motion.div
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 sm:gap-2 min-w-0"
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <Sparkles className="w-8 h-8" />
-                <h1 className="text-2xl md:text-3xl font-bold">Magic Mastery Quiz</h1>
-                <Sparkles className="w-8 h-8" />
+                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">Magic Mastery Quiz</h1>
+                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
               </motion.div>
-              
+
               {/* Grade Badge - Prominent class indicator */}
               {profile && (
                 <motion.div
-                  className="flex items-center gap-1.5 bg-white/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/40"
+                  className="flex items-center gap-1 bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 border border-white/40 flex-shrink-0"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', delay: 0.2 }}
                 >
-                  <GraduationCap className="w-5 h-5" />
-                  <span className="font-bold text-lg">Class {profile.grade || 7}</span>
+                  <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="font-bold text-sm sm:text-lg">Class {profile.grade || 7}</span>
                 </motion.div>
               )}
             </div>
             
-            <div className="flex items-center gap-2">
-              {/* Pathway Navigation */}
-              <PathwayNav />
-              
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              {/* Pathway Navigation - hidden on very small screens */}
+              <div className="hidden sm:block">
+                <PathwayNav />
+              </div>
+
               {/* AI Analysis Button - Always visible, enabled after answering questions */}
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={quiz.endSession}
                 disabled={!hasAnsweredQuestions}
-                className={`flex items-center gap-2 border-0 transition-all ${
-                  hasAnsweredQuestions 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30' 
+                className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
+                  hasAnsweredQuestions
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
                     : 'bg-muted text-muted-foreground'
                 }`}
                 title={hasAnsweredQuestions ? 'Get AI-powered analysis of your practice session' : 'Answer some questions first'}
               >
                 <Brain className="w-4 h-4" />
-                <span className="hidden sm:inline">Analyze Progress</span>
+                <span className="hidden sm:inline">Analyze</span>
                 {hasAnsweredQuestions && (
                   <span className="hidden md:inline bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
                     {quiz.sessionPerformance.questionTimings.length}
                   </span>
                 )}
               </Button>
-              
+
               {/* Sound Toggle */}
               <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
-              
+
               {user ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   {/* Admin Link - Only visible for admins */}
                   {isAdmin && (
                     <Link to="/admin">
-                      <div className="flex items-center gap-1.5 bg-accent/50 hover:bg-accent/70 transition-colors rounded-full px-3 py-1 cursor-pointer border border-accent">
+                      <div className="flex items-center gap-1 bg-accent/50 hover:bg-accent/70 transition-colors rounded-full px-2 py-1 cursor-pointer border border-accent">
                         <Settings className="w-4 h-4" />
-                        <span className="text-sm font-medium hidden sm:inline">Admin</span>
+                        <span className="text-sm font-medium hidden md:inline">Admin</span>
                       </div>
                     </Link>
                   )}
                   <Link to="/profile">
-                    <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-full pl-1 pr-3 py-1 cursor-pointer">
+                    <div className="flex items-center gap-1 bg-white/20 hover:bg-white/30 transition-colors rounded-full pl-1 pr-2 py-1 cursor-pointer">
                       <UserAvatar
                         userId={user.id}
                         displayName={profile?.display_name || 'Student'}
                         size="sm"
                       />
-                      <span className="text-sm font-medium truncate max-w-[100px]">
+                      <span className="text-sm font-medium truncate max-w-[60px] sm:max-w-[100px] hidden sm:inline">
                         {profile?.display_name || 'Student'}
                       </span>
                     </div>
@@ -328,10 +330,10 @@ const Index = () => {
                     variant="secondary"
                     size="sm"
                     onClick={signOut}
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 px-2"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sign Out</span>
+                    <span className="hidden md:inline">Sign Out</span>
                   </Button>
                 </div>
               ) : (
@@ -339,6 +341,7 @@ const Index = () => {
                   variant="secondary"
                   size="sm"
                   asChild
+                  className="px-2 sm:px-3"
                 >
                   <Link to="/auth" className="flex items-center gap-1">
                     <LogIn className="w-4 h-4" />
