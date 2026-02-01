@@ -162,6 +162,42 @@ const Index = () => {
     }
   }, [quiz.currentQuestion?.id]);
 
+  // Handle browser/device back button - navigate within app instead of exiting
+  useEffect(() => {
+    const isInQuiz = !!(quiz.currentQuestion && (quiz.topic || quiz.mixedTopics));
+
+    // Push state when entering quiz mode
+    if (isInQuiz) {
+      // Only push if we don't already have a quiz state
+      if (!window.history.state?.inQuiz) {
+        window.history.pushState({ inQuiz: true }, '');
+      }
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      // If we were in a quiz, go back to topics instead of exiting
+      if (quiz.currentQuestion && (quiz.topic || quiz.mixedTopics)) {
+        // Prevent default back navigation
+        event.preventDefault();
+
+        // Show exit confirmation if there's progress, otherwise just exit
+        if (quiz.levelStats.total > 0) {
+          // Push state back so we stay on the page
+          window.history.pushState({ inQuiz: true }, '');
+          setShowExitConfirm(true);
+        } else {
+          quiz.exitToTopics();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [quiz.currentQuestion, quiz.topic, quiz.mixedTopics, quiz.levelStats.total, quiz.exitToTopics]);
+
+  // Determine if we're in focused quiz mode (actively answering questions)
+  const isInQuizMode = !!(quiz.currentQuestion && (quiz.topic || quiz.mixedTopics));
+
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
     
@@ -239,142 +275,182 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Header */}
+      {/* Header - Compact in quiz mode, full in dashboard mode */}
       <motion.header
-        className="bg-gradient-magical text-white py-4 px-4 overflow-hidden"
+        className={`bg-gradient-magical text-white px-4 overflow-hidden ${isInQuizMode ? 'py-2' : 'py-4'}`}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <motion.div
-                className="flex items-center gap-1 sm:gap-2 min-w-0"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
+          {isInQuizMode ? (
+            /* Minimal header for focused quiz mode */
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={() => {
+                  if (quiz.levelStats.total > 0) {
+                    setShowExitConfirm(true);
+                  } else {
+                    quiz.exitToTopics();
+                  }
+                }}
+                className="flex items-center gap-1 text-white/90 hover:text-white transition-colors"
               >
-                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">Magic Mastery Quiz</h1>
-                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
-              </motion.div>
+                <ArrowLeft className="w-5 h-5" />
+                <span className="text-sm font-medium">Exit</span>
+              </button>
 
-              {/* Grade Badge - Prominent class indicator */}
-              {profile && (
-                <motion.div
-                  className="flex items-center gap-1 bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 border border-white/40 flex-shrink-0"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.2 }}
-                >
-                  <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="font-bold text-sm sm:text-lg">Class {profile.grade || 7}</span>
-                </motion.div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              {/* Pathway Navigation - hidden on very small screens */}
-              <div className="hidden sm:block">
-                <PathwayNav />
+              <div className="flex items-center gap-2 text-center">
+                <span className="text-sm font-medium truncate max-w-[150px] sm:max-w-none">
+                  {quiz.topic || 'Mixed Mode'}
+                </span>
+                <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
+                  L{quiz.level}
+                </span>
               </div>
 
-              {/* AI Analysis Button - Always visible, enabled after answering questions */}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={quiz.endSession}
-                disabled={!hasAnsweredQuestions}
-                className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
-                  hasAnsweredQuestions
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-                title={hasAnsweredQuestions ? 'Get AI-powered analysis of your practice session' : 'Answer some questions first'}
-              >
-                <Brain className="w-4 h-4" />
-                <span className="hidden sm:inline">Analyze</span>
-                {hasAnsweredQuestions && (
-                  <span className="hidden md:inline bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
-                    {quiz.sessionPerformance.questionTimings.length}
-                  </span>
-                )}
-              </Button>
+              <div className="flex items-center gap-1">
+                <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
+              </div>
+            </div>
+          ) : (
+            /* Full header for dashboard mode */
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <motion.div
+                    className="flex items-center gap-1 sm:gap-2 min-w-0"
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
+                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">Magic Mastery Quiz</h1>
+                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
+                  </motion.div>
 
-              {/* Sound Toggle */}
-              <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
-
-              {user ? (
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {/* Admin Link - Only visible for admins */}
-                  {isAdmin && (
-                    <Link to="/admin">
-                      <div className="flex items-center gap-1 bg-accent/50 hover:bg-accent/70 transition-colors rounded-full px-2 py-1 cursor-pointer border border-accent">
-                        <Settings className="w-4 h-4" />
-                        <span className="text-sm font-medium hidden md:inline">Admin</span>
-                      </div>
-                    </Link>
+                  {/* Grade Badge - Prominent class indicator */}
+                  {profile && (
+                    <motion.div
+                      className="flex items-center gap-1 bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 border border-white/40 flex-shrink-0"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', delay: 0.2 }}
+                    >
+                      <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="font-bold text-sm sm:text-lg">Class {profile.grade || 7}</span>
+                    </motion.div>
                   )}
-                  <Link to="/profile">
-                    <div className="flex items-center gap-1 bg-white/20 hover:bg-white/30 transition-colors rounded-full pl-1 pr-2 py-1 cursor-pointer">
-                      <UserAvatar
-                        userId={user.id}
-                        displayName={profile?.display_name || 'Student'}
-                        size="sm"
-                      />
-                      <span className="text-sm font-medium truncate max-w-[60px] sm:max-w-[100px] hidden sm:inline">
-                        {profile?.display_name || 'Student'}
-                      </span>
-                    </div>
-                  </Link>
+                </div>
+
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                  {/* Pathway Navigation - hidden on very small screens */}
+                  <div className="hidden sm:block">
+                    <PathwayNav />
+                  </div>
+
+                  {/* AI Analysis Button - Always visible, enabled after answering questions */}
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={signOut}
-                    className="flex items-center gap-1 px-2"
+                    onClick={quiz.endSession}
+                    disabled={!hasAnsweredQuestions}
+                    className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
+                      hasAnsweredQuestions
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                    title={hasAnsweredQuestions ? 'Get AI-powered analysis of your practice session' : 'Answer some questions first'}
                   >
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden md:inline">Sign Out</span>
+                    <Brain className="w-4 h-4" />
+                    <span className="hidden sm:inline">Analyze</span>
+                    {hasAnsweredQuestions && (
+                      <span className="hidden md:inline bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
+                        {quiz.sessionPerformance.questionTimings.length}
+                      </span>
+                    )}
                   </Button>
+
+                  {/* Sound Toggle */}
+                  <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
+
+                  {user ? (
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {/* Admin Link - Only visible for admins */}
+                      {isAdmin && (
+                        <Link to="/admin">
+                          <div className="flex items-center gap-1 bg-accent/50 hover:bg-accent/70 transition-colors rounded-full px-2 py-1 cursor-pointer border border-accent">
+                            <Settings className="w-4 h-4" />
+                            <span className="text-sm font-medium hidden md:inline">Admin</span>
+                          </div>
+                        </Link>
+                      )}
+                      <Link to="/profile">
+                        <div className="flex items-center gap-1 bg-white/20 hover:bg-white/30 transition-colors rounded-full pl-1 pr-2 py-1 cursor-pointer">
+                          <UserAvatar
+                            userId={user.id}
+                            displayName={profile?.display_name || 'Student'}
+                            size="sm"
+                          />
+                          <span className="text-sm font-medium truncate max-w-[60px] sm:max-w-[100px] hidden sm:inline">
+                            {profile?.display_name || 'Student'}
+                          </span>
+                        </div>
+                      </Link>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={signOut}
+                        className="flex items-center gap-1 px-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span className="hidden md:inline">Sign Out</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      asChild
+                      className="px-2 sm:px-3"
+                    >
+                      <Link to="/auth" className="flex items-center gap-1">
+                        <LogIn className="w-4 h-4" />
+                        <span className="hidden sm:inline">Sign In</span>
+                      </Link>
+                    </Button>
+                  )}
                 </div>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  asChild
-                  className="px-2 sm:px-3"
-                >
-                  <Link to="/auth" className="flex items-center gap-1">
-                    <LogIn className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sign In</span>
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </div>
-          <p className="text-white/80 text-sm mt-2">
-            Master each level (80% accuracy) with your magical friends! ✨
-          </p>
+              </div>
+              <p className="text-white/80 text-sm mt-2">
+                Master each level (80% accuracy) with your magical friends! ✨
+              </p>
+            </>
+          )}
         </div>
       </motion.header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Daily Goal & Streak */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
-          <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
-        </div>
-        
-        <StatsBar stats={quiz.sessionStats} />
-        
-        {/* Pathway Progress - Journey visualization */}
-        <PathwayProgress 
-          topics={topics}
-          getProgress={quiz.getTopicProgress}
-          getTopicLevels={quiz.getTopicLevels}
-        />
-        
-        <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
+      <main className={`max-w-4xl mx-auto px-4 ${isInQuizMode ? 'py-3' : 'py-6'}`}>
+        {/* Dashboard elements - hidden during focused quiz mode */}
+        {!isInQuizMode && (
+          <>
+            {/* Daily Goal & Streak */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
+              <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
+            </div>
+
+            <StatsBar stats={quiz.sessionStats} />
+
+            {/* Pathway Progress - Journey visualization */}
+            <PathwayProgress
+              topics={topics}
+              getProgress={quiz.getTopicProgress}
+              getTopicLevels={quiz.getTopicLevels}
+            />
+
+            <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
+          </>
+        )}
         
         {quiz.isLoading ? (
           <motion.div
@@ -433,75 +509,16 @@ const Index = () => {
               </motion.div>
             )}
 
-            {/* Back to Topics Button - shown when in a quiz */}
-            {quiz.topic && quiz.currentQuestion && (
-              <motion.button
-                onClick={() => {
-                  // Show confirmation if there's in-progress work
-                  if (quiz.levelStats.total > 0) {
-                    setShowExitConfirm(true);
-                  } else {
-                    quiz.exitToTopics();
-                  }
-                }}
-                className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                whileHover={{ x: -3 }}
+            {/* Minimal progress indicator during quiz - just shows current stats */}
+            {isInQuizMode && (
+              <motion.div
+                className="flex items-center justify-between text-sm text-muted-foreground mb-3 px-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
               >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Topics
-              </motion.button>
-            )}
-
-            {quiz.topic && quiz.currentQuestion && (
-              <MasteryPanel
-                topicName={quiz.topic}
-                currentLevel={quiz.level}
-                progress={quiz.getTopicProgress(quiz.topic)}
-                levelStats={quiz.levelStats}
-                perLevel={quiz.PER_LEVEL}
-                topicLevels={quiz.getTopicLevels(quiz.topic)}
-                onResetProgress={() => {
-                  quiz.resetTopicProgress(quiz.topic!);
-                  quiz.selectTopic(quiz.topic!);
-                }}
-                onPracticeLevel={(level) => {
-                  quiz.startUnlimitedPractice(quiz.topic!, level);
-                }}
-                getQuestionsCount={(level) => quiz.getQuestionsCountForLevel(quiz.topic!, level)}
-              />
-            )}
-
-            {quiz.mixedTopics && quiz.mixedTopics.length > 0 && quiz.currentQuestion && (
-              <>
-                <motion.button
-                  onClick={() => {
-                    if (quiz.levelStats.total > 0) {
-                      setShowExitConfirm(true);
-                    } else {
-                      quiz.exitToTopics();
-                    }
-                  }}
-                  className="flex items-center gap-2 mb-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ x: -3 }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Topics
-                </motion.button>
-                <motion.div
-                  className="bg-gradient-magical text-white p-4 rounded-xl mb-4"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex items-center gap-2 font-medium">
-                    <span>🎲 Mixed Mode:</span>
-                    <span>{quiz.mixedTopics.length} topics selected</span>
-                  </div>
-                </motion.div>
-              </>
+                <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
+                <span>⭐ {quiz.sessionStats.stars}</span>
+              </motion.div>
             )}
 
             {quiz.currentQuestion && (
