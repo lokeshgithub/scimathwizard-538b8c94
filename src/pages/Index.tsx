@@ -110,6 +110,13 @@ const Index = () => {
     achievements.recordSubjectExplored(quiz.subject);
   }, [quiz.subject, achievements]);
 
+  // Auto-clear achievements without showing pop-up (pop-ups disabled for snappy flow)
+  useEffect(() => {
+    if (achievements.newlyUnlocked) {
+      achievements.clearNewlyUnlocked();
+    }
+  }, [achievements.newlyUnlocked, achievements]);
+
   // Fetch due topics for spaced repetition (when user is logged in)
   useEffect(() => {
     if (!user) {
@@ -130,15 +137,10 @@ const Index = () => {
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
     
-    // Play sound effects (confetti only for major streaks to reduce lag)
+    // Play sound effects only - no confetti during quiz for snappy flow
     if (result.isCorrect) {
       sound.playCorrect();
-      const streak = quiz.sessionStats.streak;
-      // Only play streak sounds/confetti at 5+ (reduced from 3 for snappier flow)
-      if (streak >= 5) {
-        sound.playStreak(streak);
-        confetti.fireStreak(streak);
-      }
+      // Confetti disabled during quiz for faster flow
     } else {
       sound.playIncorrect();
     }
@@ -485,15 +487,8 @@ const Index = () => {
         totalCount={achievements.getTotalCount()}
       />
 
-      {/* Achievement Unlocked Animation */}
-      <AchievementUnlocked 
-        achievement={achievements.newlyUnlocked}
-        onComplete={() => {
-          sound.playAchievement();
-          confetti.fireAchievement();
-          achievements.clearNewlyUnlocked();
-        }}
-      />
+      {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
+      {/* Achievements still tracked, just no pop-up interruption */}
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />

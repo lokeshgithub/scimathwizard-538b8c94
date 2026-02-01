@@ -331,36 +331,8 @@ export const DailyChallengeCard = ({
         )}
       </AnimatePresence>
 
-      {/* Bonus Stars Animation */}
-      <AnimatePresence>
-        {bonusStars !== null && (
-          <motion.div
-            className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-6 rounded-2xl shadow-2xl"
-              initial={{ scale: 0, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0, opacity: 0 }}
-            >
-              <div className="text-center">
-                <motion.div
-                  className="text-5xl mb-2"
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 0.5, repeat: 2 }}
-                >
-                  ⭐
-                </motion.div>
-                <p className="text-2xl font-bold">+{bonusStars} Stars!</p>
-                <p className="text-sm opacity-80">Daily Challenge Bonus</p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Bonus Stars Animation - DISABLED for snappier flow */}
+      {/* Stars are still awarded, just no pop-up */}
     </>
   );
 };
