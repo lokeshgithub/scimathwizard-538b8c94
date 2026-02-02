@@ -181,6 +181,27 @@ const Index = () => {
     }
   }, [user, profile, updateStats]);
 
+  // Calculate mastered topics per subject for Star Shop requirements
+  const masteredTopicsPerSubject = useMemo(() => {
+    const counts: Record<string, number> = { math: 0, physics: 0, chemistry: 0 };
+    for (const [subject, topics] of Object.entries(quiz.banks)) {
+      if (topics && typeof topics === 'object') {
+        for (const topicName of Object.keys(topics)) {
+          const topicProgress = quiz.progress[topicName];
+          if (topicProgress) {
+            // Count topic as mastered if any level is mastered
+            const hasMasteredLevel = Object.values(topicProgress).some(
+              (level: { mastered?: boolean }) => level?.mastered
+            );
+            if (hasMasteredLevel) {
+              counts[subject] = (counts[subject] || 0) + 1;
+            }
+          }
+        }
+      }
+    }
+    return counts;
+  }, [quiz.banks, quiz.progress]);
 
   // Track subject exploration for achievements
   useEffect(() => {
@@ -768,6 +789,7 @@ const Index = () => {
       <StarShop
         stars={quiz.sessionStats.stars}
         onPurchase={(cost) => quiz.deductStars(cost)}
+        masteredTopicsPerSubject={masteredTopicsPerSubject}
       />
 
       {/* Welcome Modal for first-time users */}

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Star, X, Check, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { SHOP_ITEMS, ShopItem, RARITY_COLORS, RARITY_LABELS, getItemsByCategory } from '@/data/starShopItems';
+import { SHOP_ITEMS, ShopItem, RARITY_COLORS, RARITY_LABELS, getItemsByCategory, meetsRequirements } from '@/data/starShopItems';
 import { toast } from 'sonner';
 
 const PURCHASED_ITEMS_KEY = 'star-shop-purchased';
@@ -11,9 +11,11 @@ const PURCHASED_ITEMS_KEY = 'star-shop-purchased';
 interface StarShopProps {
   stars: number;
   onPurchase: (cost: number) => void;
+  // Mastery stats for requirement validation
+  masteredTopicsPerSubject?: Record<string, number>;
 }
 
-export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
+export const StarShop = ({ stars, onPurchase, masteredTopicsPerSubject = {} }: StarShopProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [purchasedItems, setPurchasedItems] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<ShopItem['category'] | 'all'>('all');
@@ -32,7 +34,45 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
     localStorage.setItem(PURCHASED_ITEMS_KEY, JSON.stringify([...items]));
   };
 
+  // Check if user meets mastery requirements for an item
+  const canUnlock = useMemo(() => {
+    const cache: Record<string, boolean> = {};
+    SHOP_ITEMS.forEach(item => {
+      cache[item.id] = meetsRequirements(item, masteredTopicsPerSubject);
+    });
+    return cache;
+  }, [masteredTopicsPerSubject]);
+
+  // Get requirement description for locked items
+  const getRequirementText = (item: ShopItem): string => {
+    if (!item.requiresMastery) return '';
+    const req = item.requiresMastery;
+    switch (req.type) {
+      case 'topics':
+        return `Master ${req.count} topics to unlock`;
+      case 'halfSubject':
+        if (req.subject === 'any') return 'Master half of any subject';
+        return `Master half of ${req.subject} topics`;
+      case 'fullSubject':
+        if (req.subject === 'any') return 'Master all topics in any subject';
+        return `Master all ${req.subject} topics`;
+      case 'multiSubject':
+        return `Master ${req.count} complete subjects`;
+      default:
+        return 'Special requirements';
+    }
+  };
+
   const handlePurchase = (item: ShopItem) => {
+    // Check mastery requirements first
+    if (!canUnlock[item.id]) {
+      toast.error('Requirements not met', {
+        description: getRequirementText(item),
+        duration: 3000,
+      });
+      return;
+    }
+
     if (stars < item.price || purchasedItems.has(item.id)) return;
 
     // Deduct stars
@@ -163,6 +203,9 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
                     const isPurchased = purchasedItems.has(item.id);
                     const canAfford = stars >= item.price;
                     const isJustPurchased = justPurchased === item.id;
+                    const meetsReqs = canUnlock[item.id];
+                    const isLocked = !meetsReqs && item.requiresMastery;
+                    const canBuy = !isPurchased && canAfford && meetsReqs;
 
                     return (
                       <motion.div
@@ -175,11 +218,13 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
                           className={`p-3 relative overflow-hidden transition-all ${
                             isPurchased
                               ? 'border-success/50 bg-success/5'
+                              : isLocked
+                              ? 'opacity-50 border-muted'
                               : canAfford
                               ? 'border-primary/30 hover:border-primary cursor-pointer'
                               : 'opacity-60'
                           }`}
-                          onClick={() => !isPurchased && canAfford && handlePurchase(item)}
+                          onClick={() => canBuy && handlePurchase(item)}
                         >
                           {/* Rarity Banner */}
                           <div
@@ -193,8 +238,15 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
                             </div>
                           )}
 
-                          {/* Can't Afford */}
-                          {!isPurchased && !canAfford && (
+                          {/* Locked (mastery requirements not met) */}
+                          {!isPurchased && isLocked && (
+                            <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full" title={getRequirementText(item)}>
+                              <Lock className="w-3 h-3" />
+                            </div>
+                          )}
+
+                          {/* Can't Afford (but meets requirements) */}
+                          {!isPurchased && !isLocked && !canAfford && (
                             <div className="absolute top-2 right-2 bg-muted text-muted-foreground p-1 rounded-full">
                               <Lock className="w-3 h-3" />
                             </div>
@@ -222,12 +274,12 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
                             <div className="text-3xl mb-2">{item.emoji}</div>
                             <h3 className="font-semibold text-sm mb-1">{item.name}</h3>
                             <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                              {item.description}
+                              {isLocked ? getRequirementText(item) : item.description}
                             </p>
                             <div className="flex items-center justify-center gap-1">
                               <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                              <span className={`text-sm font-bold ${isPurchased ? 'text-success' : canAfford ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                                {isPurchased ? 'Owned' : item.price.toLocaleString()}
+                              <span className={`text-sm font-bold ${isPurchased ? 'text-success' : isLocked ? 'text-amber-600' : canAfford ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                                {isPurchased ? 'Owned' : isLocked ? 'Locked' : item.price.toLocaleString()}
                               </span>
                             </div>
                             <div className={`text-xs mt-1 bg-gradient-to-r ${RARITY_COLORS[item.rarity]} bg-clip-text text-transparent font-medium`}>
