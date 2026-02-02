@@ -1,121 +1,50 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright E2E Test Configuration for SciMathWizard
+ * Lightweight Playwright Config for SciMathWizard
  *
- * Target: ICSE students (Class 7-12) using Chrome on tablets and laptops
- * Devices: iPad, Android tablets, MacBook, Windows laptops
+ * Local dev: Single browser, sequential tests (fast, low memory)
+ * CI: Can enable more browsers via FULL_TEST=1
  */
 export default defineConfig({
   testDir: './e2e',
 
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  /* Sequential by default - much lighter on resources */
+  fullyParallel: false,
+  workers: 1,
 
-  /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
 
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Simple list reporter - no heavy HTML generation */
+  reporter: process.env.CI ? [['html'], ['list']] : [['list']],
 
-  /* Opt out of parallel tests on CI */
-  workers: process.env.CI ? 1 : undefined,
-
-  /* Reporter to use */
-  reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['list'],
-  ],
-
-  /* Shared settings for all the projects below */
+  /* Shared settings */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')` */
     baseURL: 'http://localhost:8080',
 
-    /* Collect trace when retrying the failed test */
-    trace: 'on-first-retry',
-
-    /* Screenshot on failure */
-    screenshot: 'only-on-failure',
-
-    /* Video on failure */
-    video: 'on-first-retry',
+    /* Disable heavy features for local dev */
+    trace: 'off',
+    screenshot: 'off',
+    video: 'off',
   },
 
-  /* Configure projects for major browsers and devices */
-  projects: [
-    // Desktop - Primary targets for ICSE students
-    {
-      name: 'Desktop Chrome',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1440, height: 900 },
-      },
-    },
-
-    // MacBook - Common among students
-    {
-      name: 'MacBook Pro',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1512, height: 982 },
-        deviceScaleFactor: 2,
-      },
-    },
-
-    // Windows Laptop - Most common
-    {
-      name: 'Windows Laptop',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1366, height: 768 },
-      },
-    },
-
-    // Tablets - Very common for students
-    {
-      name: 'iPad Pro',
-      use: {
-        ...devices['iPad Pro 11'],
-      },
-    },
-
-    {
-      name: 'iPad Mini',
-      use: {
-        ...devices['iPad Mini'],
-      },
-    },
-
-    // Android Tablet
-    {
-      name: 'Android Tablet',
-      use: {
-        ...devices['Galaxy Tab S4'],
-      },
-    },
-
-    // Mobile - For quick practice sessions
-    {
-      name: 'iPhone 14',
-      use: {
-        ...devices['iPhone 14'],
-      },
-    },
-
-    {
-      name: 'Android Phone',
-      use: {
-        ...devices['Pixel 5'],
-      },
-    },
+  /* Single browser for fast local testing */
+  projects: process.env.FULL_TEST ? [
+    // Full suite for CI/thorough testing
+    { name: 'Desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'Tablet', use: { ...devices['iPad Mini'] } },
+    { name: 'Mobile', use: { ...devices['iPhone 14'] } },
+  ] : [
+    // Just Chrome for quick local tests
+    { name: 'Chrome', use: { ...devices['Desktop Chrome'] } },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /* Reuse existing dev server */
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    reuseExistingServer: true,
+    timeout: 60000,
   },
 });
