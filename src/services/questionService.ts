@@ -532,11 +532,12 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
   ],
   'Chemistry': [
     // Core topics
-    'Matter', 'Atoms and Molecules', 'Chemical Reactions', 'Acids and Bases',
+    'Matter', 'Matter Composition', 'Atoms and Molecules', 'Chemical Reactions', 'Acids and Bases',
     'Metals and Non-metals', 'Carbon Compounds', 'Periodic Table',
     // Additional common chemistry topics
     'Elements and Compounds', 'Mixtures and Solutions', 'Chemical Bonding',
-    'States of Matter', 'Atomic Structure',
+    'States of Matter', 'Atomic Structure', 'Physical and Chemical Changes',
+    'Air and Water', 'Fuels', 'Fibres and Plastics', 'Pollution',
   ],
 };
 
@@ -705,14 +706,43 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   'waves': 'Waves',
 
   // ============ CHEMISTRY TOPICS ============
+  // Matter (fundamental chemistry topic)
+  'matter': 'Matter',
+  'states of matter': 'States of Matter',
+  'statesofmatter': 'States of Matter',
+  // Matter Composition
+  'mattercomposition': 'Matter Composition',
+  'matter composition': 'Matter Composition',
+  'compositionofmatter': 'Matter Composition',
+  'composition of matter': 'Matter Composition',
+  'composition': 'Matter Composition',
+  // Atoms and Molecules
+  'atomsandmolecules': 'Atoms and Molecules',
+  'atoms and molecules': 'Atoms and Molecules',
+  'molecules': 'Atoms and Molecules',
+  // Elements and Compounds
+  'elementsandcompounds': 'Elements and Compounds',
+  'elements and compounds': 'Elements and Compounds',
+  'compounds': 'Elements and Compounds',
+  // Mixtures and Solutions
+  'mixturesandsolutions': 'Mixtures and Solutions',
+  'mixtures and solutions': 'Mixtures and Solutions',
+  'mixtures': 'Mixtures and Solutions',
+  'solutions': 'Mixtures and Solutions',
+  // Physical and Chemical Changes
+  'physicalandchemicalchanges': 'Physical and Chemical Changes',
+  'physical and chemical changes': 'Physical and Chemical Changes',
+  'chemical changes': 'Physical and Chemical Changes',
   // Acids, Bases and Salts
-  'acidsbasesandsalts': 'Acids Bases and Salts',
-  'acids bases and salts': 'Acids Bases and Salts',
-  'acids bases salts': 'Acids Bases and Salts',
-  'acidbasesalt': 'Acids Bases and Salts',
-  'acids': 'Acids Bases and Salts',
-  'bases': 'Acids Bases and Salts',
-  'salts': 'Acids Bases and Salts',
+  'acidsandbases': 'Acids and Bases',
+  'acids and bases': 'Acids and Bases',
+  'acidsbasesandsalts': 'Acids and Bases',
+  'acids bases and salts': 'Acids and Bases',
+  'acids bases salts': 'Acids and Bases',
+  'acidbasesalt': 'Acids and Bases',
+  'acids': 'Acids and Bases',
+  'bases': 'Acids and Bases',
+  'salts': 'Acids and Bases',
   // Metals and Non-metals
   'metalsandnonmetals': 'Metals and Non-metals',
   'metals and nonmetals': 'Metals and Non-metals',
@@ -747,6 +777,19 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   'chemicalbonding': 'Chemical Bonding',
   'chemical bonding': 'Chemical Bonding',
   'bonding': 'Chemical Bonding',
+  // Air and Water
+  'airandwater': 'Air and Water',
+  'air and water': 'Air and Water',
+  'air': 'Air and Water',
+  'water': 'Air and Water',
+  // Fuels
+  'fuels': 'Fuels',
+  'fuel': 'Fuels',
+  'combustion': 'Fuels',
+  // Pollution
+  'pollution': 'Pollution',
+  'environmentalpollution': 'Pollution',
+  'environmental pollution': 'Pollution',
 };
 
 /**

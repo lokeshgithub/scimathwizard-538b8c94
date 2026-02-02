@@ -182,14 +182,19 @@ const Admin = () => {
 
   const detectSubjectFromName = (name: string): string => {
     const lowerName = name.toLowerCase();
-    // Physics keywords - include variations
-    if (/physics|physical|heat|motion|force|light|electric|magnet|sound|energy|gravit|optic|wave/i.test(lowerName)) {
-      return 'Physics';
-    }
-    // Chemistry keywords
-    if (/chemistry|chemical|acid|base|metal|atom|molecule|element|periodic|compound|reaction|carbon|fibre/i.test(lowerName)) {
+
+    // Chemistry keywords - CHECK FIRST (more specific, avoids "physical" false positive)
+    // "matter" is chemistry (states of matter, composition of matter)
+    // "physical" alone could be physics, but "physical change" is chemistry
+    if (/chemistry|chemical|acid|base|metal|atom|molecule|element|periodic|compound|reaction|carbon|fibre|matter|composition|mixture|solution|oxidation|reduction|ion|covalent|ionic|bonding|organic|inorganic|polymer|hydrocarbon|alkali|neutral|ph\b|corrosion|rust|combustion|electrolysis/i.test(lowerName)) {
       return 'Chemistry';
     }
+
+    // Physics keywords - include variations
+    if (/physics|physical|heat|motion|force|light|electric|magnet|sound|energy|gravit|optic|wave|velocity|acceleration|momentum|friction|pressure|density|buoyancy|current|voltage|resistance|circuit|lens|mirror|refraction|reflection/i.test(lowerName)) {
+      return 'Physics';
+    }
+
     return 'Math';
   };
 
