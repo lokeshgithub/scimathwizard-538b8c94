@@ -538,6 +538,8 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
     'Elements and Compounds', 'Mixtures and Solutions', 'Chemical Bonding',
     'States of Matter', 'Atomic Structure', 'Physical and Chemical Changes',
     'Air and Water', 'Fuels', 'Fibres and Plastics', 'Pollution',
+    // Combined/variant topics
+    'Elements Compounds Mixtures', 'Language of Chemistry',
   ],
 };
 
@@ -790,6 +792,18 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   'pollution': 'Pollution',
   'environmentalpollution': 'Pollution',
   'environmental pollution': 'Pollution',
+  // Elements Compounds Mixtures (combined topic)
+  'elementscompoundsmixtures': 'Elements Compounds Mixtures',
+  'elements compounds mixtures': 'Elements Compounds Mixtures',
+  'elements compounds and mixtures': 'Elements Compounds Mixtures',
+  'elementscompoundsandmixtures': 'Elements Compounds Mixtures',
+  // Language of Chemistry
+  'languageofchemistry': 'Language of Chemistry',
+  'language of chemistry': 'Language of Chemistry',
+  'chemistry language': 'Language of Chemistry',
+  'chemical language': 'Language of Chemistry',
+  'chemical symbols': 'Language of Chemistry',
+  'chemical formulae': 'Language of Chemistry',
 };
 
 /**
