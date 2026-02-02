@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { TopicProgress } from '@/types/quiz';
@@ -106,10 +106,23 @@ const categorize = (topicName: string, subject: string = 'math'): string => {
     .replace(/[_-]/g, ' ');      // Convert underscores/dashes to spaces
 
   const categories = getCategoriesForSubject(subject);
+
+  // Collect all keyword matches with their lengths (longest match wins)
+  // This prevents 'mensuration' from matching 'ratio' before 'mensuration'
+  const matches: { category: string; keyword: string; length: number }[] = [];
+
   for (const cat of categories) {
-    if (cat.keywords.some(kw => cleaned.includes(kw))) {
-      return cat.name;
+    for (const kw of cat.keywords) {
+      if (cleaned.includes(kw)) {
+        matches.push({ category: cat.name, keyword: kw, length: kw.length });
+      }
     }
+  }
+
+  // Return the category with the longest matching keyword
+  if (matches.length > 0) {
+    matches.sort((a, b) => b.length - a.length);
+    return matches[0].category;
   }
 
   // Second pass: try matching partial words (e.g., "geom" matches geometry category)

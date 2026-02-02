@@ -275,8 +275,9 @@ describe('UX Edge Cases', () => {
     const hints = ['A', 'B', 'C'];
     const hintsUsed = 2;
 
-    const displayText = hintsUsed === 1 ? 'Hint' : `Hints (${hintsUsed}/${hints.length})`;
-    expect(displayText).toBe('Hints (2/3)');
+    const getDisplayText = (used: number, total: number) => 
+      used === 1 ? 'Hint' : `Hints (${used}/${total})`;
+    expect(getDisplayText(hintsUsed, hints.length)).toBe('Hints (2/3)');
   });
 
   it('should show singular "Hint" when only one used', () => {
@@ -288,14 +289,14 @@ describe('UX Edge Cases', () => {
   });
 
   it('should show "Need a hint?" for first hint button', () => {
-    const hintsUsed = 0;
-    const buttonText = hintsUsed === 0 ? 'Need a hint?' : 'Need another hint?';
-    expect(buttonText).toBe('Need a hint?');
+    const getButtonText = (used: number) => 
+      used === 0 ? 'Need a hint?' : 'Need another hint?';
+    expect(getButtonText(0)).toBe('Need a hint?');
   });
 
   it('should show "Need another hint?" for subsequent hints', () => {
-    const hintsUsed = 1;
-    const buttonText = hintsUsed === 0 ? 'Need a hint?' : 'Need another hint?';
-    expect(buttonText).toBe('Need another hint?');
+    const getButtonText = (used: number) => 
+      used === 0 ? 'Need a hint?' : 'Need another hint?';
+    expect(getButtonText(1)).toBe('Need another hint?');
   });
 });
