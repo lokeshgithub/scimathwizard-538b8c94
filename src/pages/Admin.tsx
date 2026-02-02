@@ -19,8 +19,6 @@ import {
   findBlueprintMatch,
   smartUploadQuestions,
   SmartUploadReport,
-  loadQuestionsFromCache,
-  fetchAllQuestions,
 } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -76,39 +74,69 @@ const Admin = () => {
   const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
-  // Fetch available topics for test mode - uses same cache as quiz app
+  // Fetch available topics for test mode - query Supabase with proper joins
   const fetchAvailableTopics = useCallback(async () => {
     setIsLoadingTopics(true);
     try {
-      // First try cache, then fetch if needed (same source as quiz app)
-      let bank = loadQuestionsFromCache();
-      if (!bank || Object.keys(bank).length === 0) {
-        bank = await fetchAllQuestions();
-      }
+      // Get all questions with their topic and subject info via joins
+      const { data: questions, error } = await supabase
+        .from('questions')
+        .select(`
+          id,
+          level,
+          topic_id,
+          topics!inner (
+            id,
+            name,
+            subject_id,
+            subjects!inner (
+              id,
+              name
+            )
+          )
+        `);
 
-      if (!bank || Object.keys(bank).length === 0) {
+      if (error) {
+        console.error('Supabase error:', error);
         setAvailableTopics([]);
         return;
       }
 
-      const topicData: Array<{ name: string; subject: string; questionCount: number; levels: number[] }> = [];
-
-      // Parse the QuestionBank structure: { subject: { topic: Question[] } }
-      for (const subjectName of Object.keys(bank)) {
-        const subjectTopics = bank[subjectName];
-        for (const topicName of Object.keys(subjectTopics)) {
-          const questions = subjectTopics[topicName];
-          const levels = [...new Set(questions.map(q => q.level))].sort((a, b) => a - b);
-          topicData.push({
-            name: topicName,
-            subject: subjectName,
-            questionCount: questions.length,
-            levels,
-          });
-        }
+      if (!questions || questions.length === 0) {
+        console.log('No questions found in database');
+        setAvailableTopics([]);
+        return;
       }
 
+      // Group questions by subject+topic
+      const topicMap = new Map<string, { name: string; subject: string; questionCount: number; levels: Set<number> }>();
+
+      for (const q of questions) {
+        const topic = (q as any).topics;
+        const subject = topic?.subjects;
+        if (!topic || !subject) continue;
+
+        const key = `${subject.name}:${topic.name}`;
+        if (!topicMap.has(key)) {
+          topicMap.set(key, {
+            name: topic.name,
+            subject: subject.name,
+            questionCount: 0,
+            levels: new Set(),
+          });
+        }
+        const entry = topicMap.get(key)!;
+        entry.questionCount++;
+        entry.levels.add(q.level);
+      }
+
+      const topicData = Array.from(topicMap.values()).map(t => ({
+        ...t,
+        levels: [...t.levels].sort((a, b) => a - b),
+      }));
+
       setAvailableTopics(topicData.sort((a, b) => a.subject.localeCompare(b.subject) || a.name.localeCompare(b.name)));
+      console.log(`Loaded ${topicData.length} topics with questions`);
     } catch (error) {
       console.error('Failed to fetch topics:', error);
     } finally {
