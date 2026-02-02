@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { TopicProgress } from '@/types/quiz';
+import { TopicProgress, QuestionTiming } from '@/types/quiz';
 import {
   Sparkles, Flame, Target, ChevronDown, ChevronRight,
   Zap, Award, BookOpen, Lock, Bell, Play, Search, Eye, RotateCcw, MoreVertical
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
 import { SignUpPrompt } from './SignUpPrompt';
+import { AreasToImprove } from './AreasToImprove';
 import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
 import type { DueTopic } from '@/services/spacedRepetitionService';
 import {
@@ -46,6 +47,8 @@ interface TopicDashboardProps {
   onStartReview?: (topic: string) => boolean | void;
   onResetProgress?: (topic: string) => void;
   getSolvedCount?: (topic: string) => number;
+  // Session performance for areas to improve
+  questionTimings?: QuestionTiming[];
 }
 
 const formatName = (name: string) => {
@@ -226,6 +229,7 @@ export const TopicDashboard = ({
   onStartReview,
   onResetProgress,
   getSolvedCount,
+  questionTimings = [],
 }: TopicDashboardProps) => {
   // Get default expanded categories based on subject
   const getDefaultExpandedCategories = useCallback((subject: string): Set<string> => {
@@ -466,6 +470,12 @@ export const TopicDashboard = ({
             />
           </div>
         )}
+
+        {/* Areas to Improve - shows weak topics from current session */}
+        <AreasToImprove
+          questionTimings={questionTimings}
+          onPractice={handleSelectTopic}
+        />
 
         {/* Category Groups */}
         <div className="space-y-3">

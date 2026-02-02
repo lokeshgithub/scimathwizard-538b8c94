@@ -606,6 +606,7 @@ const Index = () => {
                   onStartReview={quiz.startReviewMode}
                   onResetProgress={quiz.resetTopicProgress}
                   getSolvedCount={quiz.getSolvedQuestionsCount}
+                  questionTimings={quiz.sessionPerformance.questionTimings}
                 />
 
                 {/* Spaced Repetition Card - show when logged in */}
