@@ -442,38 +442,43 @@ const Index = () => {
                     <PathwayNav />
                   </div>
 
-                  {/* AI Analysis Button - Clear UX with explanation */}
+                  {/* Report Button - Links to report page, shows session stats */}
                   <div className="relative group">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={quiz.endSession}
-                      disabled={!hasAnsweredQuestions}
-                      className={`flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 ${
-                        hasAnsweredQuestions
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30'
-                          : 'bg-muted/50 text-muted-foreground cursor-not-allowed'
-                      }`}
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                      <span className="hidden sm:inline">
-                        {hasAnsweredQuestions ? 'View Report' : 'Report'}
-                      </span>
-                      <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${
-                        hasAnsweredQuestions ? 'bg-white/20' : 'bg-muted-foreground/20'
-                      }`}>
-                        {quiz.sessionPerformance.questionTimings.length}
-                      </span>
-                    </Button>
-                    {/* Always-visible tooltip on hover */}
+                    {hasAnsweredQuestions ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={quiz.endSession}
+                        className="flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        <span className="hidden sm:inline">View Report</span>
+                        <span className="rounded-full px-1.5 py-0.5 text-xs font-bold bg-white/20">
+                          {quiz.sessionPerformance.questionTimings.length}
+                        </span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        asChild
+                        className="flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
+                      >
+                        <Link to="/report" className="flex items-center gap-1">
+                          <BarChart3 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Report</span>
+                        </Link>
+                      </Button>
+                    )}
+                    {/* Tooltip on hover */}
                     <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
                       <p className="text-sm font-medium text-foreground mb-1">
-                        {hasAnsweredQuestions ? 'Session Report Ready' : 'Session Report'}
+                        {hasAnsweredQuestions ? 'Session Report Ready' : 'Performance Report'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {hasAnsweredQuestions
-                          ? `Click to end your session and see a detailed breakdown of your ${quiz.sessionPerformance.questionTimings.length} answered question${quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.`
-                          : 'Start practicing to build your session report. After answering questions, click here to see your performance analysis.'}
+                          ? `Click to see a detailed breakdown of your ${quiz.sessionPerformance.questionTimings.length} answered question${quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.`
+                          : 'View your stats, strengths, and areas to improve. Start practicing to build your session report.'}
                       </p>
                     </div>
                   </div>

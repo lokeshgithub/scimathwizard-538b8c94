@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Brain, Trophy } from 'lucide-react';
+import { BookOpen, Brain, Trophy, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -27,6 +27,14 @@ const pathways = [
     icon: Trophy,
     title: 'Olympiad Test',
     description: 'Timed exam prep with competition-style questions',
+  },
+  {
+    id: 'report',
+    path: '/report',
+    label: 'Report',
+    icon: BarChart3,
+    title: 'Performance Report',
+    description: 'View your session stats, strengths & areas to improve',
   },
 ];
 
