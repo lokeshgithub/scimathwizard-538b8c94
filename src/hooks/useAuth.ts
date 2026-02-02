@@ -98,25 +98,35 @@ export const useAuth = () => {
   }, [user, toast]);
 
   // Update profile stats
+  // Returns the new profile data after successful update
   const updateStats = useCallback(async (stats: {
     total_stars?: number;
     topics_mastered?: number;
     questions_answered?: number;
     current_streak?: number;
     longest_streak?: number;
-  }) => {
-    if (!user) return;
+  }): Promise<Profile | null> => {
+    if (!user) return null;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .update(stats)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating stats:', error);
-    } else {
-      setProfile(prev => prev ? { ...prev, ...stats } : null);
+      return null;
     }
+
+    // Update local state with the ACTUAL database response
+    // This ensures we have the real value, not a stale optimistic update
+    if (data) {
+      setProfile(data);
+    }
+
+    return data;
   }, [user]);
 
   useEffect(() => {

@@ -69,8 +69,8 @@ const Index = () => {
   // Track what we've already synced to avoid duplicate additions
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
   const hasInitializedStars = useRef(false);
-  // Track the expected stars value after sync to detect race conditions
-  const expectedStarsAfterSync = useRef<number | null>(null);
+  // Track sync state to prevent concurrent updates
+  const isSyncingToDb = useRef(false);
 
   // Ref for auto-scrolling to quiz card
   const quizCardRef = useRef<HTMLDivElement>(null);
@@ -81,27 +81,20 @@ const Index = () => {
 
     // DATABASE IS THE SOURCE OF TRUTH - always sync from profile
     const profileStars = profile.total_stars || 0;
-
-    // Store the expected stars value BEFORE calling syncStarsFromProfile
-    // This helps detect and prevent race conditions in the TO-database sync
-    expectedStarsAfterSync.current = profileStars;
+    const profileSolved = profile.questions_answered || 0;
+    const profileMastered = profile.topics_mastered || 0;
 
     quiz.syncStarsFromProfile(profileStars);
 
     // Initialize lastSyncedRef to the profile value to prevent re-syncing old localStorage data
     lastSyncedRef.current = {
       stars: profileStars,
-      solved: profile.questions_answered || 0,
-      mastered: profile.topics_mastered || 0
+      solved: profileSolved,
+      mastered: profileMastered
     };
 
     hasInitializedStars.current = true;
 
-    // Show confirmation toast that stars synced from database
-    toast.success(`Stars synced: ${profileStars.toLocaleString()}`, {
-      description: 'Your star count has been loaded from the cloud',
-      duration: 3000,
-    });
     console.log(`[Star Sync] Synced ${profileStars} stars from database for user ${user.id}`);
   }, [user, profile, quiz]);
 
@@ -112,21 +105,10 @@ const Index = () => {
     // Don't sync until we've initialized from profile
     if (!hasInitializedStars.current) return;
 
+    // Prevent concurrent syncs
+    if (isSyncingToDb.current) return;
+
     const { stars, solved, mastered } = quiz.sessionStats;
-
-    // RACE CONDITION GUARD: If stars haven't been synced from profile yet,
-    // skip this sync. The expected value tells us what stars SHOULD be after sync.
-    // If stars don't match expected, the state update hasn't propagated yet.
-    if (expectedStarsAfterSync.current !== null && stars !== expectedStarsAfterSync.current) {
-      console.log(`[Star Sync TO DB] Skipping - waiting for FROM sync to complete (current: ${stars}, expected: ${expectedStarsAfterSync.current})`);
-      return;
-    }
-
-    // Clear the expected value now that sync is confirmed
-    if (expectedStarsAfterSync.current !== null) {
-      console.log(`[Star Sync TO DB] FROM sync confirmed complete (stars: ${stars})`);
-      expectedStarsAfterSync.current = null;
-    }
 
     // Safety: lastSyncedRef should be initialized by the FROM effect above
     if (lastSyncedRef.current === null) {
@@ -147,11 +129,14 @@ const Index = () => {
     const hasStatsToSync = solvedToAdd > 0 || masteredToAdd > 0;
 
     if (hasStarsToSync || hasStatsToSync) {
+      isSyncingToDb.current = true;
+      
       const updates: Record<string, number> = {};
 
       if (hasStarsToSync) {
-        // Handle both star gains AND deductions (Star Shop purchases)
-        const newTotal = (profile.total_stars || 0) + starsChange;
+        // Use lastSynced.stars as base (not profile.total_stars) to avoid race conditions
+        // profile might be stale, but lastSynced always reflects what we've committed
+        const newTotal = lastSynced.stars + starsChange;
         updates.total_stars = Math.max(0, newTotal); // Ensure non-negative
         console.log(`[Star Sync] ${starsChange > 0 ? 'Adding' : 'Deducting'} ${Math.abs(starsChange)} stars (new total: ${updates.total_stars})`);
       }
@@ -166,8 +151,13 @@ const Index = () => {
         updateStats(updates);
       }
 
-      // Always update lastSyncedRef to prevent desync
+      // Always update lastSyncedRef IMMEDIATELY to prevent double-counting
       lastSyncedRef.current = { stars, solved, mastered };
+      
+      // Release sync lock after a short delay to prevent rapid-fire updates
+      setTimeout(() => {
+        isSyncingToDb.current = false;
+      }, 100);
     }
   }, [quiz.sessionStats.stars, quiz.sessionStats.solved, quiz.sessionStats.mastered, user, profile, updateStats]);
 

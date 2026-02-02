@@ -99,8 +99,20 @@ function saveQuestionsToCache(bank: QuestionBank): void {
       timestamp: Date.now(),
     };
     localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(cached));
-  } catch (e) {
-    console.error('Failed to save questions cache:', e);
+  } catch (e: any) {
+    // Handle localStorage quota exceeded error
+    if (e?.name === 'QuotaExceededError') {
+      console.warn('localStorage quota exceeded - clearing questions cache to make room');
+      try {
+        // Clear just this cache to make room
+        localStorage.removeItem(QUESTIONS_CACHE_KEY);
+        // Try again with smaller footprint - skip caching if still fails
+      } catch (clearError) {
+        console.error('Failed to clear questions cache:', clearError);
+      }
+    } else {
+      console.error('Failed to save questions cache:', e);
+    }
   }
 }
 

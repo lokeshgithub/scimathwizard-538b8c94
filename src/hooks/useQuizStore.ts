@@ -121,16 +121,38 @@ const loadFromStorage = (): Partial<QuizState> => {
 
 const saveToStorage = (state: Partial<QuizState>) => {
   try {
+    // Don't save banks to localStorage - they're cached separately in questionService
+    // This significantly reduces storage size and prevents quota issues
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       schemaVersion: SCHEMA_VERSION,
-      banks: state.banks,
+      // banks removed to save space - loaded from questionService cache instead
       progress: state.progress,
       questionTracking: state.questionTracking,
       sessionStats: state.sessionStats,
       unlockedLevels: state.unlockedLevels || {},
     }));
-  } catch (e) {
-    console.error('Failed to save quiz state:', e);
+  } catch (e: any) {
+    // Handle localStorage quota exceeded error
+    if (e?.name === 'QuotaExceededError') {
+      console.warn('localStorage quota exceeded for quiz state - attempting cleanup');
+      try {
+        // Clear old caches to make room
+        localStorage.removeItem('magical-mastery-questions-cache');
+        // Try saving again with slimmer data
+        const slimData = {
+          schemaVersion: SCHEMA_VERSION,
+          progress: state.progress,
+          sessionStats: state.sessionStats,
+          // Drop questionTracking if still too big - it can be rebuilt
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(slimData));
+        console.log('Saved slim quiz state after cleanup');
+      } catch (retryError) {
+        console.error('Failed to save quiz state even after cleanup:', retryError);
+      }
+    } else {
+      console.error('Failed to save quiz state:', e);
+    }
   }
 };
 
@@ -366,13 +388,14 @@ export const useQuizStore = () => {
 
   // Save to storage when relevant state changes - DEBOUNCED to prevent UI blocking
   // localStorage writes are synchronous and can freeze the UI if called too frequently
+  // NOTE: banks are NOT saved here - they're cached separately in questionService
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      saveToStorage({ banks, progress, questionTracking, sessionStats, unlockedLevels });
+      saveToStorage({ progress, questionTracking, sessionStats, unlockedLevels });
     }, 500); // Debounce 500ms - frequent saves are batched
 
     return () => clearTimeout(timeoutId);
-  }, [banks, progress, questionTracking, sessionStats, unlockedLevels]);
+  }, [progress, questionTracking, sessionStats, unlockedLevels]);
 
   // Save active session when topic/level/levelStats change (for resume on refresh)
   // Sessions are saved PER TOPIC so switching topics doesn't lose progress
