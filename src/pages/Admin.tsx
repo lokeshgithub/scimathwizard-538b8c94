@@ -74,30 +74,52 @@ const Admin = () => {
   const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
-  // Fetch available topics for test mode - same approach as quiz app
+  // Fetch available topics for test mode - use RPC like quiz app (bypasses RLS)
   const fetchAvailableTopics = useCallback(async () => {
     setIsLoadingTopics(true);
     try {
-      // Same simple queries used by fetchAllQuestionsForAdmin
       const { data: subjects } = await supabase.from('subjects').select('*');
       const { data: topics } = await supabase.from('topics').select('*');
-      const { data: questions } = await supabase.from('questions').select('id, level, topic_id');
 
-      if (!subjects || !topics || !questions) {
-        console.error('Failed to fetch data:', { subjects: !!subjects, topics: !!topics, questions: !!questions });
+      // Use RPC function to get questions (same as quiz app - bypasses RLS)
+      let allQuestions: Array<{ id: string; level: number; topic_id: string }> = [];
+      let offset = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error } = await supabase
+          .rpc('get_public_questions')
+          .range(offset, offset + pageSize - 1);
+
+        if (error) {
+          console.error('RPC error:', error);
+          break;
+        }
+
+        if (!batch || batch.length === 0) {
+          hasMore = false;
+        } else {
+          allQuestions = [...allQuestions, ...batch];
+          offset += pageSize;
+          hasMore = batch.length === pageSize;
+        }
+      }
+
+      if (!subjects || !topics) {
+        console.error('Failed to fetch subjects/topics');
         setAvailableTopics([]);
         return;
       }
 
-      console.log(`Fetched: ${subjects.length} subjects, ${topics.length} topics, ${questions.length} questions`);
+      console.log(`Fetched: ${subjects.length} subjects, ${topics.length} topics, ${allQuestions.length} questions`);
 
       // Build lookup maps
       const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
-      const topicSubjectMap = new Map(topics.map(t => [t.id, { name: t.name, subjectId: t.subject_id }]));
 
       // Group questions by topic
       const topicQuestionMap = new Map<string, { levels: Set<number>; count: number }>();
-      for (const q of questions) {
+      for (const q of allQuestions) {
         if (!topicQuestionMap.has(q.topic_id)) {
           topicQuestionMap.set(q.topic_id, { levels: new Set(), count: 0 });
         }
