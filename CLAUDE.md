@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Active Session File
+
+**Resume testing work:** Read `.claude/session_testing_2feb2026.md` for context on E2E test setup and pending fixes.
+
 ## Project Overview
 
 SciMathWizard (Magic Mastery Quiz) is a full-stack educational web application built with React 18, TypeScript, and Supabase. It features a gamified quiz system with multi-subject support, adaptive learning, and multiplayer battle modes.
@@ -147,6 +151,33 @@ import { Button } from "@/components/ui/button";
 - **Data**: React Query + Supabase (PostgreSQL)
 - **Forms**: React Hook Form + Zod validation
 - **Export**: jsPDF for certificates, XLSX for reports
+
+## Claude Agents & Experts
+
+Custom agents are defined in `.claude/` for specialized tasks:
+
+### Test Agent (`.claude/test-agent.md`)
+A UI testing expert for generating exhaustive automated and manual test cases.
+- **Target users:** Grade 7-12 students (ages 12-18)
+- **Focus:** Competitive exam apps (IIT-JEE Foundation, Olympiads, NTSE)
+- **Outputs:** Vitest automated tests + manual test case tables
+
+**Usage:**
+```
+As the Test Agent from .claude/test-agent.md, create automated tests for [component]
+As the Test Agent from .claude/test-agent.md, create manual test cases for [feature]
+```
+
+### Expert Personas (`.claude/experts.md`)
+Review personas for code quality:
+- **UI Expert:** Accessibility, responsive design, performance
+- **UX Expert:** User flows, error handling, cognitive load
+- **Education Expert:** Pedagogical soundness, assessment validity
+
+**Usage:**
+```
+Review this code as the [UI/UX/Education] Expert from .claude/experts.md
+```
 
 ## Known Issues / Future Work
 
