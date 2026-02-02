@@ -544,6 +544,7 @@ export const TopicDashboard = ({
                           return (
                             <motion.div
                               key={topic.name}
+                              data-testid="topic-card"
                               className={`
                                 relative p-3 rounded-lg text-left transition-all
                                 bg-muted/50 hover:bg-muted border border-transparent
@@ -571,6 +572,7 @@ export const TopicDashboard = ({
                               <button
                                 onClick={() => handleSelectTopic(topic.name)}
                                 className="w-full text-left"
+                                data-testid="topic-select-button"
                               >
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-xl">{topic.icon}</span>
@@ -639,6 +641,7 @@ export const TopicDashboard = ({
                                           }
                                         `}
                                         title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `Practice L${level}`}
+                                        data-testid={`level-button-${level}`}
                                       >
                                         {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
                                       </button>

@@ -37,7 +37,7 @@ const Report = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-testid="report-page">
       {/* Header */}
       <motion.header
         className="bg-gradient-magical text-white py-4 px-4"
@@ -69,14 +69,15 @@ const Report = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+              data-testid="report-stats"
             >
-              <div className="bg-card rounded-xl p-4 shadow-card text-center">
+              <div className="bg-card rounded-xl p-4 shadow-card text-center" data-testid="stat-questions">
                 <div className="text-3xl font-bold text-primary">
                   {analysis.totalQuestions}
                 </div>
                 <div className="text-sm text-muted-foreground">Questions</div>
               </div>
-              <div className="bg-card rounded-xl p-4 shadow-card text-center">
+              <div className="bg-card rounded-xl p-4 shadow-card text-center" data-testid="stat-accuracy">
                 <div className="text-3xl font-bold text-emerald-500">
                   {Math.round(analysis.overallAccuracy * 100)}%
                 </div>

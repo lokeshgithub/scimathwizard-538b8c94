@@ -61,6 +61,7 @@ export const PathwayNav = () => {
                   variant="secondary"
                   size="sm"
                   className="bg-white/20 text-white border-2 border-white/40 hover:bg-white/30 cursor-default"
+                  data-testid={`nav-${pathway.id}`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline ml-1">{pathway.label}</span>
@@ -71,6 +72,7 @@ export const PathwayNav = () => {
                   size="sm"
                   asChild
                   className="bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border-0"
+                  data-testid={`nav-${pathway.id}`}
                 >
                   <Link to={pathway.path} className="flex items-center gap-1">
                     <Icon className="w-4 h-4" />

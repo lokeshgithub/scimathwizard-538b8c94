@@ -296,6 +296,7 @@ export const QuizCard = ({
       initial={{ opacity: 0.9 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.1 }}
+      data-testid="quiz-card"
     >
       {/* Header */}
       <div className={`bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} p-4`}>
@@ -331,7 +332,7 @@ export const QuizCard = ({
 
       {/* Question */}
       <div className="p-6">
-        <p className="text-lg font-medium text-foreground mb-4 leading-relaxed">
+        <p className="text-lg font-medium text-foreground mb-4 leading-relaxed" data-testid="question-text">
           {question.question}
         </p>
 
@@ -395,6 +396,7 @@ export const QuizCard = ({
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                data-testid="hint-button"
               >
                 <HelpCircle className="w-4 h-4" />
                 {hintsUsed === 0 ? 'Need a hint?' : 'Need another hint?'}
@@ -416,6 +418,7 @@ export const QuizCard = ({
                 key={index}
                 onClick={() => handleAnswer(index)}
                 disabled={isAnswered || isValidating}
+                data-testid={`answer-option-${String.fromCharCode(97 + index)}`}
                 className={`
                   w-full p-4 rounded-xl text-left transition-colors duration-150 flex items-center gap-3
                   ${isValidating && isSelected
