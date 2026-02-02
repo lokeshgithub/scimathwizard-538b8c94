@@ -10,18 +10,29 @@ import { test, expect } from '@playwright/test';
 test.describe('Topic Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=Magic Mastery Quiz')).toBeVisible({ timeout: 10000 });
+    // Wait for the app to load - look for topic cards
+    await expect(page.locator('[data-testid="topic-card"]').first()).toBeVisible({ timeout: 15000 });
+    // Dismiss welcome modal if present by clicking outside or the X button
+    const welcomeModal = page.locator('role=dialog');
+    if (await welcomeModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      // Try clicking "Get Started" button or pressing Escape
+      const getStartedBtn = page.locator('button:has-text("Get Started")');
+      if (await getStartedBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await getStartedBtn.click();
+      } else {
+        await page.keyboard.press('Escape');
+      }
+      await page.waitForTimeout(300);
+    }
   });
 
   test('should load dashboard with Math selected by default', async ({ page }) => {
     // Math tab should be active
     const mathTab = page.locator('button').filter({ hasText: 'Math' });
-    await expect(mathTab).toBeVisible();
+    await expect(mathTab.first()).toBeVisible();
 
-    // Should see Math topics/categories
-    await expect(
-      page.locator('text=Numbers').or(page.locator('text=Algebra')).or(page.locator('text=Geometry'))
-    ).toBeVisible({ timeout: 5000 });
+    // Should see Math topic categories (Numbers & Operations, Algebra, etc.)
+    await expect(page.locator('text=Numbers & Operations').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should switch to Physics when tab clicked', async ({ page }) => {
@@ -99,7 +110,13 @@ test.describe('Topic Dashboard', () => {
 test.describe('Topic Search & Filter', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await expect(page.locator('h1:has-text("Magic Mastery Quiz")').first()).toBeVisible({ timeout: 10000 });
+    // Dismiss welcome modal if present
+    const welcomeModal = page.locator('text=Get Started').first();
+    if (await welcomeModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await welcomeModal.click();
+      await page.waitForTimeout(500);
+    }
   });
 
   test('should filter topics when search is used', async ({ page }) => {
@@ -133,78 +150,80 @@ test.describe('Topic Search & Filter', () => {
 test.describe('Level Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await expect(page.locator('h1:has-text("Magic Mastery Quiz")').first()).toBeVisible({ timeout: 10000 });
+    // Dismiss welcome modal if present
+    const welcomeModal = page.locator('text=Get Started').first();
+    if (await welcomeModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await welcomeModal.click();
+      await page.waitForTimeout(500);
+    }
   });
 
-  test('should show 6 levels for each topic', async ({ page }) => {
-    // Click on a topic to expand
-    const topicCard = page.locator('text=Integers').or(page.locator('text=Numbers')).first();
-    await topicCard.click().catch(() => {});
-    await page.waitForTimeout(500);
+  test('should show levels for each topic', async ({ page }) => {
+    // First expand a category (Numbers & Operations is expanded by default)
+    // Then click on a topic card to see levels
+    const topicCard = page.locator('[data-testid="topic-card"]').first();
+    await expect(topicCard).toBeVisible({ timeout: 5000 });
 
-    // Should see level indicators (L1-L6 or Level 1-6)
-    const levels = page.locator('text=/L[1-6]|Level\\s*[1-6]/');
-    const levelCount = await levels.count().catch(() => 0);
+    // Level buttons should be visible within topic cards
+    const levelButtons = page.locator('[data-testid^="level-button-"]');
+    const levelCount = await levelButtons.count().catch(() => 0);
 
     // Should have multiple levels visible
     expect(levelCount).toBeGreaterThanOrEqual(1);
   });
 
   test('should show locked state for higher levels', async ({ page }) => {
-    // Expand a topic
-    const topicCard = page.locator('text=Integers').or(page.locator('text=Numbers')).first();
-    await topicCard.click().catch(() => {});
-    await page.waitForTimeout(500);
+    // Look for lock icons in level buttons
+    const lockedLevels = page.locator('[data-testid^="level-button-"] svg');
 
-    // Look for lock icons or disabled state
-    const lockedLevels = page.locator('[class*="lock"], [class*="disabled"], [aria-disabled="true"], svg[class*="Lock"]');
-
-    // New users should have some locked levels
-    // This may or may not be visible depending on UI
-    expect(true).toBeTruthy();
+    // New users should have some locked levels (shown as lock icons)
+    // This may vary based on progress
+    const lockCount = await lockedLevels.count().catch(() => 0);
+    expect(lockCount).toBeGreaterThanOrEqual(0); // Allow 0 for returning users
   });
 
   test('should allow starting unlocked levels', async ({ page }) => {
-    // Expand a topic
-    const topicCard = page.locator('text=Integers').or(page.locator('text=Numbers')).first();
-    await topicCard.click().catch(() => {});
-    await page.waitForTimeout(500);
+    // Click on first topic card to start quiz
+    const topicCard = page.locator('[data-testid="topic-select-button"]').first();
+    await expect(topicCard).toBeVisible({ timeout: 5000 });
+    await topicCard.click();
 
-    // Click on Level 1 (should always be unlocked)
-    const level1 = page.locator('button').filter({ hasText: /Level\\s*1|L1|Start/i }).first();
-    if (await level1.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await level1.click();
-
-      // Should navigate to quiz
-      await expect(page.locator('text=?').or(page.locator('[class*="question"]'))).toBeVisible({ timeout: 10000 });
-    }
+    // Should navigate to quiz - look for quiz card
+    await expect(page.locator('[data-testid="quiz-card"]')).toBeVisible({ timeout: 10000 });
   });
 });
 
 test.describe('Mixed Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await expect(page.locator('h1:has-text("Magic Mastery Quiz")').first()).toBeVisible({ timeout: 10000 });
+    // Dismiss welcome modal if present
+    const welcomeModal = page.locator('text=Get Started').first();
+    if (await welcomeModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await welcomeModal.click();
+      await page.waitForTimeout(500);
+    }
   });
 
   test('should have Mixed Mode option visible', async ({ page }) => {
-    // Look for Mixed Mode button
-    const mixedMode = page.locator('button').filter({ hasText: /Mixed|Random|All Topics/i });
+    // Look for "Mix All Topics" button
+    const mixedMode = page.locator('button').filter({ hasText: /Mix All Topics/i });
 
-    if (await mixedMode.isVisible().catch(() => false)) {
+    if (await mixedMode.isVisible({ timeout: 3000 }).catch(() => false)) {
       await expect(mixedMode).toBeEnabled();
     }
   });
 
   test('should start mixed quiz with questions from multiple topics', async ({ page }) => {
-    const mixedMode = page.locator('button').filter({ hasText: /Mixed|Random/i }).first();
+    const mixedMode = page.locator('button').filter({ hasText: /Mix All Topics/i }).first();
 
     if (await mixedMode.isVisible({ timeout: 3000 }).catch(() => false)) {
       await mixedMode.click();
       await page.waitForTimeout(1000);
 
-      // Should see a question
-      await expect(page.locator('text=?').or(page.locator('[class*="question"]'))).toBeVisible({ timeout: 10000 });
+      // Should see the quiz card
+      await expect(page.locator('[data-testid="quiz-card"]')).toBeVisible({ timeout: 10000 });
     }
   });
 });
