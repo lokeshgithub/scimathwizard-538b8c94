@@ -100,7 +100,7 @@ export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryPro
 
     if (analysis.weaknesses.length > 0) {
       lines.push('');
-      lines.push('## Focus Areas');
+      lines.push('## Areas of Improvement');
       lines.push(`The following topics need more practice:`);
       analysis.weaknesses.forEach(topic => {
         lines.push(`- ${topic.replace(/_/g, ' ')}`);

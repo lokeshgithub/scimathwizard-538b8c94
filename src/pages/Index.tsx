@@ -49,7 +49,8 @@ import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 const Index = () => {
   const quiz = useQuizStore();
   const achievements = useAchievements();
-  const dailyChallenge = useDailyChallenge(quiz.banks);
+  // Pass user progress for adaptive daily challenge difficulty
+  const dailyChallenge = useDailyChallenge(quiz.banks, quiz.progress);
   const { user, profile, isAdmin, signOut, updateStats } = useAuth();
   const sound = useSoundEffects();
   const confetti = useConfetti();
@@ -68,6 +69,8 @@ const Index = () => {
   // Track what we've already synced to avoid duplicate additions
   const lastSyncedRef = useRef<{ stars: number; solved: number; mastered: number } | null>(null);
   const hasInitializedStars = useRef(false);
+  // Track the expected stars value after sync to detect race conditions
+  const expectedStarsAfterSync = useRef<number | null>(null);
 
   // Ref for auto-scrolling to quiz card
   const quizCardRef = useRef<HTMLDivElement>(null);
@@ -78,6 +81,11 @@ const Index = () => {
 
     // DATABASE IS THE SOURCE OF TRUTH - always sync from profile
     const profileStars = profile.total_stars || 0;
+
+    // Store the expected stars value BEFORE calling syncStarsFromProfile
+    // This helps detect and prevent race conditions in the TO-database sync
+    expectedStarsAfterSync.current = profileStars;
+
     quiz.syncStarsFromProfile(profileStars);
 
     // Initialize lastSyncedRef to the profile value to prevent re-syncing old localStorage data
@@ -106,6 +114,20 @@ const Index = () => {
 
     const { stars, solved, mastered } = quiz.sessionStats;
 
+    // RACE CONDITION GUARD: If stars haven't been synced from profile yet,
+    // skip this sync. The expected value tells us what stars SHOULD be after sync.
+    // If stars don't match expected, the state update hasn't propagated yet.
+    if (expectedStarsAfterSync.current !== null && stars !== expectedStarsAfterSync.current) {
+      console.log(`[Star Sync TO DB] Skipping - waiting for FROM sync to complete (current: ${stars}, expected: ${expectedStarsAfterSync.current})`);
+      return;
+    }
+
+    // Clear the expected value now that sync is confirmed
+    if (expectedStarsAfterSync.current !== null) {
+      console.log(`[Star Sync TO DB] FROM sync confirmed complete (stars: ${stars})`);
+      expectedStarsAfterSync.current = null;
+    }
+
     // Safety: lastSyncedRef should be initialized by the FROM effect above
     if (lastSyncedRef.current === null) {
       lastSyncedRef.current = { stars, solved, mastered };
@@ -115,20 +137,23 @@ const Index = () => {
     const lastSynced = lastSyncedRef.current;
 
     // Calculate incremental changes since last sync
-    const starsToAdd = stars - lastSynced.stars;
+    const starsChange = stars - lastSynced.stars;
     const solvedToAdd = solved - lastSynced.solved;
     const masteredToAdd = mastered - lastSynced.mastered;
 
-    // Sync if there's anything positive to add
-    // Cap at 5000 stars per sync as sanity check (should never hit this in normal play)
-    const hasStarsToSync = starsToAdd > 0 && starsToAdd <= 5000;
+    // Sync stars if there's any change (positive for earning, negative for spending in Star Shop)
+    // Cap at 5000 change per sync as sanity check (should never hit this in normal play)
+    const hasStarsToSync = starsChange !== 0 && Math.abs(starsChange) <= 5000;
     const hasStatsToSync = solvedToAdd > 0 || masteredToAdd > 0;
 
     if (hasStarsToSync || hasStatsToSync) {
       const updates: Record<string, number> = {};
 
       if (hasStarsToSync) {
-        updates.total_stars = (profile.total_stars || 0) + starsToAdd;
+        // Handle both star gains AND deductions (Star Shop purchases)
+        const newTotal = (profile.total_stars || 0) + starsChange;
+        updates.total_stars = Math.max(0, newTotal); // Ensure non-negative
+        console.log(`[Star Sync] ${starsChange > 0 ? 'Adding' : 'Deducting'} ${Math.abs(starsChange)} stars (new total: ${updates.total_stars})`);
       }
       if (solvedToAdd > 0) {
         updates.questions_answered = (profile.questions_answered || 0) + solvedToAdd;

@@ -55,13 +55,13 @@ const formatName = (name: string) => {
 // Category type definition
 type CategoryDef = { name: string; icon: string; color: string; keywords: string[] };
 
-// Topic categories for Math
+// Topic categories for Math - expanded keywords for better coverage
 const MATH_CATEGORIES: CategoryDef[] = [
-  { name: 'Numbers & Operations', icon: '🔢', color: 'from-blue-500 to-cyan-500', keywords: ['integer', 'decimal', 'fraction', 'rational', 'number', 'percent'] },
-  { name: 'Algebra', icon: '🔤', color: 'from-purple-500 to-pink-500', keywords: ['algebra', 'equation', 'linear', 'exponent', 'power', 'variable', 'polynomial'] },
-  { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest'] },
-  { name: 'Geometry', icon: '📐', color: 'from-green-500 to-emerald-500', keywords: ['geometry', 'triangle', 'circle', 'quadrilateral', 'angle', 'area', 'perimeter', 'volume'] },
-  { name: 'Data & Statistics', icon: '📊', color: 'from-rose-500 to-red-500', keywords: ['data', 'statistic', 'probability', 'graph', 'mean', 'median'] },
+  { name: 'Numbers & Operations', icon: '🔢', color: 'from-blue-500 to-cyan-500', keywords: ['integer', 'decimal', 'fraction', 'rational', 'number', 'percent', 'whole', 'natural', 'real', 'square', 'cube', 'root', 'factor', 'multiple', 'divisib', 'hcf', 'lcm', 'prime'] },
+  { name: 'Algebra', icon: '🔤', color: 'from-purple-500 to-pink-500', keywords: ['algebra', 'equation', 'linear', 'exponent', 'power', 'variable', 'polynomial', 'expression', 'factori', 'simplif', 'identit', 'quadratic', 'simultaneous'] },
+  { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest', 'percent', 'markup', 'cost', 'sell', 'sp', 'cp', 'simple_interest', 'compound', 'unitary', 'direct', 'inverse', 'variation', 'time_work', 'speed_distance'] },
+  { name: 'Geometry', icon: '📐', color: 'from-green-500 to-emerald-500', keywords: ['geometry', 'triangle', 'circle', 'quadrilateral', 'angle', 'area', 'perimeter', 'volume', 'surface', 'polygon', 'line', 'parallel', 'perpendicular', 'congruen', 'similar', 'symmetr', 'coordinat', 'mensuration', 'shape', 'cube', 'cylinder', 'sphere', 'cone', 'rectangle', 'square'] },
+  { name: 'Data & Statistics', icon: '📊', color: 'from-rose-500 to-red-500', keywords: ['data', 'statistic', 'probability', 'graph', 'mean', 'median', 'mode', 'average', 'bar', 'pie', 'histogram', 'frequency', 'range', 'chart', 'table', 'random', 'chance', 'outcome'] },
 ];
 
 // Topic categories for Physics (Class 7 onwards)
@@ -99,13 +99,29 @@ const getCategoriesForSubject = (subject: string): CategoryDef[] => {
 
 // Categorize a topic based on its name and subject
 const categorize = (topicName: string, subject: string = 'math'): string => {
-  const lower = topicName.toLowerCase();
+  // Clean up topic name: remove chapter prefixes like "ch09_", underscores, etc.
+  const cleaned = topicName
+    .toLowerCase()
+    .replace(/^ch\d+[_-]?/i, '') // Remove "ch09_" prefix
+    .replace(/[_-]/g, ' ');      // Convert underscores/dashes to spaces
+
   const categories = getCategoriesForSubject(subject);
   for (const cat of categories) {
-    if (cat.keywords.some(kw => lower.includes(kw))) {
+    if (cat.keywords.some(kw => cleaned.includes(kw))) {
       return cat.name;
     }
   }
+
+  // Second pass: try matching partial words (e.g., "geom" matches geometry category)
+  const words = cleaned.split(/\s+/).filter(w => w.length >= 3);
+  for (const cat of categories) {
+    for (const word of words) {
+      if (cat.keywords.some(kw => kw.startsWith(word) || word.startsWith(kw.slice(0, 4)))) {
+        return cat.name;
+      }
+    }
+  }
+
   return 'Other Topics';
 };
 
@@ -218,12 +234,10 @@ export const TopicDashboard = ({
   const guestLimits = useGuestLimits(isLoggedIn);
   const topicEntries = Object.entries(topics);
 
-  // Reset expanded categories when subject changes
-  const [prevSubject, setPrevSubject] = useState(currentSubject);
-  if (prevSubject !== currentSubject) {
-    setPrevSubject(currentSubject);
+  // Reset expanded categories when subject changes - use useEffect to avoid render-phase state updates
+  useEffect(() => {
     setExpandedCategories(getDefaultExpandedCategories(currentSubject));
-  }
+  }, [currentSubject, getDefaultExpandedCategories]);
 
   // Create Set of due topics for quick lookup
   const dueTopicNames = useMemo(() => new Set(dueTopics.map(dt => dt.topic_name)), [dueTopics]);

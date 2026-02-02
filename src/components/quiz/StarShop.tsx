@@ -4,6 +4,7 @@ import { ShoppingBag, Star, X, Check, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SHOP_ITEMS, ShopItem, RARITY_COLORS, RARITY_LABELS, getItemsByCategory } from '@/data/starShopItems';
+import { toast } from 'sonner';
 
 const PURCHASED_ITEMS_KEY = 'star-shop-purchased';
 
@@ -46,6 +47,12 @@ export const StarShop = ({ stars, onPurchase }: StarShopProps) => {
     // Show purchase animation
     setJustPurchased(item.id);
     setTimeout(() => setJustPurchased(null), 2000);
+
+    // Show toast notification
+    toast.success(`Purchased: ${item.name}!`, {
+      description: `${item.emoji} ${item.description}\n-${item.price} stars`,
+      duration: 3000,
+    });
   };
 
   const categories: { id: ShopItem['category'] | 'all'; label: string; emoji: string }[] = [

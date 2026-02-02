@@ -364,32 +364,47 @@ export const useQuizStore = () => {
     loadQuestions(!hasInitialData);
   }, [loadQuestions, hasInitialData]);
 
-  // Save to storage when relevant state changes
+  // Save to storage when relevant state changes - DEBOUNCED to prevent UI blocking
+  // localStorage writes are synchronous and can freeze the UI if called too frequently
   useEffect(() => {
-    saveToStorage({ banks, progress, questionTracking, sessionStats, unlockedLevels });
+    const timeoutId = setTimeout(() => {
+      saveToStorage({ banks, progress, questionTracking, sessionStats, unlockedLevels });
+    }, 500); // Debounce 500ms - frequent saves are batched
+
+    return () => clearTimeout(timeoutId);
   }, [banks, progress, questionTracking, sessionStats, unlockedLevels]);
 
   // Save active session when topic/level/levelStats change (for resume on refresh)
   // Sessions are saved PER TOPIC so switching topics doesn't lose progress
+  // DEBOUNCED to prevent blocking during rapid answer submissions
   useEffect(() => {
     if (topic && levelStats.total > 0) {
-      saveActiveSession(topic, {
-        subject,
-        level,
-        levelStats,
-        timestamp: Date.now(),
-      });
+      const timeoutId = setTimeout(() => {
+        saveActiveSession(topic, {
+          subject,
+          level,
+          levelStats,
+          timestamp: Date.now(),
+        });
+      }, 300); // Debounce 300ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [topic, subject, level, levelStats]);
 
   // Save answered question IDs to sessionStorage (persists across page refresh)
+  // DEBOUNCED to prevent blocking - sessionStorage is synchronous
   useEffect(() => {
     if (sessionAnsweredIds.size > 0) {
-      try {
-        sessionStorage.setItem(ANSWERED_IDS_KEY, JSON.stringify([...sessionAnsweredIds]));
-      } catch (e) {
-        console.error('Failed to save answered IDs:', e);
-      }
+      const timeoutId = setTimeout(() => {
+        try {
+          sessionStorage.setItem(ANSWERED_IDS_KEY, JSON.stringify([...sessionAnsweredIds]));
+        } catch (e) {
+          console.error('Failed to save answered IDs:', e);
+        }
+      }, 200); // Debounce 200ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [sessionAnsweredIds]);
 
@@ -538,8 +553,24 @@ export const useQuizStore = () => {
     setIsReviewMode(false); // Ensure not in review mode
     setQuestionHistory([]); // Reset question history
     setSessionAnsweredIds(new Set()); // Clear session tracking - new topic = fresh questions
+
+    // CRITICAL: Get raw progress directly from localStorage to ensure we have latest data
+    // This prevents race conditions where React state might be stale
+    const rawProgress = loadFromStorage().progress || {};
+    const savedTopicProgress = rawProgress[topicName];
+
     const prog = getTopicProgress(topicName);
     const maxLevel = getTopicMaxLevel(topicName);
+
+    // DEBUG: Log the mastery status for each level to help diagnose level regression bugs
+    console.log(`[selectTopic] Loading topic "${topicName}":`);
+    console.log(`[selectTopic] Raw localStorage progress:`, savedTopicProgress);
+    console.log(`[selectTopic] Computed progress:`, prog);
+    for (let i = 1; i <= maxLevel; i++) {
+      const savedMastered = savedTopicProgress?.[i]?.mastered;
+      const computedMastered = prog[i]?.mastered;
+      console.log(`[selectTopic] Level ${i}: savedMastered=${savedMastered}, computedMastered=${computedMastered}`);
+    }
 
     // FIRST: Check if there's an active session for this specific topic - restore their level!
     // Sessions are stored PER TOPIC, so switching topics doesn't lose progress
@@ -563,13 +594,16 @@ export const useQuizStore = () => {
       const highestUnlocked = explicitlyUnlocked.length > 0 ? Math.max(...explicitlyUnlocked) : 0;
 
       // Find the first non-mastered level
+      // IMPORTANT: Use savedTopicProgress if available for most accurate mastery check
       let firstNonMastered = 1;
       for (let i = 1; i <= maxLevel; i++) {
-        if (!prog[i]?.mastered) {
+        // Check BOTH saved and computed progress to be safe
+        const isMastered = savedTopicProgress?.[i]?.mastered || prog[i]?.mastered;
+        if (!isMastered) {
           firstNonMastered = i;
           break;
         }
-        if (i === maxLevel && prog[i]?.mastered) {
+        if (i === maxLevel && isMastered) {
           firstNonMastered = maxLevel;
         }
       }
@@ -775,6 +809,8 @@ export const useQuizStore = () => {
     }
 
     if (accuracy >= THRESHOLD) {
+      console.log(`[checkMastery] PASSED level ${level} for topic "${topic}" with accuracy ${(accuracy * 100).toFixed(1)}%`);
+
       // Mark level as mastered
       setProgress(prev => {
         const topicProg = { ...getTopicProgress(topic!) };
@@ -783,7 +819,36 @@ export const useQuizStore = () => {
           total: levelStats.total,
           mastered: true,
         };
-        return { ...prev, [topic!]: topicProg };
+
+        // SAFEGUARD: If we're mastering level N, ensure all levels below N are also marked as mastered
+        // This prevents bugs where higher levels are mastered but lower levels aren't
+        // (which would cause level regression when re-selecting the topic)
+        for (let i = 1; i < level; i++) {
+          if (!topicProg[i]) {
+            topicProg[i] = { correct: 0, total: 0, mastered: true };
+            console.log(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
+          } else if (!topicProg[i].mastered) {
+            topicProg[i] = { ...topicProg[i], mastered: true };
+            console.log(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
+          }
+        }
+
+        const newProgress = { ...prev, [topic!]: topicProg };
+
+        // CRITICAL: Immediately persist to localStorage to prevent data loss on navigation
+        // This is a safety net in case useEffect doesn't run before user leaves
+        try {
+          const currentData = localStorage.getItem(STORAGE_KEY);
+          const parsed = currentData ? JSON.parse(currentData) : {};
+          parsed.progress = newProgress;
+          parsed.schemaVersion = SCHEMA_VERSION;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          console.log(`[checkMastery] Immediately persisted mastery for ${topic} level ${level}:`, topicProg[level]);
+        } catch (e) {
+          console.error('[checkMastery] Failed to persist progress immediately:', e);
+        }
+
+        return newProgress;
       });
 
       // Award level-based completion stars (higher levels = more stars)
@@ -809,18 +874,21 @@ export const useQuizStore = () => {
   const advanceLevel = useCallback(() => {
     if (level < currentMaxLevel) {
       const newLevel = level + 1;
+      console.log(`[advanceLevel] Advancing from level ${level} to ${newLevel} for topic "${topic}"`);
       setLevel(newLevel);
       setLevelStats({ correct: 0, total: 0 });
-      
+
       // Get questions for new level
       const available = getAvailableQuestions(topic!, newLevel);
       const allForLevel = banks[subject]?.[topic!]?.filter(q => q.level === newLevel) || [];
       const questionsToUse = available.length > 0 ? available : allForLevel;
       const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
-      
+
       setCurrentQuestions(shuffled);
       setQuestionIndex(0);
       setQuestionStartTime(Date.now());
+
+      console.log(`[advanceLevel] Now at level ${newLevel} with ${shuffled.length} questions`);
     }
   }, [level, currentMaxLevel, topic, getAvailableQuestions, banks, subject]);
 

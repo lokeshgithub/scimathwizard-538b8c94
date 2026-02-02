@@ -466,13 +466,13 @@ export const QuizCard = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`flex items-center gap-2 mb-4 text-sm ${
-              elapsedTime < 15 ? 'text-success' : elapsedTime < 45 ? 'text-foreground' : 'text-amber-600'
+              isCorrect && elapsedTime < 15 ? 'text-success' : elapsedTime < 45 ? 'text-foreground' : 'text-amber-600'
             }`}
           >
             <Clock className="w-4 h-4" />
             <span>
               Time taken: {formatTime(elapsedTime)}
-              {elapsedTime < 15 && ' ⚡ Quick!'}
+              {isCorrect && elapsedTime < 15 && ' ⚡ Quick!'}
               {elapsedTime > 60 && ' - Take your time to understand the concept!'}
             </span>
           </motion.div>
