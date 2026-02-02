@@ -1003,21 +1003,21 @@ const Admin = () => {
               </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Topic</label>
-                <Select value={testTopic} onValueChange={setTestTopic}>
+                <Select value={testTopic} onValueChange={(v) => { setTestTopic(v); setTestLevel(1); }}>
                   <SelectTrigger>
                     <SelectValue placeholder={isLoadingTopics ? "Loading..." : "Select topic"} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableTopics
-                      .filter(t => t.subject === testSubject)
+                      .filter(t => t.subject === testSubject && t.questionCount > 0)
                       .map(t => (
                         <SelectItem key={t.name} value={t.name}>
-                          {t.name} ({t.questionCount} Q)
+                          {t.name} ({t.questionCount} Q, L{Math.min(...t.levels)}-{Math.max(...t.levels)})
                         </SelectItem>
                       ))}
-                    {availableTopics.filter(t => t.subject === testSubject).length === 0 && (
+                    {availableTopics.filter(t => t.subject === testSubject && t.questionCount > 0).length === 0 && (
                       <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                        No topics in {testSubject}
+                        No topics with questions in {testSubject}
                       </div>
                     )}
                   </SelectContent>
@@ -1025,14 +1025,25 @@ const Admin = () => {
               </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Level</label>
-                <Select value={testLevel.toString()} onValueChange={(v) => setTestLevel(parseInt(v))}>
+                <Select
+                  value={testLevel.toString()}
+                  onValueChange={(v) => setTestLevel(parseInt(v))}
+                  disabled={!testTopic}
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select level" />
                   </SelectTrigger>
                   <SelectContent>
                     {(() => {
                       const topicData = availableTopics.find(t => t.name === testTopic && t.subject === testSubject);
-                      const levels = topicData?.levels || [1, 2, 3, 4, 5, 6];
+                      const levels = topicData?.levels || [];
+                      if (levels.length === 0) {
+                        return (
+                          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                            Select a topic first
+                          </div>
+                        );
+                      }
                       return levels.map(l => (
                         <SelectItem key={l} value={l.toString()}>
                           Level {l}
@@ -1050,14 +1061,21 @@ const Admin = () => {
                 {testSubject} → {testTopic} → Level {testLevel}
                 {(() => {
                   const topicData = availableTopics.find(t => t.name === testTopic && t.subject === testSubject);
-                  return topicData ? ` (${topicData.questionCount} questions total)` : '';
+                  if (!topicData) return '';
+                  const hasLevel = topicData.levels.includes(testLevel);
+                  return hasLevel
+                    ? ` (${topicData.questionCount} questions total)`
+                    : ` ⚠️ No questions at Level ${testLevel}`;
                 })()}
               </div>
             )}
 
             <Button
               onClick={handleStartTestMode}
-              disabled={!testTopic}
+              disabled={!testTopic || (() => {
+                const topicData = availableTopics.find(t => t.name === testTopic && t.subject === testSubject);
+                return !topicData || !topicData.levels.includes(testLevel);
+              })()}
               className="w-full sm:w-auto bg-primary"
             >
               <Play className="w-4 h-4 mr-2" />
