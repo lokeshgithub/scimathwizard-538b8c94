@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';

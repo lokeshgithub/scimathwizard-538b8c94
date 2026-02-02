@@ -59,7 +59,7 @@ type CategoryDef = { name: string; icon: string; color: string; keywords: string
 const MATH_CATEGORIES: CategoryDef[] = [
   { name: 'Numbers & Operations', icon: '🔢', color: 'from-blue-500 to-cyan-500', keywords: ['integer', 'decimal', 'fraction', 'rational', 'number', 'percent', 'whole', 'natural', 'real', 'square', 'cube', 'root', 'factor', 'multiple', 'divisib', 'hcf', 'lcm', 'prime'] },
   { name: 'Algebra', icon: '🔤', color: 'from-purple-500 to-pink-500', keywords: ['algebra', 'equation', 'linear', 'exponent', 'power', 'variable', 'polynomial', 'expression', 'factori', 'simplif', 'identit', 'quadratic', 'simultaneous'] },
-  { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest', 'percentage', 'percent', 'markup', 'cost', 'sell', 'sp', 'cp', 'simple_interest', 'compound', 'unitary', 'direct', 'inverse', 'variation', 'time_work', 'speed_distance'] },
+  { name: 'Ratio & Proportion', icon: '⚖️', color: 'from-amber-500 to-orange-500', keywords: ['ratio', 'proportion', 'rate', 'profit', 'loss', 'discount', 'interest', 'percent', 'markup', 'cost', 'sell', 'sp', 'cp', 'simple_interest', 'compound', 'unitary', 'direct', 'inverse', 'variation', 'time_work', 'speed_distance'] },
   { name: 'Geometry', icon: '📐', color: 'from-green-500 to-emerald-500', keywords: ['geometry', 'triangle', 'circle', 'quadrilateral', 'angle', 'area', 'perimeter', 'volume', 'surface', 'polygon', 'line', 'parallel', 'perpendicular', 'congruen', 'similar', 'symmetr', 'coordinat', 'mensuration', 'shape', 'cube', 'cylinder', 'sphere', 'cone', 'rectangle', 'square'] },
   { name: 'Data & Statistics', icon: '📊', color: 'from-rose-500 to-red-500', keywords: ['data', 'statistic', 'probability', 'graph', 'mean', 'median', 'mode', 'average', 'bar', 'pie', 'histogram', 'frequency', 'range', 'chart', 'table', 'random', 'chance', 'outcome'] },
 ];
@@ -77,7 +77,7 @@ const PHYSICS_CATEGORIES: CategoryDef[] = [
 // Topic categories for Chemistry (Class 7 onwards)
 const CHEMISTRY_CATEGORIES: CategoryDef[] = [
   { name: 'Matter & Materials', icon: '🧱', color: 'from-slate-500 to-gray-600', keywords: ['matter', 'state', 'solid', 'liquid', 'gas', 'material', 'property', 'physical', 'change'] },
-  { name: 'Atoms & Elements', icon: '⚛️', color: 'from-blue-500 to-cyan-500', keywords: ['atom', 'element', 'periodic', 'proton', 'neutron', 'electron', 'nucleus', 'atomic', 'molecules'] },
+  { name: 'Atoms & Elements', icon: '⚛️', color: 'from-blue-500 to-cyan-500', keywords: ['atom', 'element', 'periodic', 'proton', 'neutron', 'electron', 'nucleus', 'atomic'] },
   { name: 'Compounds & Mixtures', icon: '🧪', color: 'from-green-500 to-emerald-500', keywords: ['compound', 'mixture', 'molecule', 'solution', 'separation', 'pure', 'impure'] },
   { name: 'Chemical Reactions', icon: '💥', color: 'from-orange-500 to-red-500', keywords: ['reaction', 'chemical', 'reactant', 'product', 'equation', 'balance', 'synthesis', 'decomposition'] },
   { name: 'Acids, Bases & Salts', icon: '🫧', color: 'from-lime-500 to-green-500', keywords: ['acid', 'base', 'salt', 'ph', 'neutral', 'indicator', 'alkali', 'corrosive'] },
@@ -106,23 +106,10 @@ const categorize = (topicName: string, subject: string = 'math'): string => {
     .replace(/[_-]/g, ' ');      // Convert underscores/dashes to spaces
 
   const categories = getCategoriesForSubject(subject);
-
-  // Collect all keyword matches with their lengths (longest match wins)
-  // This prevents 'mensuration' from matching 'ratio' before 'mensuration'
-  const matches: { category: string; keyword: string; length: number }[] = [];
-
   for (const cat of categories) {
-    for (const kw of cat.keywords) {
-      if (cleaned.includes(kw)) {
-        matches.push({ category: cat.name, keyword: kw, length: kw.length });
-      }
+    if (cat.keywords.some(kw => cleaned.includes(kw))) {
+      return cat.name;
     }
-  }
-
-  // Return the category with the longest matching keyword
-  if (matches.length > 0) {
-    matches.sort((a, b) => b.length - a.length);
-    return matches[0].category;
   }
 
   // Second pass: try matching partial words (e.g., "geom" matches geometry category)
