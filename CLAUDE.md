@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Configuration (CRITICAL)
+
+**BEFORE any git operation (commit, push, pull, etc.), Claude MUST verify:**
+
+```bash
+gh auth status
+```
+
+**Required user: `lokeshgithub`**
+
+If the authenticated user is NOT `lokeshgithub`:
+1. **STOP immediately** - do not proceed with any git operation
+2. **Show error**: "Git user mismatch! Expected: lokeshgithub. Please run `gh auth switch` to switch accounts."
+3. **Wait for user** to confirm they've switched accounts before continuing
+
+This prevents accidentally pushing to the wrong GitHub account.
+
 ## Active Session File
 
 **Resume testing work:** Read `.claude/session_testing_2feb2026.md` for context on E2E test setup and pending fixes.
