@@ -74,69 +74,52 @@ const Admin = () => {
   const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
-  // Fetch available topics for test mode - query Supabase with proper joins
+  // Fetch available topics for test mode - same approach as quiz app
   const fetchAvailableTopics = useCallback(async () => {
     setIsLoadingTopics(true);
     try {
-      // Get all questions with their topic and subject info via joins
-      const { data: questions, error } = await supabase
-        .from('questions')
-        .select(`
-          id,
-          level,
-          topic_id,
-          topics!inner (
-            id,
-            name,
-            subject_id,
-            subjects!inner (
-              id,
-              name
-            )
-          )
-        `);
+      // Same simple queries used by fetchAllQuestionsForAdmin
+      const { data: subjects } = await supabase.from('subjects').select('*');
+      const { data: topics } = await supabase.from('topics').select('*');
+      const { data: questions } = await supabase.from('questions').select('id, level, topic_id');
 
-      if (error) {
-        console.error('Supabase error:', error);
+      if (!subjects || !topics || !questions) {
+        console.error('Failed to fetch data:', { subjects: !!subjects, topics: !!topics, questions: !!questions });
         setAvailableTopics([]);
         return;
       }
 
-      if (!questions || questions.length === 0) {
-        console.log('No questions found in database');
-        setAvailableTopics([]);
-        return;
-      }
+      console.log(`Fetched: ${subjects.length} subjects, ${topics.length} topics, ${questions.length} questions`);
 
-      // Group questions by subject+topic
-      const topicMap = new Map<string, { name: string; subject: string; questionCount: number; levels: Set<number> }>();
+      // Build lookup maps
+      const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
+      const topicSubjectMap = new Map(topics.map(t => [t.id, { name: t.name, subjectId: t.subject_id }]));
 
+      // Group questions by topic
+      const topicQuestionMap = new Map<string, { levels: Set<number>; count: number }>();
       for (const q of questions) {
-        const topic = (q as any).topics;
-        const subject = topic?.subjects;
-        if (!topic || !subject) continue;
-
-        const key = `${subject.name}:${topic.name}`;
-        if (!topicMap.has(key)) {
-          topicMap.set(key, {
-            name: topic.name,
-            subject: subject.name,
-            questionCount: 0,
-            levels: new Set(),
-          });
+        if (!topicQuestionMap.has(q.topic_id)) {
+          topicQuestionMap.set(q.topic_id, { levels: new Set(), count: 0 });
         }
-        const entry = topicMap.get(key)!;
-        entry.questionCount++;
+        const entry = topicQuestionMap.get(q.topic_id)!;
         entry.levels.add(q.level);
+        entry.count++;
       }
 
-      const topicData = Array.from(topicMap.values()).map(t => ({
-        ...t,
-        levels: [...t.levels].sort((a, b) => a - b),
-      }));
+      // Build final topic list
+      const topicData: Array<{ name: string; subject: string; questionCount: number; levels: number[] }> = [];
+      for (const topic of topics) {
+        const subjectName = subjectMap.get(topic.subject_id) || 'Unknown';
+        const questionData = topicQuestionMap.get(topic.id);
+        topicData.push({
+          name: topic.name,
+          subject: subjectName,
+          questionCount: questionData?.count || 0,
+          levels: questionData ? [...questionData.levels].sort((a, b) => a - b) : [],
+        });
+      }
 
       setAvailableTopics(topicData.sort((a, b) => a.subject.localeCompare(b.subject) || a.name.localeCompare(b.name)));
-      console.log(`Loaded ${topicData.length} topics with questions`);
     } catch (error) {
       console.error('Failed to fetch topics:', error);
     } finally {
