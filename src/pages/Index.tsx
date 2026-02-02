@@ -100,29 +100,30 @@ const Index = () => {
 
   // Admin Test Mode: Check for admin test params in sessionStorage
   useEffect(() => {
+    // Wait for questions to be loaded first
+    if (quiz.isLoading) return;
+
     const adminTestData = sessionStorage.getItem('adminTestMode');
     if (!adminTestData) return;
 
     try {
       const { subject, topic, level, timestamp } = JSON.parse(adminTestData);
-      // Only use if recent (within 30 seconds) to avoid stale test triggers
-      if (Date.now() - timestamp > 30000) {
+
+      // Only use if recent (within 60 seconds) to avoid stale test triggers
+      if (Date.now() - timestamp > 60000) {
         sessionStorage.removeItem('adminTestMode');
         return;
       }
 
-      // Clear immediately to prevent re-triggering
+      // Clear AFTER checking isLoading to prevent losing data during load
       sessionStorage.removeItem('adminTestMode');
 
-      // Wait for questions to be loaded
-      if (quiz.isLoading) return;
-
-      // Set subject first, then start the quiz
+      // Set subject first
       if (subject && quiz.setSubject) {
         quiz.setSubject(subject);
       }
 
-      // Small delay to ensure subject is set
+      // Start quiz at selected topic/level
       setTimeout(() => {
         if (topic && level) {
           quiz.startUnlimitedPractice(topic, level);
