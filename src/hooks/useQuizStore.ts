@@ -12,7 +12,7 @@ import type {
   TopicAnalysis,
   UnlockedLevels
 } from '@/types/quiz';
-import { fetchAllQuestions, logAnswerToServer } from '@/services/questionService';
+import { fetchAllQuestions, logAnswerToServer, loadQuestionsFromCache } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
@@ -223,10 +223,12 @@ const clearActiveSession = (topicName?: string) => {
 
 export const useQuizStore = () => {
   const stored = loadFromStorage();
-  // Check if we have cached data - used to skip loading spinner
-  const hasInitialData = Object.keys(stored.banks || {}).length > 0;
+  // Check if we have cached questions - questions are cached separately in questionService
+  // (not in quiz storage) to save localStorage space
+  const cachedBank = loadQuestionsFromCache();
+  const hasInitialData = !!cachedBank && Object.keys(cachedBank).length > 0;
 
-  const [banks, setBanks] = useState<QuestionBank>(stored.banks || {});
+  const [banks, setBanks] = useState<QuestionBank>(cachedBank || {});
   const [subject, setSubject] = useState<Subject>('math');
   const [topic, setTopic] = useState<string | null>(null);
   const [mixedTopics, setMixedTopics] = useState<string[] | null>(null);

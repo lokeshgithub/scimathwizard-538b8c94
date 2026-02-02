@@ -64,7 +64,7 @@ interface CachedQuestions {
   timestamp: number;
 }
 
-function loadQuestionsFromCache(): QuestionBank | null {
+export function loadQuestionsFromCache(): QuestionBank | null {
   try {
     const cached = localStorage.getItem(QUESTIONS_CACHE_KEY);
     if (!cached) return null;
