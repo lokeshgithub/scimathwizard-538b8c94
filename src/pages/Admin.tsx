@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download, Trash2 } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download, Trash2, Play, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -66,6 +66,72 @@ const Admin = () => {
     blueprintMatch?: boolean;
   }>>([]);
   const [smartUploadReports, setSmartUploadReports] = useState<SmartUploadReport[]>([]);
+
+  // Test Mode state
+  const [testSubject, setTestSubject] = useState('Math');
+  const [testTopic, setTestTopic] = useState('');
+  const [testLevel, setTestLevel] = useState(1);
+  const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(false);
+
+  // Fetch available topics for test mode
+  const fetchAvailableTopics = useCallback(async () => {
+    setIsLoadingTopics(true);
+    try {
+      const { data: subjects } = await supabase.from('subjects').select('id, name');
+      const { data: topics } = await supabase.from('topics').select('id, name, subject_id');
+      const { data: questions } = await supabase.from('questions').select('topic_id, level');
+
+      if (!subjects || !topics || !questions) {
+        setAvailableTopics([]);
+        return;
+      }
+
+      const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
+      const topicData: Array<{ name: string; subject: string; questionCount: number; levels: number[] }> = [];
+
+      for (const topic of topics) {
+        const topicQuestions = questions.filter(q => q.topic_id === topic.id);
+        const levels = [...new Set(topicQuestions.map(q => q.level))].sort((a, b) => a - b);
+        topicData.push({
+          name: topic.name,
+          subject: subjectMap.get(topic.subject_id) || 'Unknown',
+          questionCount: topicQuestions.length,
+          levels,
+        });
+      }
+
+      setAvailableTopics(topicData.sort((a, b) => a.subject.localeCompare(b.subject) || a.name.localeCompare(b.name)));
+    } catch (error) {
+      console.error('Failed to fetch topics:', error);
+    } finally {
+      setIsLoadingTopics(false);
+    }
+  }, []);
+
+  // Load topics when admin is authenticated
+  useEffect(() => {
+    if (isAdmin) {
+      fetchAvailableTopics();
+    }
+  }, [isAdmin, fetchAvailableTopics, summaryRefreshKey]);
+
+  // Start test mode - navigate to quiz
+  const handleStartTestMode = useCallback(() => {
+    if (!testTopic) {
+      toast.error('Please select a topic');
+      return;
+    }
+    // Store admin test params in sessionStorage
+    sessionStorage.setItem('adminTestMode', JSON.stringify({
+      subject: testSubject,
+      topic: testTopic,
+      level: testLevel,
+      timestamp: Date.now(),
+    }));
+    // Navigate to main app
+    window.location.href = '/';
+  }, [testSubject, testTopic, testLevel]);
 
   // Check admin role
   const checkAdminRole = async (userId: string) => {
@@ -905,6 +971,97 @@ const Admin = () => {
                   Download All Questions (.xlsx)
                 </>
               )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Test Mode - Jump to any topic/level */}
+        <Card className="mt-6 border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <FlaskConical className="w-5 h-5" />
+              Test Mode (Admin Only)
+            </CardTitle>
+            <CardDescription>
+              Jump directly to any topic and level to preview questions. Bypasses normal progression - perfect for QA testing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Subject</label>
+                <Select value={testSubject} onValueChange={(v) => { setTestSubject(v); setTestTopic(''); }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Math">Math</SelectItem>
+                    <SelectItem value="Physics">Physics</SelectItem>
+                    <SelectItem value="Chemistry">Chemistry</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Topic</label>
+                <Select value={testTopic} onValueChange={setTestTopic}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingTopics ? "Loading..." : "Select topic"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTopics
+                      .filter(t => t.subject === testSubject)
+                      .map(t => (
+                        <SelectItem key={t.name} value={t.name}>
+                          {t.name} ({t.questionCount} Q)
+                        </SelectItem>
+                      ))}
+                    {availableTopics.filter(t => t.subject === testSubject).length === 0 && (
+                      <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                        No topics in {testSubject}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Level</label>
+                <Select value={testLevel.toString()} onValueChange={(v) => setTestLevel(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const topicData = availableTopics.find(t => t.name === testTopic && t.subject === testSubject);
+                      const levels = topicData?.levels || [1, 2, 3, 4, 5, 6];
+                      return levels.map(l => (
+                        <SelectItem key={l} value={l.toString()}>
+                          Level {l}
+                        </SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {testTopic && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <span className="font-medium">Selected:</span>{' '}
+                {testSubject} → {testTopic} → Level {testLevel}
+                {(() => {
+                  const topicData = availableTopics.find(t => t.name === testTopic && t.subject === testSubject);
+                  return topicData ? ` (${topicData.questionCount} questions total)` : '';
+                })()}
+              </div>
+            )}
+
+            <Button
+              onClick={handleStartTestMode}
+              disabled={!testTopic}
+              className="w-full sm:w-auto bg-primary"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Start Test Mode
             </Button>
           </CardContent>
         </Card>

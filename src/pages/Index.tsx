@@ -98,6 +98,44 @@ const Index = () => {
     console.log(`[Star Sync] Synced ${profileStars} stars from database for user ${user.id}`);
   }, [user, profile, quiz]);
 
+  // Admin Test Mode: Check for admin test params in sessionStorage
+  useEffect(() => {
+    const adminTestData = sessionStorage.getItem('adminTestMode');
+    if (!adminTestData) return;
+
+    try {
+      const { subject, topic, level, timestamp } = JSON.parse(adminTestData);
+      // Only use if recent (within 30 seconds) to avoid stale test triggers
+      if (Date.now() - timestamp > 30000) {
+        sessionStorage.removeItem('adminTestMode');
+        return;
+      }
+
+      // Clear immediately to prevent re-triggering
+      sessionStorage.removeItem('adminTestMode');
+
+      // Wait for questions to be loaded
+      if (quiz.isLoading) return;
+
+      // Set subject first, then start the quiz
+      if (subject && quiz.setSubject) {
+        quiz.setSubject(subject);
+      }
+
+      // Small delay to ensure subject is set
+      setTimeout(() => {
+        if (topic && level) {
+          quiz.startUnlimitedPractice(topic, level);
+          toast.success(`🧪 Admin Test Mode: ${subject} → ${topic} → Level ${level}`);
+        }
+      }, 100);
+
+    } catch (e) {
+      console.error('Failed to parse admin test mode data:', e);
+      sessionStorage.removeItem('adminTestMode');
+    }
+  }, [quiz.isLoading]);
+
   // Sync stats TO database incrementally - on every answer
   useEffect(() => {
     if (!user || !profile) return;
