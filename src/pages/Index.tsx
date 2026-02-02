@@ -165,11 +165,12 @@ const Index = () => {
   const handleAddStars = useCallback((stars: number) => {
     // Stars are tracked in sessionStats - update profile if logged in
     if (user && profile) {
-      updateStats({
-        total_stars: (profile.total_stars || 0) + stars,
-      });
+      const newTotal = (profile.total_stars || 0) + stars;
+      updateStats({ total_stars: newTotal });
+      // Sync to quiz store so UI updates immediately
+      quiz.syncStarsFromProfile(newTotal);
     }
-  }, [user, profile, updateStats]);
+  }, [user, profile, updateStats, quiz]);
 
   // Calculate mastered topics per subject for Star Shop requirements
   const masteredTopicsPerSubject = useMemo(() => {
