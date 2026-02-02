@@ -19,6 +19,8 @@ import {
   findBlueprintMatch,
   smartUploadQuestions,
   SmartUploadReport,
+  loadQuestionsFromCache,
+  fetchAllQuestions,
 } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -74,31 +76,36 @@ const Admin = () => {
   const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
-  // Fetch available topics for test mode
+  // Fetch available topics for test mode - uses same cache as quiz app
   const fetchAvailableTopics = useCallback(async () => {
     setIsLoadingTopics(true);
     try {
-      const { data: subjects } = await supabase.from('subjects').select('id, name');
-      const { data: topics } = await supabase.from('topics').select('id, name, subject_id');
-      const { data: questions } = await supabase.from('questions').select('topic_id, level');
+      // First try cache, then fetch if needed (same source as quiz app)
+      let bank = loadQuestionsFromCache();
+      if (!bank || Object.keys(bank).length === 0) {
+        bank = await fetchAllQuestions();
+      }
 
-      if (!subjects || !topics || !questions) {
+      if (!bank || Object.keys(bank).length === 0) {
         setAvailableTopics([]);
         return;
       }
 
-      const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
       const topicData: Array<{ name: string; subject: string; questionCount: number; levels: number[] }> = [];
 
-      for (const topic of topics) {
-        const topicQuestions = questions.filter(q => q.topic_id === topic.id);
-        const levels = [...new Set(topicQuestions.map(q => q.level))].sort((a, b) => a - b);
-        topicData.push({
-          name: topic.name,
-          subject: subjectMap.get(topic.subject_id) || 'Unknown',
-          questionCount: topicQuestions.length,
-          levels,
-        });
+      // Parse the QuestionBank structure: { subject: { topic: Question[] } }
+      for (const subjectName of Object.keys(bank)) {
+        const subjectTopics = bank[subjectName];
+        for (const topicName of Object.keys(subjectTopics)) {
+          const questions = subjectTopics[topicName];
+          const levels = [...new Set(questions.map(q => q.level))].sort((a, b) => a - b);
+          topicData.push({
+            name: topicName,
+            subject: subjectName,
+            questionCount: questions.length,
+            levels,
+          });
+        }
       }
 
       setAvailableTopics(topicData.sort((a, b) => a.subject.localeCompare(b.subject) || a.name.localeCompare(b.name)));
