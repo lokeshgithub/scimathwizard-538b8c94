@@ -518,7 +518,7 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
     'Exponents and Powers', 'Ratio and Proportion', 'Unitary Methods',
     'Percentages', 'Profit and Loss', 'Simple Interest',
     'Algebraic Expressions', 'Linear Equations', 'Set Concepts',
-    'Lines and Angles', 'Triangles', 'Pythagoras Theorem', 'Congruence',
+    'Lines and Angles', 'Triangles', 'Pythagoras Theorem', 'Congruence', 'Congruent Triangles',
     'Symmetry', 'Perimeter and Area', 'Mensuration', 'Recognition of Solids', 'Quadrilaterals',
     'Circles', 'Constructions', 'Data Handling', 'Probability',
   ],
