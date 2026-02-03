@@ -519,7 +519,7 @@ export const BLUEPRINT_TOPICS: Record<string, string[]> = {
     'Percentages', 'Profit and Loss', 'Simple Interest',
     'Algebraic Expressions', 'Linear Equations', 'Set Concepts',
     'Lines and Angles', 'Triangles', 'Pythagoras Theorem', 'Congruence',
-    'Symmetry', 'Perimeter and Area', 'Mensuration', 'Quadrilaterals',
+    'Symmetry', 'Perimeter and Area', 'Mensuration', 'Recognition of Solids', 'Quadrilaterals',
     'Circles', 'Constructions', 'Data Handling', 'Probability',
   ],
   'Physics': [
@@ -648,6 +648,11 @@ const TOPIC_NAME_MAP: Record<string, string> = {
   'data': 'Data Handling',
   // Mensuration
   'mensuration': 'Mensuration',
+  // Recognition of Solids (3D shapes)
+  'recognition of solids': 'Recognition of Solids',
+  'recognitionofsolids': 'Recognition of Solids',
+  'solids': 'Recognition of Solids',
+  '3d shapes': 'Recognition of Solids',
   // Quadrilaterals
   'quadrilaterals': 'Quadrilaterals',
   'quadrilateral': 'Quadrilaterals',
