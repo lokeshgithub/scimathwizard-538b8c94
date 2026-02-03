@@ -292,7 +292,7 @@ const Admin = () => {
     // Chemistry keywords - CHECK FIRST (more specific, avoids "physical" false positive)
     // "matter" is chemistry (states of matter, composition of matter)
     // "physical" alone could be physics, but "physical change" is chemistry
-    if (/chemistry|chemical|acid|base|metal|atom|molecule|element|periodic|compound|reaction|carbon|fibre|matter|composition|mixture|solution|oxidation|reduction|ion|covalent|ionic|bonding|organic|inorganic|polymer|hydrocarbon|alkali|neutral|ph\b|corrosion|rust|combustion|electrolysis/i.test(lowerName)) {
+    if (/chemistry|chemical|acid|base|metal|atom|molecule|element|periodic|compound|reaction|carbon|fibre|matter|composition|mixture|solution|oxidation|reduction|\bion\b|covalent|ionic|bonding|organic|inorganic|polymer|hydrocarbon|alkali|neutral|ph\b|corrosion|rust|combustion|electrolysis/i.test(lowerName)) {
       return 'Chemistry';
     }
 
