@@ -20,6 +20,7 @@ import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
 const ANSWERED_IDS_KEY = 'magical-mastery-answered-ids'; // Track answered questions in session
+const SUBJECT_KEY = 'magical-mastery-subject'; // Remember user's last selected subject
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
@@ -229,7 +230,18 @@ export const useQuizStore = () => {
   const hasInitialData = !!cachedBank && Object.keys(cachedBank).length > 0;
 
   const [banks, setBanks] = useState<QuestionBank>(cachedBank || {});
-  const [subject, setSubject] = useState<Subject>('math');
+  // Load user's last selected subject from localStorage (default to 'math' for new users)
+  const [subject, setSubjectState] = useState<Subject>(() => {
+    try {
+      const savedSubject = localStorage.getItem(SUBJECT_KEY);
+      if (savedSubject && ['math', 'physics', 'chemistry'].includes(savedSubject)) {
+        return savedSubject as Subject;
+      }
+    } catch (e) {
+      console.error('Failed to load subject preference:', e);
+    }
+    return 'math';
+  });
   const [topic, setTopic] = useState<string | null>(null);
   const [mixedTopics, setMixedTopics] = useState<string[] | null>(null);
   const [level, setLevel] = useState(1);
@@ -1243,6 +1255,16 @@ export const useQuizStore = () => {
     // Don't clear active session - they may want to resume later
   }, []);
 
+  // Wrapper to save subject preference to localStorage
+  const setSubject = useCallback((newSubject: Subject) => {
+    setSubjectState(newSubject);
+    try {
+      localStorage.setItem(SUBJECT_KEY, newSubject);
+    } catch (e) {
+      console.error('Failed to save subject preference:', e);
+    }
+  }, []);
+
   // Change subject and reset topic state
   const changeSubject = useCallback((newSubject: Subject) => {
     if (newSubject !== subject) {
@@ -1259,7 +1281,7 @@ export const useQuizStore = () => {
       setLevelStats({ correct: 0, total: 0 });
       setSessionAnsweredIds(new Set()); // Clear session tracking
     }
-  }, [subject]);
+  }, [subject, setSubject]);
 
   return {
     // State
