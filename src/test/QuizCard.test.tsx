@@ -157,8 +157,8 @@ describe('QuizCard Component', () => {
 
     it('should mark incorrect answer with red highlight', () => {
       const isAnswered = true;
-      const selectedAnswer = 0;
-      const correctIndex = 1;
+      const selectedAnswer = 0 as number;
+      const correctIndex = 1 as number;
       const showAsIncorrect = isAnswered && selectedAnswer !== correctIndex;
 
       expect(showAsIncorrect).toBe(true);
@@ -166,13 +166,13 @@ describe('QuizCard Component', () => {
     });
 
     it('should show correct answer when user selects wrong option', () => {
-      const selectedAnswer = 0; // User selected wrong
-      const correctIndex = 1;
+      const selectedAnswer = 0 as number; // User selected wrong
+      const correctIndex = 1 as number;
       const isAnswered = true;
 
       // Both wrong selection (red) and correct answer (green) should be highlighted
       expect(correctIndex).toBe(1);
-      expect(selectedAnswer).not.toBe(correctIndex);
+      expect(selectedAnswer !== correctIndex).toBe(true);
     });
 
     it('should dim unselected incorrect options after answering', () => {
