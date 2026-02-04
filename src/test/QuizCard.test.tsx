@@ -172,7 +172,7 @@ describe('QuizCard Component', () => {
 
       // Both wrong selection (red) and correct answer (green) should be highlighted
       expect(correctIndex).toBe(1);
-      expect(selectedAnswer !== correctIndex).toBe(true);
+      expect(selectedAnswer).not.toBe(correctIndex);
     });
 
     it('should dim unselected incorrect options after answering', () => {
