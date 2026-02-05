@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -25,6 +25,7 @@ import { OlympiadQuizCard } from '@/components/olympiad/OlympiadQuizCard';
 import { OlympiadResults } from '@/components/olympiad/OlympiadResults';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
+import { getSavedSubject, saveSubjectPreference } from '@/hooks/useQuizStore';
 import type { Subject } from '@/types/quiz';
 
 const examTypeInfo = {
@@ -55,7 +56,15 @@ export default function OlympiadTest() {
   const sound = useSoundEffects();
   const confetti = useConfetti();
 
-  const [selectedSubject, setSelectedSubject] = useState<Subject>('math');
+  // Use saved subject preference from localStorage (persists across all pathways)
+  const [selectedSubject, setSelectedSubject] = useState<Subject>(getSavedSubject);
+  
+  // Helper to change subject and persist preference
+  const handleSubjectChange = useCallback((newSubject: Subject) => {
+    setSelectedSubject(newSubject);
+    saveSubjectPreference(newSubject);
+  }, []);
+
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedExamType, setSelectedExamType] = useState<'foundation' | 'regional' | 'national'>('foundation');
   const [showInfo, setShowInfo] = useState(false);
@@ -239,7 +248,7 @@ export default function OlympiadTest() {
                 <h3 className="font-semibold text-foreground mb-4">Select Subject</h3>
                 <SubjectTabs
                   currentSubject={selectedSubject}
-                  onSelectSubject={(s) => setSelectedSubject(s)}
+                  onSelectSubject={handleSubjectChange}
                 />
               </div>
 

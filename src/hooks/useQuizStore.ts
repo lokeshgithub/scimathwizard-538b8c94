@@ -21,6 +21,29 @@ const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
 const ANSWERED_IDS_KEY = 'magical-mastery-answered-ids'; // Track answered questions in session
 const SUBJECT_KEY = 'magical-mastery-subject'; // Remember user's last selected subject
+
+// Export helper to get saved subject preference (for use across all pathways)
+export const getSavedSubject = (): Subject => {
+  try {
+    const saved = localStorage.getItem(SUBJECT_KEY);
+    if (saved && ['math', 'physics', 'chemistry'].includes(saved)) {
+      return saved as Subject;
+    }
+  } catch (e) {
+    console.error('Failed to load subject preference:', e);
+  }
+  return 'math';
+};
+
+// Export helper to save subject preference (for use across all pathways)
+export const saveSubjectPreference = (subject: Subject): void => {
+  try {
+    localStorage.setItem(SUBJECT_KEY, subject);
+  } catch (e) {
+    console.error('Failed to save subject preference:', e);
+  }
+};
+
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
 const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity

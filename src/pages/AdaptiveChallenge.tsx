@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuizStore } from '@/hooks/useQuizStore';
+import { useQuizStore, getSavedSubject, saveSubjectPreference } from '@/hooks/useQuizStore';
 import { useAdaptiveChallenge } from '@/hooks/useAdaptiveChallenge';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useConfetti } from '@/hooks/useConfetti';
@@ -48,7 +48,14 @@ const AdaptiveChallenge = () => {
   const sound = useSoundEffects();
   const confetti = useConfetti();
   
-  const [selectedSubject, setSelectedSubject] = useState<Subject>('math');
+  // Use saved subject preference from localStorage (persists across all pathways)
+  const [selectedSubject, setSelectedSubject] = useState<Subject>(getSavedSubject);
+  
+  // Helper to change subject and persist preference
+  const handleSubjectChange = useCallback((newSubject: Subject) => {
+    setSelectedSubject(newSubject);
+    saveSubjectPreference(newSubject);
+  }, []);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [showInfo, setShowInfo] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -306,7 +313,7 @@ const AdaptiveChallenge = () => {
               <h2 className="text-xl font-bold text-foreground mb-4">Choose Subject</h2>
               <SubjectTabs 
                 currentSubject={selectedSubject} 
-                onSelectSubject={setSelectedSubject} 
+                onSelectSubject={handleSubjectChange} 
               />
             </div>
 
