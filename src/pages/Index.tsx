@@ -776,6 +776,7 @@ const Index = () => {
         <SessionSummary
           analysis={quiz.calculateSessionAnalysis()}
           subject={quiz.subject}
+          sessionStats={quiz.sessionStats}
           onClose={() => {
             quiz.setShowSessionSummary(false);
             quiz.resetSession();

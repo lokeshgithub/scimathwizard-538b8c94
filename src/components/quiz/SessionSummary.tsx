@@ -1,16 +1,18 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { SessionAnalysis } from '@/types/quiz';
+import { SessionAnalysis, SessionStats } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
+import { saveSessionReport } from '@/services/reportService';
 
 interface SessionSummaryProps {
   analysis: SessionAnalysis;
   subject: string;
+  sessionStats?: SessionStats;
   onClose: () => void;
 }
 
@@ -25,13 +27,25 @@ const formatName = (name: string) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
-export const SessionSummary = ({ analysis, subject, onClose }: SessionSummaryProps) => {
+export const SessionSummary = ({ analysis, subject, sessionStats, onClose }: SessionSummaryProps) => {
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [studentName, setStudentName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+  const hasSavedReport = useRef(false);
+
+  // Auto-save the session report to database (once)
+  useEffect(() => {
+    if (hasSavedReport.current || analysis.totalQuestions === 0) return;
+    hasSavedReport.current = true;
+
+    const stats = sessionStats || { stars: 0, streak: 0, maxStreak: 0, mastered: 0 };
+    saveSessionReport(analysis, subject as any, stats).then(saved => {
+      if (saved) console.log('[Report] Session report saved to database');
+    });
+  }, [analysis, subject, sessionStats]);
 
   // Calculate efficiency metrics
   const efficiencyMetrics = useMemo(() => {
