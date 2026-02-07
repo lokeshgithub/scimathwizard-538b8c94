@@ -346,6 +346,63 @@ export type Database = {
         }
         Relationships: []
       }
+      session_reports: {
+        Row: {
+          accuracy: number
+          avg_time_per_question: number
+          correct_answers: number
+          created_at: string
+          current_streak: number
+          id: string
+          max_streak: number
+          stars_earned: number
+          strengths: string[]
+          subject: string
+          topic_breakdown: Json
+          topics_mastered: number
+          total_questions: number
+          total_time_seconds: number
+          user_id: string
+          weaknesses: string[]
+        }
+        Insert: {
+          accuracy: number
+          avg_time_per_question?: number
+          correct_answers: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          max_streak?: number
+          stars_earned?: number
+          strengths?: string[]
+          subject: string
+          topic_breakdown?: Json
+          topics_mastered?: number
+          total_questions: number
+          total_time_seconds?: number
+          user_id: string
+          weaknesses?: string[]
+        }
+        Update: {
+          accuracy?: number
+          avg_time_per_question?: number
+          correct_answers?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          max_streak?: number
+          stars_earned?: number
+          strengths?: string[]
+          subject?: string
+          topic_breakdown?: Json
+          topics_mastered?: number
+          total_questions?: number
+          total_time_seconds?: number
+          user_id?: string
+          weaknesses?: string[]
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           created_at: string
