@@ -668,6 +668,37 @@ export const TopicDashboard = ({
             );
           })}
         </div>
+
+        {/* Color Legend - explains what the level colors mean */}
+        <div className="bg-card rounded-xl p-3 shadow-card">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Level Colors</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />
+              <span className="text-xs text-muted-foreground">Mastered (100%)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-xs text-muted-foreground">Strong (80%+)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+              <span className="text-xs text-muted-foreground">Good (60%+)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-violet-500 inline-block" />
+              <span className="text-xs text-muted-foreground">Learning (40%+)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-pink-500 inline-block" />
+              <span className="text-xs text-muted-foreground">Started</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-slate-300 inline-block" />
+              <span className="text-xs text-muted-foreground">Not started</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Sign Up Prompt */}

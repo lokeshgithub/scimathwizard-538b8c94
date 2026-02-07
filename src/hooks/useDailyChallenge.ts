@@ -64,63 +64,68 @@ const generateDailyChallenge = (
   date: string,
   userProgress?: UserProgress
 ): DailyChallenge | null => {
+  // REQUIREMENT: Only generate daily challenges from topics the student has practiced.
+  // If no progress at all, return null (no challenge shown).
+  if (!userProgress || Object.keys(userProgress).length === 0) return null;
+
+  // Get topics that the student has actually practiced (has any progress)
+  const practicedTopics = Object.keys(userProgress).filter(topic => {
+    const topicProg = userProgress[topic];
+    // Check if there's any mastered level or any activity
+    return topicProg && Object.keys(topicProg).length > 0;
+  });
+
+  if (practicedTopics.length === 0) return null;
+
   const subjects = Object.keys(banks);
   if (subjects.length === 0) return null;
 
   const seed = seededRandom(date);
 
-  // Pick a subject based on the date
-  const subjectIndex = seed % subjects.length;
-  const subject = subjects[subjectIndex];
+  // Find which subject/topic combos exist for practiced topics
+  const validPicks: { subject: string; topic: string; questions: Question[] }[] = [];
+  for (const subject of subjects) {
+    const subjectTopics = Object.keys(banks[subject] || {});
+    for (const topic of subjectTopics) {
+      if (practicedTopics.includes(topic) && banks[subject][topic]?.length > 0) {
+        validPicks.push({ subject, topic, questions: banks[subject][topic] });
+      }
+    }
+  }
 
-  const topics = Object.keys(banks[subject] || {});
-  if (topics.length === 0) return null;
+  if (validPicks.length === 0) return null;
 
-  // Pick a topic based on the date
-  const topicIndex = (seed >> 4) % topics.length;
-  const topic = topics[topicIndex];
-
-  const questions = banks[subject][topic] || [];
-  if (questions.length === 0) return null;
+  // Pick from practiced topics based on the date
+  const pickIndex = seed % validPicks.length;
+  const { subject, topic, questions } = validPicks[pickIndex];
 
   // ADAPTIVE DIFFICULTY: Pick level based on user's mastery in this topic
-  // If no progress, default to level 2 (intermediate challenge)
-  // If user mastered levels 1-3, pick level 4
-  // This provides appropriate challenge for each user
-  let targetLevel = 2; // Default for new users
+  let targetLevel = 2;
 
-  if (userProgress && userProgress[topic]) {
+  if (userProgress[topic]) {
     const topicProg = userProgress[topic];
-    // Find highest mastered level
     let highestMastered = 0;
-    for (let lvl = 1; lvl <= 6; lvl++) {
+    for (let lvl = 1; lvl <= 7; lvl++) {
       if (topicProg[lvl]?.mastered) {
         highestMastered = lvl;
       }
     }
-    // Target one level above mastered (challenging but achievable)
-    targetLevel = Math.min(highestMastered + 1, 5); // Cap at 5 for reasonable difficulty
-    // For users with no mastery, target level 2
+    targetLevel = Math.min(highestMastered + 1, 5);
     if (highestMastered === 0) targetLevel = 2;
   }
 
   // Get questions at or near target level
-  // First try exact level, then nearby levels
   let questionPool = questions.filter(q => q.level === targetLevel);
   if (questionPool.length === 0) {
-    // Try one level below
     questionPool = questions.filter(q => q.level === targetLevel - 1);
   }
   if (questionPool.length === 0) {
-    // Try one level above
     questionPool = questions.filter(q => q.level === targetLevel + 1);
   }
   if (questionPool.length === 0) {
-    // Fallback to any question with level 2+ (avoid trivial level 1)
     questionPool = questions.filter(q => q.level >= 2);
   }
   if (questionPool.length === 0) {
-    // Final fallback: any question
     questionPool = questions;
   }
 
