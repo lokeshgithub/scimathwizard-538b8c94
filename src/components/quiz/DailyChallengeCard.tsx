@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DailyChallenge, DailyChallengeStats, getDailyChallengeBonus } from '@/types/dailyChallenge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Flame, Trophy, Clock, CheckCircle, XCircle, Star, X, Loader2 } from 'lucide-react';
 import { logAnswerToServer } from '@/services/questionService';
@@ -96,43 +95,39 @@ export const DailyChallengeCard = ({
 
   return (
     <>
-      {/* Compact Floating Badge - positioned above the FABs */}
+      {/* Compact Floating Badge - minimal on mobile */}
       <motion.div
         className="fixed bottom-24 right-4 z-30"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, type: 'spring' }}
       >
-        <Card 
-          className={`p-3 cursor-pointer shadow-lg border-2 backdrop-blur-sm ${
+        <button 
+          className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg backdrop-blur-sm cursor-pointer border transition-colors ${
             isTodayCompleted 
-              ? 'border-success/50 bg-success/10' 
-              : 'border-primary/50 bg-primary/10'
+              ? 'border-success/50 bg-success/10 hover:bg-success/20' 
+              : 'border-primary/50 bg-primary/10 hover:bg-primary/20'
           }`}
           onClick={() => setIsOpen(true)}
         >
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${isTodayCompleted ? 'bg-success/20' : 'bg-primary/20'}`}>
-              {isTodayCompleted ? (
-                <CheckCircle className="w-6 h-6 text-success" />
-              ) : (
-                <Calendar className="w-6 h-6 text-primary" />
-              )}
-            </div>
-            <div>
-              <p className="font-bold text-sm">Daily Challenge</p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Flame className="w-3 h-3 text-orange-500" />
-                <span>{stats.currentStreak} day streak</span>
-              </div>
-            </div>
-            {!isTodayCompleted && (
-              <div className="ml-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium">
-                NEW
-              </div>
-            )}
-          </div>
-        </Card>
+          {isTodayCompleted ? (
+            <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+          ) : (
+            <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
+          )}
+          <span className="text-xs font-semibold whitespace-nowrap">
+            {isTodayCompleted ? 'Done' : 'Daily'}
+          </span>
+          {stats.currentStreak > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-orange-500 font-medium">
+              <Flame className="w-3 h-3" />
+              {stats.currentStreak}
+            </span>
+          )}
+          {!isTodayCompleted && (
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          )}
+        </button>
       </motion.div>
 
       {/* Modal */}
