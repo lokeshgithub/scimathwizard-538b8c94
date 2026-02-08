@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import type {
   QuestionBank,
   Progress,
@@ -89,6 +90,7 @@ const initialSessionStats: SessionStats = {
 };
 
 const initialSessionPerformance: SessionPerformance = {
+  sessionId: uuidv4(),
   questionTimings: [],
   startTime: Date.now(),
 };
@@ -1171,6 +1173,7 @@ export const useQuizStore = () => {
   // Reset session for new practice
   const resetSession = useCallback(() => {
     setSessionPerformance({
+      sessionId: uuidv4(), // Generate fresh UUID for new session
       questionTimings: [],
       startTime: Date.now(),
     });

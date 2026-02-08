@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,7 +16,9 @@ import {
   ChevronDown,
   Loader2,
   History,
+  RefreshCw,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useAuth } from '@/hooks/useAuth';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
@@ -50,6 +52,23 @@ const Report = () => {
     topic: 'all',
   });
   const [showHistory, setShowHistory] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh handler
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    setIsRefreshing(true);
+    try {
+      const data = await fetchReports(filters);
+      setReports(data);
+      toast.success('Reports refreshed!');
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      toast.error('Failed to refresh. Please try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [user, filters]);
 
   // Fetch reports from database when logged in
   useEffect(() => {
@@ -135,13 +154,27 @@ const Report = () => {
       <main className="max-w-4xl mx-auto px-4 py-6">
         {/* Filters - only for logged in users */}
         {user && (
-          <ReportFiltersBar
-            filters={filters}
-            onFiltersChange={setFilters}
-            availableTopics={availableTopics}
-            showHistory={showHistory}
-            onToggleHistory={() => setShowHistory(!showHistory)}
-          />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1">
+              <ReportFiltersBar
+                filters={filters}
+                onFiltersChange={setFilters}
+                availableTopics={availableTopics}
+                showHistory={showHistory}
+                onToggleHistory={() => setShowHistory(!showHistory)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isLoading}
+              className="shrink-0"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         )}
 
         {isLoading ? (
@@ -305,8 +338,10 @@ const Report = () => {
             </div>
             <h2 className="text-2xl font-bold mb-2">No Session Data Yet</h2>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Start practicing to see your performance report. Answer questions in Practice,
-              Adaptive, or Olympiad mode to track your progress.
+              {user
+                ? 'Complete a practice session to see your performance report. Your progress will be automatically saved and analyzed here.'
+                : 'Start practicing to see your performance report. Sign in to save your progress across devices and track long-term improvements.'
+              }
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
               <Link to="/">

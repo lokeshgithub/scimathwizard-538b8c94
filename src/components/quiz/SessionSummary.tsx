@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { SessionAnalysis, SessionStats } from '@/types/quiz';
+import { SessionAnalysis, SessionStats, Subject } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -8,11 +8,13 @@ import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Down
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
+import { toast } from 'sonner';
 
 interface SessionSummaryProps {
   analysis: SessionAnalysis;
   subject: string;
   sessionStats?: SessionStats;
+  sessionId?: string; // UUID from parent component
   onClose: () => void;
 }
 
@@ -27,25 +29,76 @@ const formatName = (name: string) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
-export const SessionSummary = ({ analysis, subject, sessionStats, onClose }: SessionSummaryProps) => {
+export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onClose }: SessionSummaryProps) => {
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [studentName, setStudentName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
-  const hasSavedReport = useRef(false);
 
-  // Auto-save the session report to database (once)
+  // Track saved sessions in localStorage to prevent duplicates
+  const SAVED_SESSIONS_KEY = 'magical-mastery-saved-session-ids';
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveAttempted, setSaveAttempted] = useState(false);
+
+  // Auto-save the session report to database (once per sessionId)
   useEffect(() => {
-    if (hasSavedReport.current || analysis.totalQuestions === 0) return;
-    hasSavedReport.current = true;
+    if (saveAttempted || !sessionId || analysis.totalQuestions === 0) return;
+
+    // Check if already saved
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVED_SESSIONS_KEY) || '[]');
+      if (saved.includes(sessionId)) {
+        console.log('[Report] Session already saved, skipping');
+        return;
+      }
+    } catch (e) {
+      console.error('[Report] Error checking saved sessions:', e);
+    }
+
+    setSaveAttempted(true);
+    setIsSaving(true);
 
     const stats = sessionStats || { stars: 0, streak: 0, maxStreak: 0, mastered: 0 };
-    saveSessionReport(analysis, subject as any, stats).then(saved => {
-      if (saved) console.log('[Report] Session report saved to database');
+
+    // Validate subject type
+    const validSubjects: Subject[] = ['math', 'physics', 'chemistry'];
+    const validatedSubject: Subject = validSubjects.includes(subject as Subject)
+      ? (subject as Subject)
+      : 'math';
+
+    saveSessionReport(sessionId, analysis, validatedSubject, stats).then(saved => {
+      if (saved) {
+        // Mark as saved
+        try {
+          const savedSessions = JSON.parse(localStorage.getItem(SAVED_SESSIONS_KEY) || '[]');
+          savedSessions.push(sessionId);
+          // Keep only last 100 to prevent bloat
+          const trimmed = savedSessions.slice(-100);
+          localStorage.setItem(SAVED_SESSIONS_KEY, JSON.stringify(trimmed));
+        } catch (e) {
+          console.error('[Report] Error marking session saved:', e);
+        }
+
+        console.log('[Report] Session report saved to database');
+        toast.success('Session saved to history!', {
+          duration: 4000,
+          action: {
+            label: 'View Reports',
+            onClick: () => window.location.href = '/report'
+          }
+        });
+      } else {
+        console.error('[Report] Failed to save session report');
+        toast.error('Failed to save session history', {
+          duration: 6000,
+          description: 'Your progress is safe locally. Try logging in again.'
+        });
+      }
+      setIsSaving(false);
     });
-  }, [analysis, subject, sessionStats]);
+  }, [sessionId, analysis, subject, sessionStats, saveAttempted]);
 
   // Calculate efficiency metrics
   const efficiencyMetrics = useMemo(() => {

@@ -66,6 +66,7 @@ export interface QuestionTiming {
 
 // Session performance data for analysis
 export interface SessionPerformance {
+  sessionId: string; // UUID v4 for session identification
   questionTimings: QuestionTiming[];
   startTime: number;
   endTime?: number;
