@@ -4,7 +4,7 @@ import type { SessionAnalysis, Subject } from '@/types/quiz';
 export interface StoredReport {
   id: string;
   user_id: string;
-  session_id: string; // UUID v4 for session identification
+  session_id: string | null; // UUID v4 for session identification
   subject: string;
   created_at: string;
   total_questions: number;
@@ -160,6 +160,7 @@ export const fetchReports = async (
 
     return (data || []).map(row => ({
       ...row,
+      session_id: row.session_id ?? null,
       topic_breakdown: (row.topic_breakdown || []) as unknown as TopicBreakdownEntry[],
       strengths: row.strengths || [],
       weaknesses: row.weaknesses || [],
