@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -54,12 +54,23 @@ const Index = () => {
   const { user, profile, isAdmin, signOut, updateStats } = useAuth();
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
   const [lastAnswerTime, setLastAnswerTime] = useState<number>(0);
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Deep-link: auto-select topic from ?topic= query param (e.g. from Report page)
+  useEffect(() => {
+    const topicParam = searchParams.get('topic');
+    if (topicParam) {
+      quiz.selectTopic(topicParam);
+      // Clear the param so it doesn't re-trigger
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, quiz]);
 
   // Level unlock modal state
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
