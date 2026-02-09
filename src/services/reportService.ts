@@ -51,6 +51,20 @@ export const saveSessionReport = async (
     // Don't save empty sessions
     if (analysis.totalQuestions === 0) return false;
 
+    // Server-side deduplication: check if session_id already exists
+    if (sessionId) {
+      const { data: existing } = await supabase
+        .from('session_reports')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('session_id', sessionId)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        console.log('[reportService] Duplicate session_id, skipping save:', sessionId);
+        return true; // Already saved, treat as success
+      }
+    }
+
     const topicBreakdown: TopicBreakdownEntry[] = analysis.topicAnalyses.map(t => ({
       topic: t.topic,
       questionsAttempted: t.questionsAttempted,
