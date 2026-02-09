@@ -30,17 +30,17 @@ export const ReportStats = ({
         <div className="text-sm text-muted-foreground">Questions</div>
       </div>
       <div className="bg-card rounded-xl p-4 shadow-card text-center" data-testid="stat-accuracy">
-        <div className="text-3xl font-bold text-emerald-500">
+        <div className="text-3xl font-bold text-success">
           {Math.round(accuracy * 100)}%
         </div>
         <div className="text-sm text-muted-foreground">Accuracy</div>
       </div>
       <div className="bg-card rounded-xl p-4 shadow-card text-center">
-        <div className="text-3xl font-bold text-blue-500">{formatTime(avgTime)}</div>
+        <div className="text-3xl font-bold text-secondary">{formatTime(avgTime)}</div>
         <div className="text-sm text-muted-foreground">Avg Time</div>
       </div>
       <div className="bg-card rounded-xl p-4 shadow-card text-center">
-        <div className="text-3xl font-bold text-amber-500">{stars}</div>
+        <div className="text-3xl font-bold text-accent-foreground">{stars}</div>
         <div className="text-sm text-muted-foreground">
           {sessionsCount > 1 ? 'Total Stars' : 'Stars Earned'}
         </div>

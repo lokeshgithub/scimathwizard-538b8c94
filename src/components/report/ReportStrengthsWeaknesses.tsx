@@ -64,7 +64,7 @@ export const ReportStrengthsWeaknesses = ({
                   <Target className="w-4 h-4" />
                   {formatName(topic)}
                 </span>
-                <Link to="/">
+                <Link to={`/?topic=${encodeURIComponent(topic)}`}>
                   <Button size="sm" variant="outline" className="h-7 text-xs">
                     <Play className="w-3 h-3 mr-1" />
                     Practice
