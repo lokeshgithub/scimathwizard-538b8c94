@@ -13,7 +13,7 @@ import type {
   TopicAnalysis,
   UnlockedLevels
 } from '@/types/quiz';
-import { fetchAllQuestions, logAnswerToServer, loadQuestionsFromCache } from '@/services/questionService';
+import { fetchAllQuestions, logAnswerToServer, loadQuestionsFromCache, fetchTopicMetadata, fetchQuestionsForTopics, buildEmptyBank, type TopicMetadata } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
@@ -255,6 +255,8 @@ export const useQuizStore = () => {
   const hasInitialData = !!cachedBank && Object.keys(cachedBank).length > 0;
 
   const [banks, setBanks] = useState<QuestionBank>(cachedBank || {});
+  const [topicMeta, setTopicMeta] = useState<TopicMetadata | null>(null);
+  const [loadedTopicIds, setLoadedTopicIds] = useState<Set<string>>(new Set());
   // Load user's last selected subject from localStorage (default to 'math' for new users)
   const [subject, setSubjectState] = useState<Subject>(() => {
     try {
@@ -396,34 +398,99 @@ export const useQuizStore = () => {
   }, [topic, getTopicMaxLevel]);
 
   // Load questions from database on mount
-  // Only show loading spinner if we don't have any cached data
+  // Phase 1: Load metadata (subjects/topics) instantly, then lazy-load questions per topic
   const loadQuestions = useCallback(async (showLoading: boolean) => {
-    // Only show loading if we have nothing to display
     if (showLoading) {
       setIsLoading(true);
     }
     setLoadError(null);
 
     try {
-      const dbQuestions = await fetchAllQuestions();
-      if (Object.keys(dbQuestions).length > 0) {
-        setBanks(dbQuestions);
+      // If we already have a full cached bank, use it (backward compat)
+      if (hasInitialData) {
+        // Still fetch metadata for lazy-loading future topics
+        const meta = await fetchTopicMetadata();
+        setTopicMeta(meta);
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 1: Fast metadata load (subjects + topic names, no questions)
+      const meta = await fetchTopicMetadata();
+      setTopicMeta(meta);
+
+      if (meta.topics.length > 0) {
+        // Build skeleton bank with topic names but no questions
+        const skeleton = buildEmptyBank(meta);
+        setBanks(prev => {
+          // Merge skeleton with any already-loaded data
+          const merged = { ...skeleton };
+          for (const subj of Object.keys(prev)) {
+            if (!merged[subj]) merged[subj] = {};
+            for (const t of Object.keys(prev[subj])) {
+              if (prev[subj][t].length > 0) {
+                merged[subj][t] = prev[subj][t];
+              }
+            }
+          }
+          return merged;
+        });
       }
     } catch (error) {
       console.error('Failed to load questions from database:', error);
-      // Only show error if we have no data at all
       if (showLoading) {
         setLoadError('Failed to load questions. Please check your connection and try again.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hasInitialData]);
+
+  // Lazy-load questions for specific topics on demand
+  const ensureTopicLoaded = useCallback(async (topicName: string, subjectKey?: Subject) => {
+    const s = subjectKey || subject;
+    const existing = banks[s]?.[topicName] || [];
+    if (existing.length > 0) return; // Already loaded
+
+    if (!topicMeta) return; // No metadata yet
+
+    // Find the topic ID from metadata
+    const topicInfo = topicMeta.topics.find(
+      t => t.name === topicName && t.subjectName.toLowerCase() === s
+    );
+    if (!topicInfo || loadedTopicIds.has(topicInfo.id)) return;
+
+    setLoadedTopicIds(prev => new Set([...prev, topicInfo.id]));
+
+    try {
+      const partial = await fetchQuestionsForTopics([topicInfo.id], topicMeta);
+      setBanks(prev => {
+        const updated = { ...prev };
+        for (const subj of Object.keys(partial)) {
+          if (!updated[subj]) updated[subj] = {};
+          for (const t of Object.keys(partial[subj])) {
+            if (partial[subj][t].length > 0) {
+              updated[subj][t] = partial[subj][t];
+            }
+          }
+        }
+        return updated;
+      });
+    } catch (error) {
+      console.error(`Failed to lazy-load topic ${topicName}:`, error);
+    }
+  }, [banks, subject, topicMeta, loadedTopicIds]);
 
   useEffect(() => {
-    // Only show loading spinner if we have no initial data from cache
     loadQuestions(!hasInitialData);
   }, [loadQuestions, hasInitialData]);
+
+  // Auto-load questions when topic is selected
+  useEffect(() => {
+    if (topic) {
+      ensureTopicLoaded(topic);
+    }
+  }, [topic, ensureTopicLoaded]);
 
   // Save to storage when relevant state changes - DEBOUNCED to prevent UI blocking
   // localStorage writes are synchronous and can freeze the UI if called too frequently
@@ -718,7 +785,32 @@ export const useQuizStore = () => {
   }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking, unlockedLevels]);
 
   // Start a mixed topics quiz
-  const startMixedQuiz = useCallback((selectedTopics: string[]) => {
+  const startMixedQuiz = useCallback(async (selectedTopics: string[]) => {
+    // Ensure all selected topics have their questions loaded
+    if (topicMeta) {
+      const loadPromises = selectedTopics.map(t => {
+        const topicInfo = topicMeta.topics.find(
+          ti => ti.name === t && ti.subjectName.toLowerCase() === subject
+        );
+        if (topicInfo && !banks[subject]?.[t]?.length) {
+          return fetchQuestionsForTopics([topicInfo.id], topicMeta).then(partial => {
+            setBanks(prev => {
+              const updated = { ...prev };
+              for (const subj of Object.keys(partial)) {
+                if (!updated[subj]) updated[subj] = {};
+                for (const tn of Object.keys(partial[subj])) {
+                  if (partial[subj][tn].length > 0) updated[subj][tn] = partial[subj][tn];
+                }
+              }
+              return updated;
+            });
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(loadPromises);
+    }
+
     setTopic(null);
     setMixedTopics(selectedTopics);
     setLevel(1);
@@ -728,7 +820,8 @@ export const useQuizStore = () => {
     setIsReviewMode(false); // Ensure not in review mode
     setSessionAnsweredIds(new Set()); // Clear session tracking for fresh quiz
     
-    // Gather all questions from selected topics
+    // Gather all questions from selected topics (re-read banks after loading)
+    // Note: state update from setBanks above is async; read from latest
     const allQuestions: Question[] = [];
     for (const topicName of selectedTopics) {
       const topicQuestions = banks[subject]?.[topicName] || [];
@@ -740,7 +833,7 @@ export const useQuizStore = () => {
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
-  }, [banks, subject]);
+  }, [banks, subject, topicMeta]);
 
   const markQuestionAnswered = useCallback((questionId: string, correct: boolean) => {
     setQuestionTracking(prev => {
@@ -1376,6 +1469,7 @@ export const useQuizStore = () => {
     getUnsolvedQuestionsCount,
     getQuestionsCountForLevel,
     exitToTopics,
+    ensureTopicLoaded,
     refreshQuestions: async () => {
       // Refresh in background without showing loading spinner
       try {

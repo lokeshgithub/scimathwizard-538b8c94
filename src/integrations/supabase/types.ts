@@ -552,6 +552,23 @@ export type Database = {
           topic_name: string
         }[]
       }
+      get_questions_by_topics: {
+        Args: { p_topic_ids: string[] }
+        Returns: {
+          correct_answer: string
+          created_at: string
+          explanation: string
+          hint: string
+          id: string
+          level: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          topic_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
