@@ -355,7 +355,7 @@ export type Database = {
           current_streak: number
           id: string
           max_streak: number
-          session_id: string | null
+          session_id: string
           stars_earned: number
           strengths: string[]
           subject: string
@@ -374,7 +374,7 @@ export type Database = {
           current_streak?: number
           id?: string
           max_streak?: number
-          session_id?: string | null
+          session_id?: string
           stars_earned?: number
           strengths?: string[]
           subject: string
@@ -393,7 +393,7 @@ export type Database = {
           current_streak?: number
           id?: string
           max_streak?: number
-          session_id?: string | null
+          session_id?: string
           stars_earned?: number
           strengths?: string[]
           subject?: string
