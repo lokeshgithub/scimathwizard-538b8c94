@@ -57,10 +57,23 @@ const answerCache = new Map<string, { correctIndex: number; explanation: string 
 
 // LocalStorage cache for questions to speed up initial load
 const QUESTIONS_CACHE_KEY = 'magical-mastery-questions-cache';
+const TOPIC_CACHE_PREFIX = 'magical-mastery-topic-cache-'; // Per-topic cache
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache TTL
 
 interface CachedQuestions {
   bank: QuestionBank;
+  timestamp: number;
+}
+
+// Topic metadata: subject + topic info without questions
+export interface TopicMetadata {
+  subjects: Array<{ id: string; name: string }>;
+  topics: Array<{ id: string; name: string; subjectId: string; subjectName: string }>;
+}
+
+// Per-topic cache entry
+interface CachedTopicQuestions {
+  questions: Question[];
   timestamp: number;
 }
 
@@ -114,6 +127,178 @@ function saveQuestionsToCache(bank: QuestionBank): void {
       console.error('Failed to save questions cache:', e);
     }
   }
+}
+
+// ============ LAZY LOADING: Per-topic fetching ============
+
+// Fetch just subject and topic metadata (no questions) - very fast initial load
+export async function fetchTopicMetadata(): Promise<TopicMetadata> {
+  const [subjectsRes, topicsRes] = await Promise.all([
+    supabase.from('subjects').select('*'),
+    supabase.from('topics').select('*'),
+  ]);
+
+  if (subjectsRes.error || topicsRes.error) {
+    console.error('Error fetching metadata:', subjectsRes.error || topicsRes.error);
+    return { subjects: [], topics: [] };
+  }
+
+  const subjects = (subjectsRes.data as DBSubject[]).map(s => ({ id: s.id, name: s.name }));
+  const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
+
+  const topics = (topicsRes.data as DBTopic[]).map(t => ({
+    id: t.id,
+    name: t.name,
+    subjectId: t.subject_id,
+    subjectName: subjectMap.get(t.subject_id) || 'unknown',
+  }));
+
+  return { subjects, topics };
+}
+
+// Build an empty QuestionBank skeleton from metadata (topics exist but have no questions yet)
+export function buildEmptyBank(metadata: TopicMetadata): QuestionBank {
+  const bank: QuestionBank = {};
+  for (const topic of metadata.topics) {
+    const subjectKey = topic.subjectName.toLowerCase() as Subject;
+    if (!bank[subjectKey]) bank[subjectKey] = {};
+    if (!bank[subjectKey][topic.name]) bank[subjectKey][topic.name] = [];
+  }
+  return bank;
+}
+
+// Load per-topic questions from localStorage cache
+function loadTopicFromCache(topicId: string): Question[] | null {
+  try {
+    const cached = localStorage.getItem(TOPIC_CACHE_PREFIX + topicId);
+    if (!cached) return null;
+    const parsed: CachedTopicQuestions = JSON.parse(cached);
+    if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+      // Rebuild answer cache entries
+      for (const q of parsed.questions) {
+        answerCache.set(q.id, { correctIndex: q.correct, explanation: q.explanation || '' });
+      }
+      return parsed.questions;
+    }
+  } catch (e) {
+    // Ignore cache errors
+  }
+  return null;
+}
+
+// Save per-topic questions to localStorage cache
+function saveTopicToCache(topicId: string, questions: Question[]): void {
+  try {
+    const entry: CachedTopicQuestions = { questions, timestamp: Date.now() };
+    localStorage.setItem(TOPIC_CACHE_PREFIX + topicId, JSON.stringify(entry));
+  } catch (e: any) {
+    if (e?.name === 'QuotaExceededError') {
+      // Clear old full cache to make room for per-topic caches
+      localStorage.removeItem(QUESTIONS_CACHE_KEY);
+    }
+  }
+}
+
+// Process raw DB questions into Question objects for a given topic
+function processDBQuestions(dbQuestions: DBQuestion[], topicName: string): Question[] {
+  const results: Question[] = [];
+  for (const q of dbQuestions) {
+    const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
+    const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
+    const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+
+    answerCache.set(q.id, { correctIndex: shuffledCorrectIndex, explanation: q.explanation || '' });
+
+    results.push({
+      id: q.id,
+      level: q.level,
+      question: q.question,
+      options: shuffledOptions,
+      correct: shuffledCorrectIndex,
+      explanation: q.explanation || '',
+      concepts: [],
+      hint: q.hint || undefined,
+      shuffleMap,
+      subTopic: (q as any).sub_topic || undefined,
+      chapter: topicName,
+    });
+  }
+  return results;
+}
+
+// Fetch questions for specific topics by their IDs (lazy-load)
+// Returns a partial QuestionBank with only the requested topics populated
+export async function fetchQuestionsForTopics(
+  topicIds: string[],
+  metadata: TopicMetadata
+): Promise<QuestionBank> {
+  const bank: QuestionBank = {};
+  const topicMap = new Map(metadata.topics.map(t => [t.id, t]));
+
+  // Check cache first, collect uncached topic IDs
+  const uncachedIds: string[] = [];
+  for (const topicId of topicIds) {
+    const topicInfo = topicMap.get(topicId);
+    if (!topicInfo) continue;
+    const subjectKey = topicInfo.subjectName.toLowerCase() as Subject;
+    if (!bank[subjectKey]) bank[subjectKey] = {};
+
+    const cached = loadTopicFromCache(topicId);
+    if (cached) {
+      bank[subjectKey][topicInfo.name] = cached;
+    } else {
+      uncachedIds.push(topicId);
+    }
+  }
+
+  // Fetch uncached topics from database
+  if (uncachedIds.length > 0) {
+    let allQuestions: DBQuestion[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch, error } = await supabase
+        .rpc('get_questions_by_topics', { p_topic_ids: uncachedIds })
+        .range(offset, offset + pageSize - 1) as { data: DBQuestion[] | null; error: any };
+
+      if (error) {
+        console.error('Error fetching topic questions:', error);
+        break;
+      }
+      if (!batch || batch.length === 0) {
+        hasMore = false;
+      } else {
+        allQuestions = [...allQuestions, ...batch];
+        offset += pageSize;
+        hasMore = batch.length === pageSize;
+      }
+    }
+
+    // Group by topic_id and process
+    const byTopic = new Map<string, DBQuestion[]>();
+    for (const q of allQuestions) {
+      if (!byTopic.has(q.topic_id)) byTopic.set(q.topic_id, []);
+      byTopic.get(q.topic_id)!.push(q);
+    }
+
+    for (const [topicId, questions] of byTopic) {
+      const topicInfo = topicMap.get(topicId);
+      if (!topicInfo) continue;
+      const subjectKey = topicInfo.subjectName.toLowerCase() as Subject;
+      if (!bank[subjectKey]) bank[subjectKey] = {};
+
+      const processed = processDBQuestions(questions, topicInfo.name);
+      bank[subjectKey][topicInfo.name] = processed;
+      saveTopicToCache(topicId, processed);
+    }
+
+    console.log(`Lazy-loaded ${allQuestions.length} questions for ${uncachedIds.length} topics`);
+  }
+
+  return bank;
 }
 
 // Fetch all questions organized by subject and topic (with answers for instant validation)
