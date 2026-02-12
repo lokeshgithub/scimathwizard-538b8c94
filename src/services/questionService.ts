@@ -34,6 +34,7 @@ interface DBTopic {
   id: string;
   name: string;
   subject_id: string;
+  grade: number;
 }
 
 // Question data with correct_answer for instant local validation
@@ -68,7 +69,7 @@ interface CachedQuestions {
 // Topic metadata: subject + topic info without questions
 export interface TopicMetadata {
   subjects: Array<{ id: string; name: string }>;
-  topics: Array<{ id: string; name: string; subjectId: string; subjectName: string }>;
+  topics: Array<{ id: string; name: string; subjectId: string; subjectName: string; grade: number }>;
 }
 
 // Per-topic cache entry
@@ -151,15 +152,18 @@ export async function fetchTopicMetadata(): Promise<TopicMetadata> {
     name: t.name,
     subjectId: t.subject_id,
     subjectName: subjectMap.get(t.subject_id) || 'unknown',
+    grade: t.grade || 7,
   }));
 
   return { subjects, topics };
 }
 
 // Build an empty QuestionBank skeleton from metadata (topics exist but have no questions yet)
-export function buildEmptyBank(metadata: TopicMetadata): QuestionBank {
+// When grade is provided, only includes topics for that grade
+export function buildEmptyBank(metadata: TopicMetadata, grade?: number): QuestionBank {
   const bank: QuestionBank = {};
   for (const topic of metadata.topics) {
+    if (grade !== undefined && topic.grade !== grade) continue;
     const subjectKey = topic.subjectName.toLowerCase() as Subject;
     if (!bank[subjectKey]) bank[subjectKey] = {};
     if (!bank[subjectKey][topic.name]) bank[subjectKey][topic.name] = [];
@@ -1227,17 +1231,25 @@ export function normalizeTopicName(rawName: string): string {
 }
 
 // Find existing topic by normalized name (case-insensitive fuzzy match)
+// When grade is provided, only matches topics with that grade
 export async function findMatchingTopic(
   subjectId: string, 
-  rawTopicName: string
+  rawTopicName: string,
+  grade?: number
 ): Promise<{ id: string; name: string } | null> {
   const normalizedInput = normalizeTopicName(rawTopicName).toLowerCase();
   
-  // Fetch all topics for this subject
-  const { data: topics } = await supabase
+  // Fetch all topics for this subject, optionally filtered by grade
+  let query = supabase
     .from('topics')
-    .select('id, name')
+    .select('id, name, grade')
     .eq('subject_id', subjectId);
+  
+  if (grade !== undefined) {
+    query = query.eq('grade', grade);
+  }
+  
+  const { data: topics } = await query;
   
   if (!topics || topics.length === 0) return null;
   
@@ -1287,7 +1299,7 @@ export async function uploadQuestionsFromCSV(
     hint?: string;
     subTopic?: string; // Sub-topic within chapter (Physics/Chemistry hierarchy)
   }>,
-  options: { replaceExisting?: boolean } = {}
+  options: { replaceExisting?: boolean; grade?: number } = {}
 ): Promise<{ success: boolean; error?: string; count?: number; skipped?: number; normalizedTopicName?: string; blueprintMatch?: boolean }> {
   try {
     // Parse the topic name to extract actual topic and level from filename
@@ -1318,14 +1330,15 @@ export async function uploadQuestionsFromCSV(
       subject = newSubject;
     }
 
-    // Try to find an existing topic with matching normalized name
-    let topic = await findMatchingTopic(subject.id, topicName);
+    // Try to find an existing topic with matching normalized name (and grade)
+    const uploadGrade = options.grade || 7;
+    let topic = await findMatchingTopic(subject.id, topicName, uploadGrade);
     
     if (!topic) {
-      // No match found - create new topic with normalized name
+      // No match found - create new topic with normalized name and grade
       const { data: newTopic, error: topicError } = await supabase
         .from('topics')
-        .insert({ subject_id: subject.id, name: normalizedTopicName })
+        .insert({ subject_id: subject.id, name: normalizedTopicName, grade: uploadGrade })
         .select('id, name')
         .single();
 
@@ -1530,7 +1543,8 @@ export async function smartUploadQuestions(
     explanation: string;
     hint?: string;
     subTopic?: string;
-  }>
+  }>,
+  grade: number = 7
 ): Promise<SmartUploadReport> {
   const report: SmartUploadReport = {
     success: false,
@@ -1569,13 +1583,13 @@ export async function smartUploadQuestions(
       subject = newSubject;
     }
 
-    // Get or create topic
-    let topic = await findMatchingTopic(subject.id, topicName);
+    // Get or create topic (with grade)
+    let topic = await findMatchingTopic(subject.id, topicName, grade);
 
     if (!topic) {
       const { data: newTopic, error: topicError } = await supabase
         .from('topics')
-        .insert({ subject_id: subject.id, name: normalizedTopicName })
+        .insert({ subject_id: subject.id, name: normalizedTopicName, grade })
         .select('id, name')
         .single();
 

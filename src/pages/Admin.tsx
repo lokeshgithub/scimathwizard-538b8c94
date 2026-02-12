@@ -51,6 +51,7 @@ const Admin = () => {
   // Upload state
   const [subject, setSubject] = useState('Math');
   const [topicName, setTopicName] = useState('');
+  const [uploadGrade, setUploadGrade] = useState(7);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMode, setUploadMode] = useState<'append' | 'replace' | 'smart'>('smart');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -395,7 +396,7 @@ const Admin = () => {
 
             if (uploadMode === 'smart') {
               // Use smart upload with change detection
-              const report = await smartUploadQuestions(detectedSubject, rawSheetName, sheet.questions);
+              const report = await smartUploadQuestions(detectedSubject, rawSheetName, sheet.questions, uploadGrade);
               smartReports.push(report);
               results.push({
                 topic: `${fileName} → ${sheet.name}`,
@@ -411,7 +412,7 @@ const Admin = () => {
                 detectedSubject,
                 rawSheetName,
                 sheet.questions,
-                { replaceExisting: uploadMode === 'replace' }
+                { replaceExisting: uploadMode === 'replace', grade: uploadGrade }
               );
               results.push({
                 topic: `${fileName} → ${sheet.name}`,
@@ -448,7 +449,7 @@ const Admin = () => {
 
         if (uploadMode === 'smart') {
           // Use smart upload with change detection
-          const report = await smartUploadQuestions(detectedSubject, finalTopicName, questions);
+          const report = await smartUploadQuestions(detectedSubject, finalTopicName, questions, uploadGrade);
           smartReports.push(report);
           results.push({
             topic: finalTopicName,
@@ -463,7 +464,7 @@ const Admin = () => {
             detectedSubject,
             finalTopicName,
             questions,
-            { replaceExisting: uploadMode === 'replace' }
+            { replaceExisting: uploadMode === 'replace', grade: uploadGrade }
           );
           results.push({
             topic: finalTopicName,
@@ -510,7 +511,7 @@ const Admin = () => {
         setSummaryRefreshKey(prev => prev + 1);
       }
     }
-  }, [subject, topicName, uploadMode]);
+  }, [subject, topicName, uploadMode, uploadGrade]);
 
   // Loading state
   if (isLoading) {
@@ -660,7 +661,7 @@ const Admin = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Subject</label>
                 <Select value={subject} onValueChange={setSubject}>
@@ -671,6 +672,19 @@ const Admin = () => {
                     <SelectItem value="Math">Math</SelectItem>
                     <SelectItem value="Physics">Physics</SelectItem>
                     <SelectItem value="Chemistry">Chemistry</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Class/Grade</label>
+                <Select value={String(uploadGrade)} onValueChange={(v) => setUploadGrade(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[7, 8, 9, 10, 11, 12].map(g => (
+                      <SelectItem key={g} value={String(g)}>Class {g}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

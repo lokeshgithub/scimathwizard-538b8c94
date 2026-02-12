@@ -24,6 +24,7 @@ interface TopicSummary {
   topicId: string;
   questionCount: number;
   isBlueprint: boolean;
+  grade: number;
 }
 
 interface SubjectSummary {
@@ -83,6 +84,7 @@ export function QuestionBankSummary({ onDataChange }: QuestionBankSummaryProps) 
           topicId: row.topic_id,
           questionCount: Number(row.question_count) || 0,
           isBlueprint,
+          grade: (row as any).grade || 7,
         });
         subject.topicCount++;
         subject.questionCount += Number(row.question_count) || 0;
@@ -254,6 +256,9 @@ export function QuestionBankSummary({ onDataChange }: QuestionBankSummaryProps) 
                         >
                           <div className="flex items-center gap-2">
                             <span>{topic.topic}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              Class {topic.grade}
+                            </Badge>
                             {!topic.isBlueprint && (
                               <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
                                 Not in Blueprint

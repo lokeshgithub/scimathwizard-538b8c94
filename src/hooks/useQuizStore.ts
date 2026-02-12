@@ -22,6 +22,7 @@ const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
 const ANSWERED_IDS_KEY = 'magical-mastery-answered-ids'; // Track answered questions in session
 const SUBJECT_KEY = 'magical-mastery-subject'; // Remember user's last selected subject
+const GRADE_KEY = 'magical-mastery-grade'; // Remember user's last selected grade
 
 // Export helper to get saved subject preference (for use across all pathways)
 export const getSavedSubject = (): Subject => {
@@ -269,6 +270,19 @@ export const useQuizStore = () => {
     }
     return 'math';
   });
+  // Grade selection (7-12)
+  const [selectedGrade, setSelectedGradeState] = useState<number>(() => {
+    try {
+      const savedGrade = localStorage.getItem(GRADE_KEY);
+      if (savedGrade) {
+        const g = parseInt(savedGrade);
+        if (g >= 7 && g <= 12) return g;
+      }
+    } catch (e) {
+      console.error('Failed to load grade preference:', e);
+    }
+    return 7;
+  });
   const [topic, setTopic] = useState<string | null>(null);
   const [mixedTopics, setMixedTopics] = useState<string[] | null>(null);
   const [level, setLevel] = useState(1);
@@ -420,8 +434,8 @@ export const useQuizStore = () => {
       setTopicMeta(meta);
 
       if (meta.topics.length > 0) {
-        // Build skeleton bank with topic names but no questions
-        const skeleton = buildEmptyBank(meta);
+        // Build skeleton bank with topic names but no questions, filtered by grade
+        const skeleton = buildEmptyBank(meta, selectedGrade);
         setBanks(prev => {
           // Merge skeleton with any already-loaded data
           const merged = { ...skeleton };
@@ -444,7 +458,7 @@ export const useQuizStore = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [hasInitialData]);
+  }, [hasInitialData, selectedGrade]);
 
   // Lazy-load questions for specific topics on demand
   const ensureTopicLoaded = useCallback(async (topicName: string, subjectKey?: Subject) => {
@@ -454,9 +468,9 @@ export const useQuizStore = () => {
 
     if (!topicMeta) return; // No metadata yet
 
-    // Find the topic ID from metadata
+    // Find the topic ID from metadata (matching grade)
     const topicInfo = topicMeta.topics.find(
-      t => t.name === topicName && t.subjectName.toLowerCase() === s
+      t => t.name === topicName && t.subjectName.toLowerCase() === s && t.grade === selectedGrade
     );
     if (!topicInfo || loadedTopicIds.has(topicInfo.id)) return;
 
@@ -1384,6 +1398,34 @@ export const useQuizStore = () => {
     }
   }, []);
 
+  // Wrapper to save grade preference and rebuild bank
+  const setSelectedGrade = useCallback((newGrade: number) => {
+    setSelectedGradeState(newGrade);
+    try {
+      localStorage.setItem(GRADE_KEY, String(newGrade));
+    } catch (e) {
+      console.error('Failed to save grade preference:', e);
+    }
+    // Rebuild bank skeleton filtered by new grade
+    if (topicMeta) {
+      const skeleton = buildEmptyBank(topicMeta, newGrade);
+      setBanks(skeleton);
+      // Reset loaded topics so they get re-fetched for new grade
+      setLoadedTopicIds(new Set());
+    }
+    // Reset topic state
+    setTopic(null);
+    setMixedTopics(null);
+    setCurrentQuestions([]);
+    setQuestionIndex(0);
+    setQuestionHistory([]);
+    setUnlimitedPractice(false);
+    setIsReviewMode(false);
+    setLevel(1);
+    setLevelStats({ correct: 0, total: 0 });
+    setSessionAnsweredIds(new Set());
+  }, [topicMeta]);
+
   // Change subject and reset topic state
   const changeSubject = useCallback((newSubject: Subject) => {
     if (newSubject !== subject) {
@@ -1406,6 +1448,7 @@ export const useQuizStore = () => {
     // State
     banks,
     subject,
+    selectedGrade,
     topic,
     mixedTopics,
     level,
@@ -1444,6 +1487,7 @@ export const useQuizStore = () => {
     
     // Actions
     setSubject: changeSubject, // Use changeSubject to properly reset state
+    setSelectedGrade,
     selectTopic,
     startMixedQuiz,
     answerQuestion,
