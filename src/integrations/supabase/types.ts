@@ -430,18 +430,21 @@ export type Database = {
       topics: {
         Row: {
           created_at: string
+          grade: number
           id: string
           name: string
           subject_id: string
         }
         Insert: {
           created_at?: string
+          grade?: number
           id?: string
           name: string
           subject_id: string
         }
         Update: {
           created_at?: string
+          grade?: number
           id?: string
           name?: string
           subject_id?: string
@@ -546,6 +549,7 @@ export type Database = {
       get_question_summary: {
         Args: never
         Returns: {
+          grade: number
           question_count: number
           subject_name: string
           topic_id: string

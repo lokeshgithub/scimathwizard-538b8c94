@@ -12,6 +12,7 @@ import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useConfetti } from '@/hooks/useConfetti';
 import { StatsBar } from '@/components/quiz/StatsBar';
 import { SubjectTabs } from '@/components/quiz/SubjectTabs';
+import { GradeSelector } from '@/components/quiz/GradeSelector';
 import { TopicDashboard } from '@/components/quiz/TopicDashboard';
 import { MasteryPanel } from '@/components/quiz/MasteryPanel';
 import { QuizCard } from '@/components/quiz/QuizCard';
@@ -472,18 +473,16 @@ const Index = () => {
                     <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
                   </motion.div>
 
-                  {/* Grade Badge - Prominent class indicator */}
-                  {profile && (
-                    <motion.div
-                      className="flex items-center gap-1 bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 border border-white/40 flex-shrink-0"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.2 }}
-                    >
-                      <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="font-bold text-sm sm:text-lg">Class {profile.grade || 7}</span>
-                    </motion.div>
-                  )}
+                  {/* Grade Badge - Shows currently selected grade */}
+                  <motion.div
+                    className="flex items-center gap-1 bg-white/30 backdrop-blur-sm rounded-full px-2 py-1 border border-white/40 flex-shrink-0"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', delay: 0.2 }}
+                  >
+                    <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="font-bold text-sm sm:text-lg">Class {quiz.selectedGrade}</span>
+                  </motion.div>
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -613,6 +612,8 @@ const Index = () => {
             />
 
             <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
+            
+            <GradeSelector selectedGrade={quiz.selectedGrade} onSelectGrade={quiz.setSelectedGrade} />
           </>
         )}
         
