@@ -52,7 +52,7 @@ const Index = () => {
   const achievements = useAchievements();
   // Pass user progress for adaptive daily challenge difficulty
   const dailyChallenge = useDailyChallenge(quiz.banks, quiz.progress);
-  const { user, profile, isAdmin, signOut, updateStats } = useAuth();
+  const { user, profile, isAdmin, signOut, updateStats, updateGrade } = useAuth();
   const sound = useSoundEffects();
   const confetti = useConfetti();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,6 +62,14 @@ const Index = () => {
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  
+
+  // Sync grade from profile when user logs in
+  useEffect(() => {
+    if (profile?.grade && profile.grade !== quiz.selectedGrade) {
+      quiz.setSelectedGrade(profile.grade);
+    }
+  }, [profile?.grade]);
 
   // Deep-link: auto-select topic from ?topic= query param (e.g. from Report page)
   useEffect(() => {
@@ -613,7 +621,10 @@ const Index = () => {
 
             <SubjectTabs currentSubject={quiz.subject} onSelectSubject={quiz.setSubject} />
             
-            <GradeSelector selectedGrade={quiz.selectedGrade} onSelectGrade={quiz.setSelectedGrade} />
+            <GradeSelector selectedGrade={quiz.selectedGrade} onSelectGrade={(grade) => {
+              quiz.setSelectedGrade(grade);
+              if (user) updateGrade(grade);
+            }} />
           </>
         )}
         
