@@ -13,7 +13,7 @@ const emailSchema = z.string().email('Please enter a valid email');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 const displayNameSchema = z.string().min(2, 'Name must be at least 2 characters').max(20, 'Name must be under 20 characters');
 
-const AVAILABLE_GRADES = [6, 7, 8, 9, 10, 11, 12];
+const AVAILABLE_GRADES = [7, 8, 9, 10, 11, 12];
 
 const Auth = () => {
   const navigate = useNavigate();
