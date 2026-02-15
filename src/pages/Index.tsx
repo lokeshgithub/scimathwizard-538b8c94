@@ -46,6 +46,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -62,7 +63,22 @@ const Index = () => {
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  
+  const [gradeQuestionCounts, setGradeQuestionCounts] = useState<Record<number, number>>({});
+
+  // Fetch question counts per grade
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const { data, error } = await supabase.rpc('get_question_summary');
+      if (!error && data) {
+        const counts: Record<number, number> = {};
+        for (const row of data) {
+          counts[row.grade] = (counts[row.grade] || 0) + row.question_count;
+        }
+        setGradeQuestionCounts(counts);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   // Sync grade from profile when user logs in
   useEffect(() => {
@@ -624,7 +640,7 @@ const Index = () => {
             <GradeSelector selectedGrade={quiz.selectedGrade} onSelectGrade={(grade) => {
               quiz.setSelectedGrade(grade);
               if (user) updateGrade(grade);
-            }} />
+            }} gradeQuestionCounts={gradeQuestionCounts} />
           </>
         )}
         
