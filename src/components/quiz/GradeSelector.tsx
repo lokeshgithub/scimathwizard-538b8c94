@@ -6,7 +6,7 @@ interface GradeSelectorProps {
   selectedGrade: number;
   onSelectGrade: (grade: number) => void;
   availableGrades?: number[];
-  gradeQuestionCounts?: Record<number, number>;
+  gradeTopicCounts?: Record<number, number>;
 }
 
 const GRADES = [7, 8, 9, 10, 11, 12];
@@ -20,7 +20,7 @@ const GRADE_THEMES: Record<number, { emoji: string; label: string; color: string
   12: { emoji: '👑', label: 'Mastery', color: 'from-purple-500 to-pink-500' },
 };
 
-export const GradeSelector = ({ selectedGrade, onSelectGrade, availableGrades, gradeQuestionCounts }: GradeSelectorProps) => {
+export const GradeSelector = ({ selectedGrade, onSelectGrade, availableGrades, gradeTopicCounts }: GradeSelectorProps) => {
   const grades = availableGrades || GRADES;
 
   return (
@@ -33,8 +33,8 @@ export const GradeSelector = ({ selectedGrade, onSelectGrade, availableGrades, g
         {grades.map((grade, index) => {
           const theme = GRADE_THEMES[grade] || { emoji: '📚', label: '', color: 'from-gray-500 to-gray-600' };
           const isSelected = selectedGrade === grade;
-          const questionCount = gradeQuestionCounts?.[grade] ?? 0;
-          const hasContent = questionCount > 0;
+          const topicCount = gradeTopicCounts?.[grade] ?? 0;
+          const hasContent = topicCount > 0;
 
           return (
             <motion.button
@@ -60,14 +60,14 @@ export const GradeSelector = ({ selectedGrade, onSelectGrade, availableGrades, g
               <div className={`text-[10px] font-medium ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>
                 {theme.label}
               </div>
-              {gradeQuestionCounts !== undefined && (
+              {gradeTopicCounts !== undefined && (
                 <Badge
                   variant={hasContent ? 'default' : 'secondary'}
                   className={`mt-1 text-[9px] px-1.5 py-0 ${
                     isSelected && hasContent ? 'bg-white/20 text-white border-white/30' : ''
                   } ${!hasContent ? 'opacity-60' : ''}`}
                 >
-                  {hasContent ? `${questionCount.toLocaleString()} Q` : 'No Qs'}
+                  {hasContent ? `${topicCount} ${topicCount === 1 ? 'topic' : 'topics'}` : 'No topics'}
                 </Badge>
               )}
               {isSelected && (

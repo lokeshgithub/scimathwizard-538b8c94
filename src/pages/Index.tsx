@@ -63,18 +63,20 @@ const Index = () => {
   const [wasRetrying, setWasRetrying] = useState(false);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [gradeQuestionCounts, setGradeQuestionCounts] = useState<Record<number, number>>({});
+  const [gradeTopicCounts, setGradeTopicCounts] = useState<Record<number, number>>({});
 
-  // Fetch question counts per grade
+  // Fetch topic counts per grade (only topics that have questions)
   useEffect(() => {
     const fetchCounts = async () => {
       const { data, error } = await supabase.rpc('get_question_summary');
       if (!error && data) {
         const counts: Record<number, number> = {};
         for (const row of data) {
-          counts[row.grade] = (counts[row.grade] || 0) + row.question_count;
+          if (row.question_count > 0) {
+            counts[row.grade] = (counts[row.grade] || 0) + 1;
+          }
         }
-        setGradeQuestionCounts(counts);
+        setGradeTopicCounts(counts);
       }
     };
     fetchCounts();
@@ -640,7 +642,7 @@ const Index = () => {
             <GradeSelector selectedGrade={quiz.selectedGrade} onSelectGrade={(grade) => {
               quiz.setSelectedGrade(grade);
               if (user) updateGrade(grade);
-            }} gradeQuestionCounts={gradeQuestionCounts} />
+            }} gradeTopicCounts={gradeTopicCounts} />
           </>
         )}
         
