@@ -47,7 +47,7 @@ export const saveSubjectPreference = (subject: Subject): void => {
 };
 
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
-const THRESHOLD = 0.8; // 80% is pedagogically sound (8/10 needed)
+const THRESHOLD = 0.9; // 90% accuracy needed (9/10)
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
@@ -1061,10 +1061,42 @@ export const useQuizStore = () => {
     }
   }, [level, currentMaxLevel, topic, getAvailableQuestions, banks, subject]);
 
+  // Continue practicing same level after mastery (user chose not to advance)
+  const continuePracticing = useCallback(() => {
+    if (!topic) return;
+    // Reset level stats but keep on same level with all questions
+    setLevelStats({ correct: 0, total: 0 });
+    const allForLevel = banks[subject]?.[topic]?.filter(q => q.level === level) || [];
+    const shuffled = [...allForLevel].sort(() => Math.random() - 0.5);
+    setCurrentQuestions(shuffled);
+    setQuestionIndex(0);
+    setQuestionHistory([]);
+    setQuestionStartTime(Date.now());
+    setUnlimitedPractice(true); // Switch to unlimited so mastery won't re-trigger immediately
+  }, [level, topic, banks, subject]);
+
+  // Switch to a different level manually (user picks from level selector)
+  const switchLevel = useCallback((topicName: string, newLevel: number) => {
+    setTopic(topicName);
+    setLevel(newLevel);
+    setLevelStats({ correct: 0, total: 0 });
+    setQuestionHistory([]);
+    setIsReviewMode(false);
+    setUnlimitedPractice(false);
+    setSessionAnsweredIds(new Set());
+
+    const available = getAvailableQuestions(topicName, newLevel);
+    const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === newLevel) || [];
+    const questionsToUse = available.length > 0 ? available : allForLevel;
+    const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
+    setCurrentQuestions(shuffled);
+    setQuestionIndex(0);
+    setQuestionStartTime(Date.now());
+  }, [getAvailableQuestions, banks, subject]);
+
   const retryLevel = useCallback(() => {
     setLevelStats({ correct: 0, total: 0 });
     
-    // Get questions for current level
     const available = getAvailableQuestions(topic!, level);
     const allForLevel = banks[subject]?.[topic!]?.filter(q => q.level === level) || [];
     const questionsToUse = available.length > 0 ? available : allForLevel;
@@ -1494,6 +1526,8 @@ export const useQuizStore = () => {
     checkMastery,
     advanceLevel,
     retryLevel,
+    continuePracticing,
+    switchLevel,
     nextQuestion,
     previousQuestion,
     prefetchNextQuestion,
