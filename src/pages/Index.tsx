@@ -419,6 +419,11 @@ const Index = () => {
     }
   }, [modalPassed, quiz, achievements, wasRetrying, sound, confetti]);
 
+  const handleContinuePracticing = useCallback(() => {
+    setShowModal(false);
+    quiz.continuePracticing();
+  }, [quiz]);
+
   // Handle request to unlock a level
   const handleRequestUnlock = useCallback((topicName: string, level: number) => {
     const questions = quiz.getUnlockAssessmentQuestions(topicName, level);
@@ -710,27 +715,73 @@ const Index = () => {
               </motion.div>
             )}
 
-            {/* Minimal progress indicator during quiz - just shows current stats */}
-            {isInQuizMode && (
+            {/* Level selector + progress indicator during quiz */}
+            {isInQuizMode && quiz.topic && !quiz.mixedTopics && (
+              <div className="mb-3 space-y-2">
+                {/* Level selector pills */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs text-muted-foreground mr-1">Level:</span>
+                  {quiz.getTopicLevels(quiz.topic).map((lvl) => {
+                    const isActive = lvl === quiz.level;
+                    const unlocked = quiz.isLevelUnlocked(quiz.topic!, lvl);
+                    const isMastered = quiz.getTopicProgress(quiz.topic!)[lvl]?.mastered;
+                    return (
+                      <button
+                        key={lvl}
+                        onClick={() => {
+                          if (unlocked && lvl !== quiz.level) {
+                            quiz.switchLevel(quiz.topic!, lvl);
+                          }
+                        }}
+                        disabled={!unlocked}
+                        className={`
+                          w-7 h-7 rounded-full text-xs font-bold transition-all
+                          ${isActive
+                            ? 'bg-primary text-primary-foreground ring-2 ring-primary/30 scale-110'
+                            : isMastered
+                              ? 'bg-success/20 text-success hover:bg-success/30'
+                              : unlocked
+                                ? 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+                          }
+                        `}
+                        title={isMastered ? `Level ${lvl} ✓` : unlocked ? `Switch to Level ${lvl}` : `Level ${lvl} locked`}
+                      >
+                        {unlocked ? lvl : '🔒'}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
+                  {quiz.isReviewMode ? (
+                    <>
+                      <span className="flex items-center gap-1.5 text-blue-500">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        Review Mode
+                      </span>
+                      <span className="text-xs text-muted-foreground">Answers don't count</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
+                      <span>⭐ {quiz.sessionStats.stars}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Stats for mixed mode */}
+            {isInQuizMode && quiz.mixedTopics && (
               <motion.div
                 className="flex items-center justify-between text-sm text-muted-foreground mb-3 px-1"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                {quiz.isReviewMode ? (
-                  <>
-                    <span className="flex items-center gap-1.5 text-blue-500">
-                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                      Review Mode
-                    </span>
-                    <span className="text-xs text-muted-foreground">Answers don't count</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                    <span>⭐ {quiz.sessionStats.stars}</span>
-                  </>
-                )}
+                <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
+                <span>⭐ {quiz.sessionStats.stars}</span>
               </motion.div>
             )}
 
@@ -810,6 +861,7 @@ const Index = () => {
         maxLevel={quiz.MAX_LEVEL}
         onAdvance={handleModalAction}
         onRetry={handleModalAction}
+        onContinuePracticing={handleContinuePracticing}
       />
 
       {/* Session Summary Modal */}

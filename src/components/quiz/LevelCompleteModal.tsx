@@ -12,6 +12,7 @@ interface LevelCompleteModalProps {
   maxLevel: number;
   onAdvance: () => void;
   onRetry: () => void;
+  onContinuePracticing?: () => void;
 }
 
 export const LevelCompleteModal = ({
@@ -22,6 +23,7 @@ export const LevelCompleteModal = ({
   maxLevel,
   onAdvance,
   onRetry,
+  onContinuePracticing,
 }: LevelCompleteModalProps) => {
   const [character, setCharacter] = useState(getRandomCharacter(level));
   const [message, setMessage] = useState('');
@@ -205,7 +207,7 @@ export const LevelCompleteModal = ({
                   ? (isTopicComplete 
                       ? "Congratulations! You've mastered this topic! 🌟" 
                       : `Ready for Level ${level + 1}? ${progressMessage}`)
-                  : "You need 80% accuracy (8/10) to advance. Let's try again!"
+                  : "You need 90% accuracy (9/10) to advance. Let's try again!"
                 }
               </p>
 
@@ -234,6 +236,30 @@ export const LevelCompleteModal = ({
                   </>
                 )}
               </motion.button>
+
+              {/* Continue Practicing option - stay on current level */}
+              {passed && !isTopicComplete && onContinuePracticing && (
+                <motion.button
+                  onClick={onContinuePracticing}
+                  className="w-full mt-3 p-3 rounded-xl font-medium text-muted-foreground bg-muted hover:bg-muted/80 flex items-center justify-center gap-2 transition-colors"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Keep Practicing Level {level}
+                </motion.button>
+              )}
+
+              {!passed && (
+                <motion.button
+                  onClick={onContinuePracticing || onRetry}
+                  className="w-full mt-3 p-3 rounded-xl font-medium text-muted-foreground bg-muted hover:bg-muted/80 flex items-center justify-center gap-2 transition-colors"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Keep Practicing (No Reset)
+                </motion.button>
+              )}
 
               {passed && !isTopicComplete && (
                 <p className="mt-4 text-sm text-muted-foreground flex items-center justify-center gap-2">
