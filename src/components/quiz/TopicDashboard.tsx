@@ -28,13 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-const getThresholdForLevel = (level: number): number => {
-  if (level <= 1) return 1.0;
-  if (level <= 3) return 0.9;
-  if (level <= 5) return 0.8;
-  return 0.7;
-};
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
