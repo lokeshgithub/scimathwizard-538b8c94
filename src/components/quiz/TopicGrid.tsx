@@ -3,13 +3,7 @@ import { motion } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
 import { BookOpen, CheckCircle, Star, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const getThresholdForLevel = (level: number): number => {
-  if (level <= 1) return 1.0;
-  if (level <= 3) return 0.9;
-  if (level <= 5) return 0.8;
-  return 0.7;
-};
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { MixTopicsModal } from './MixTopicsModal';
 
 interface TopicGridProps {

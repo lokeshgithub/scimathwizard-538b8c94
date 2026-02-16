@@ -17,6 +17,7 @@ import { fetchAllQuestions, logAnswerToServer, loadQuestionsFromCache, fetchTopi
 import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
@@ -47,13 +48,6 @@ export const saveSubjectPreference = (subject: Subject): void => {
 };
 
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
-// Variable thresholds by level: harder levels require lower accuracy
-const getThresholdForLevel = (level: number): number => {
-  if (level <= 1) return 1.0;   // 100% (10/10) - fundamentals must be perfect
-  if (level <= 3) return 0.9;   // 90% (9/10) - school & competitive basics
-  if (level <= 5) return 0.8;   // 80% (8/10) - olympiad & elite prep
-  return 0.7;                   // 70% (7/10) - national olympiad / grand master
-};
 const THRESHOLD = 0.9; // Legacy default, use getThresholdForLevel() instead
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
