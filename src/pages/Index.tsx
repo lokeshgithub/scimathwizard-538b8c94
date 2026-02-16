@@ -615,7 +615,7 @@ const Index = () => {
                 </div>
               </div>
               <p className="text-white/80 text-sm mt-2">
-                Master each level (80% accuracy) with your magical friends! ✨
+                Master each level with increasing challenges! ✨
               </p>
             </>
           )}
