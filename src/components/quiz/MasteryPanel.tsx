@@ -17,6 +17,13 @@ import {
 import { PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const getThresholdForLevel = (level: number): number => {
+  if (level <= 1) return 1.0;
+  if (level <= 3) return 0.9;
+  if (level <= 5) return 0.8;
+  return 0.7;
+};
+
 interface MasteryPanelProps {
   topicName: string;
   currentLevel: number;
@@ -198,6 +205,9 @@ export const MasteryPanel = ({
                 </motion.div>
               )}
               <div className="text-xl font-bold">{level}</div>
+              <div className="text-[10px] opacity-75 font-medium">
+                {Math.round(getThresholdForLevel(level) * 100)}%
+              </div>
               <div className="text-xs opacity-90">
                 {isMastered ? (
                   <CheckCircle className="w-4 h-4 mx-auto" />
