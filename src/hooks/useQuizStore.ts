@@ -47,7 +47,14 @@ export const saveSubjectPreference = (subject: Subject): void => {
 };
 
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
-const THRESHOLD = 0.9; // 90% accuracy needed (9/10)
+// Variable thresholds by level: harder levels require lower accuracy
+const getThresholdForLevel = (level: number): number => {
+  if (level <= 1) return 1.0;   // 100% (10/10) - fundamentals must be perfect
+  if (level <= 3) return 0.9;   // 90% (9/10) - school & competitive basics
+  if (level <= 5) return 0.8;   // 80% (8/10) - olympiad & elite prep
+  return 0.7;                   // 70% (7/10) - national olympiad / grand master
+};
+const THRESHOLD = 0.9; // Legacy default, use getThresholdForLevel() instead
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
@@ -977,8 +984,9 @@ export const useQuizStore = () => {
       recordTopicForSpacedRepetition(topic, accuracy);
     }
 
-    if (accuracy >= THRESHOLD) {
-      console.log(`[checkMastery] PASSED level ${level} for topic "${topic}" with accuracy ${(accuracy * 100).toFixed(1)}%`);
+    const threshold = getThresholdForLevel(level);
+    if (accuracy >= threshold) {
+      console.log(`[checkMastery] PASSED level ${level} for topic "${topic}" with accuracy ${(accuracy * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%)`);
 
       // Mark level as mastered
       setProgress(prev => {
@@ -1515,7 +1523,8 @@ export const useQuizStore = () => {
     // Constants
     MAX_LEVEL: currentMaxLevel, // Dynamic based on topic
     PER_LEVEL,
-    THRESHOLD,
+    THRESHOLD: getThresholdForLevel(level), // Dynamic threshold based on current level
+    getThresholdForLevel,
     
     // Actions
     setSubject: changeSubject, // Use changeSubject to properly reset state
