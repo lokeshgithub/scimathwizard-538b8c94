@@ -354,15 +354,18 @@ describe('Question Tracking', () => {
 });
 
 describe('Mastery Threshold', () => {
-  it('should require 80% accuracy to pass level (8/10)', () => {
-    const THRESHOLD = 0.8;
-    const PER_LEVEL = 10;
-
-    const passing = { correct: 8, total: 10 };
-    const failing = { correct: 7, total: 10 };
-
-    expect(passing.correct / passing.total >= THRESHOLD).toBe(true);
-    expect(failing.correct / failing.total >= THRESHOLD).toBe(false);
+  it('should have variable thresholds per level', () => {
+    // Level 1: 100%, Levels 2-3: 90%, Levels 4-5: 80%, Level 6: 70%
+    const thresholds: Record<number, number> = { 1: 1.0, 2: 0.9, 3: 0.9, 4: 0.8, 5: 0.8, 6: 0.7 };
+    
+    for (const [level, threshold] of Object.entries(thresholds)) {
+      const needed = Math.ceil(threshold * 10);
+      const passing = { correct: needed, total: 10 };
+      const failing = { correct: needed - 1, total: 10 };
+      
+      expect(passing.correct / passing.total >= threshold).toBe(true);
+      expect(failing.correct / failing.total >= threshold).toBe(false);
+    }
   });
 
   it('should not trigger mastery check until 10 questions answered', () => {
