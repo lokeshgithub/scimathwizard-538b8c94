@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
-import { logAnswerToServer } from '@/services/questionService';
+import { validateAnswer, getShuffleMap } from '@/services/questionService';
 
 export interface OlympiadQuestionResult {
   question: Question;
@@ -238,16 +238,17 @@ export function useOlympiadTest(banks: QuestionBank) {
 
     const timeSpent = (Date.now() - questionStartTime) / 1000;
 
-    // INSTANT LOCAL VALIDATION - no network call needed!
-    // The correct answer is already loaded in memory
-    const isCorrect = selectedIndex === currentQuestion.correct;
-    const shuffledCorrectIndex = currentQuestion.correct;
-
-    // Log to server in background (non-blocking, fire-and-forget)
+    // SERVER-SIDE VALIDATION via edge function
     const originalSelectedIndex = currentQuestion.shuffleMap
       ? currentQuestion.shuffleMap[selectedIndex]
       : selectedIndex;
-    logAnswerToServer(currentQuestion.id, originalSelectedIndex, isCorrect);
+    const serverResult = await validateAnswer(currentQuestion.id, originalSelectedIndex);
+    
+    const isCorrect = serverResult.isCorrect;
+    const shuffleMap = currentQuestion.shuffleMap || getShuffleMap(currentQuestion.id);
+    const shuffledCorrectIndex = shuffleMap 
+      ? shuffleMap.findIndex(origIdx => origIdx === serverResult.correctIndex)
+      : serverResult.correctIndex;
 
     const difficulty = difficultyMapRef.current.get(currentQuestion.id) || 'medium';
     const topicName = topicMapRef.current.get(currentQuestion.id) || 'Unknown';

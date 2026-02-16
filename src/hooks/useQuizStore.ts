@@ -13,7 +13,7 @@ import type {
   TopicAnalysis,
   UnlockedLevels
 } from '@/types/quiz';
-import { fetchAllQuestions, logAnswerToServer, loadQuestionsFromCache, fetchTopicMetadata, fetchQuestionsForTopics, buildEmptyBank, type TopicMetadata } from '@/services/questionService';
+import { fetchAllQuestions, validateAnswer, loadQuestionsFromCache, fetchTopicMetadata, fetchQuestionsForTopics, buildEmptyBank, getShuffleMap, type TopicMetadata } from '@/services/questionService';
 import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
@@ -893,20 +893,27 @@ export const useQuizStore = () => {
     // Calculate time spent on this question
     const timeSpent = (Date.now() - questionStartTime) / 1000;
 
-    // INSTANT LOCAL VALIDATION - no network call needed!
-    // The correct answer is already loaded in memory from fetchAllQuestions
-    const isCorrect = selectedIndex === currentQ.correct;
-    const correctIndex = currentQ.correct;
+    // SERVER-SIDE VALIDATION - answers are validated via edge function
+    const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
+    const serverResult = await validateAnswer(currentQ.id, originalSelectedIndex);
+    
+    // Convert server's original correctIndex back to shuffled index for UI display
+    const shuffleMap = currentQ.shuffleMap || getShuffleMap(currentQ.id);
+    const correctIndex = shuffleMap 
+      ? shuffleMap.findIndex(origIdx => origIdx === serverResult.correctIndex)
+      : serverResult.correctIndex;
+    const isCorrect = serverResult.isCorrect;
+
+    // Update the question's correct index and explanation for UI display
+    currentQ.correct = correctIndex;
+    if (serverResult.explanation) {
+      currentQ.explanation = serverResult.explanation;
+    }
 
     // In REVIEW MODE, skip all tracking - just return the result
-    // Students can practice without affecting their progress
     if (isReviewMode) {
       return { isCorrect, correctIndex, question: currentQ, timeSpent };
     }
-
-    // Log to server in background (non-blocking, fire-and-forget)
-    const originalSelectedIndex = currentQ.shuffleMap ? currentQ.shuffleMap[selectedIndex] : selectedIndex;
-    logAnswerToServer(currentQ.id, originalSelectedIndex, isCorrect);
 
     // Record timing for this question
     const timing: QuestionTiming = {

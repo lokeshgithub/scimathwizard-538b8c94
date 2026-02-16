@@ -37,7 +37,7 @@ interface DBTopic {
   grade: number;
 }
 
-// Question data with correct_answer for instant local validation
+// Question data from RPCs (correct_answer is NOT included for security)
 interface DBQuestion {
   id: string;
   topic_id: string;
@@ -47,14 +47,13 @@ interface DBQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_answer: string;
   explanation: string | null;
   hint: string | null;
   sub_topic: string | null; // Sub-topic within a chapter (Physics/Chemistry hierarchy)
 }
 
-// In-memory cache for instant answer validation
-const answerCache = new Map<string, { correctIndex: number; explanation: string }>();
+// Shuffle map cache: maps question ID to its shuffleMap for reverse-mapping server responses
+const shuffleMapCache = new Map<string, number[]>();
 
 // LocalStorage cache for questions to speed up initial load
 const QUESTIONS_CACHE_KEY = 'magical-mastery-questions-cache';
@@ -86,14 +85,13 @@ export function loadQuestionsFromCache(): QuestionBank | null {
     const parsed: CachedQuestions = JSON.parse(cached);
     // Check if cache is still valid
     if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
-      // Rebuild answer cache from stored data
+      // Rebuild shuffleMap cache from stored data
       for (const subjectKey of Object.keys(parsed.bank)) {
         for (const topicName of Object.keys(parsed.bank[subjectKey])) {
           for (const q of parsed.bank[subjectKey][topicName]) {
-            answerCache.set(q.id, {
-              correctIndex: q.correct,
-              explanation: q.explanation || '',
-            });
+            if (q.shuffleMap) {
+              shuffleMapCache.set(q.id, q.shuffleMap);
+            }
           }
         }
       }
@@ -178,9 +176,11 @@ function loadTopicFromCache(topicId: string): Question[] | null {
     if (!cached) return null;
     const parsed: CachedTopicQuestions = JSON.parse(cached);
     if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
-      // Rebuild answer cache entries
+      // Rebuild shuffleMap cache entries
       for (const q of parsed.questions) {
-        answerCache.set(q.id, { correctIndex: q.correct, explanation: q.explanation || '' });
+        if (q.shuffleMap) {
+          shuffleMapCache.set(q.id, q.shuffleMap);
+        }
       }
       return parsed.questions;
     }
@@ -207,19 +207,18 @@ function saveTopicToCache(topicId: string, questions: Question[]): void {
 function processDBQuestions(dbQuestions: DBQuestion[], topicName: string): Question[] {
   const results: Question[] = [];
   for (const q of dbQuestions) {
-    const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
     const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
     const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
-    const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
 
-    answerCache.set(q.id, { correctIndex: shuffledCorrectIndex, explanation: q.explanation || '' });
+    // Store shuffleMap for server response reverse-mapping
+    shuffleMapCache.set(q.id, shuffleMap);
 
     results.push({
       id: q.id,
       level: q.level,
       question: q.question,
       options: shuffledOptions,
-      correct: shuffledCorrectIndex,
+      correct: -1, // Unknown until server validates
       explanation: q.explanation || '',
       concepts: [],
       hint: q.hint || undefined,
@@ -379,10 +378,10 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     (topics as DBTopic[]).map(t => [t.id, t])
   );
 
-  // Clear and rebuild answer cache
-  answerCache.clear();
+  // Clear and rebuild shuffleMap cache
+  shuffleMapCache.clear();
 
-  // Organize questions with correct answer stored in memory
+  // Organize questions (correct answers NOT included - validated server-side)
   for (const q of questions) {
     const topic = topicMap.get(q.topic_id);
     if (!topic) continue;
@@ -400,40 +399,28 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       bank[subjectKey][topicName] = [];
     }
 
-    // Convert A/B/C/D to 0/1/2/3
-    const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
-
     // Shuffle options for each student session
     const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
     const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
 
-    // Find where the correct answer ended up after shuffling
-    // shuffleMap[newIdx] = originalIdx, so we need to find newIdx where shuffleMap[newIdx] === originalCorrectIndex
-    const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
-
-    // Cache the correct answer for instant validation
-    answerCache.set(q.id, {
-      correctIndex: shuffledCorrectIndex,
-      explanation: q.explanation || '',
-    });
+    // Store shuffleMap for server response reverse-mapping
+    shuffleMapCache.set(q.id, shuffleMap);
 
     // Use only custom hints from database - no auto-generation
     const hint = q.hint || undefined;
 
-    // Store shuffled correct index locally for instant validation
-    // For sub-topic: if null, same as topic name (backward compat for Math)
     bank[subjectKey][topicName].push({
       id: q.id,
       level: q.level,
       question: q.question,
       options: shuffledOptions,
-      correct: shuffledCorrectIndex, // Now stored for instant validation!
+      correct: -1, // Unknown until server validates
       explanation: q.explanation || '',
       concepts: [],
       hint,
       shuffleMap,
-      subTopic: q.sub_topic || undefined, // Sub-topic within chapter (Physics/Chemistry)
-      chapter: topicName, // Parent chapter/topic name
+      subTopic: q.sub_topic || undefined,
+      chapter: topicName,
     });
   }
 
@@ -495,17 +482,17 @@ async function refreshQuestionsInBackground(): Promise<void> {
         if (!bank[subjectKey]) bank[subjectKey] = {};
         if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
 
-        const originalCorrectIndex = q.correct_answer.toUpperCase().charCodeAt(0) - 65;
         const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
         const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
-        const shuffledCorrectIndex = shuffleMap.findIndex(origIdx => origIdx === originalCorrectIndex);
+
+        shuffleMapCache.set(q.id, shuffleMap);
 
         bank[subjectKey][topicName].push({
           id: q.id,
           level: q.level,
           question: q.question,
           options: shuffledOptions,
-          correct: shuffledCorrectIndex,
+          correct: -1, // Unknown until server validates
           explanation: q.explanation || '',
           concepts: [],
           hint: q.hint || undefined,
@@ -525,19 +512,9 @@ async function refreshQuestionsInBackground(): Promise<void> {
   }
 }
 
-// Instant local answer validation - no network call needed!
-export function validateAnswerLocal(
-  questionId: string,
-  selectedAnswer: number
-): { isCorrect: boolean; correctIndex: number; explanation: string } | null {
-  const cached = answerCache.get(questionId);
-  if (!cached) return null;
-  
-  return {
-    isCorrect: selectedAnswer === cached.correctIndex,
-    correctIndex: cached.correctIndex,
-    explanation: cached.explanation,
-  };
+// Get the shuffleMap for a question (needed to convert server's original index to shuffled index)
+export function getShuffleMap(questionId: string): number[] | undefined {
+  return shuffleMapCache.get(questionId);
 }
 
 // Background logging to edge function (fire-and-forget, non-blocking)
@@ -554,20 +531,11 @@ export function logAnswerToServer(
   });
 }
 
-// Legacy validate answer via edge function (kept for fallback)
+// Validate answer via edge function (server-side validation)
 export async function validateAnswer(
   questionId: string,
-  selectedAnswer: number
+  selectedAnswer: number // This should be the ORIGINAL (unshuffled) index
 ): Promise<{ isCorrect: boolean; correctIndex: number; explanation: string }> {
-  // Try local validation first (instant!)
-  const localResult = validateAnswerLocal(questionId, selectedAnswer);
-  if (localResult) {
-    // Log to server in background (non-blocking)
-    logAnswerToServer(questionId, selectedAnswer, localResult.isCorrect);
-    return localResult;
-  }
-
-  // Fallback to edge function if not in cache
   const { data, error } = await supabase.functions.invoke('validate-answer', {
     body: { questionId, selectedAnswer },
   });
