@@ -29,6 +29,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const getThresholdForLevel = (level: number): number => {
+  if (level <= 1) return 1.0;
+  if (level <= 3) return 0.9;
+  if (level <= 5) return 0.8;
+  return 0.7;
+};
+
 interface TopicDashboardProps {
   topics: { [name: string]: any[] };
   currentTopic: string | null;
@@ -640,7 +647,7 @@ export const TopicDashboard = ({
                                             : 'bg-muted text-muted-foreground hover:bg-muted/80'
                                           }
                                         `}
-                                        title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `Practice L${level}`}
+                                        title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `L${level} — need ${Math.round(getThresholdForLevel(level) * 100)}% to pass`}
                                         data-testid={`level-button-${level}`}
                                       >
                                         {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
