@@ -3,6 +3,13 @@ import { motion } from 'framer-motion';
 import { TopicProgress } from '@/types/quiz';
 import { BookOpen, CheckCircle, Star, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const getThresholdForLevel = (level: number): number => {
+  if (level <= 1) return 1.0;
+  if (level <= 3) return 0.9;
+  if (level <= 5) return 0.8;
+  return 0.7;
+};
 import { MixTopicsModal } from './MixTopicsModal';
 
 interface TopicGridProps {
@@ -111,20 +118,21 @@ export const TopicGrid = ({
               {topicLevels.map(level => {
                 const isMastered = progress[level]?.mastered;
                 return (
-                  <div
-                    key={level}
-                    className={`
-                      w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                      ${isMastered 
-                        ? 'bg-success text-white' 
-                        : isSelected 
-                          ? 'bg-white/20 text-white' 
-                          : 'bg-muted text-muted-foreground'
-                      }
-                    `}
-                  >
-                    {isMastered ? <CheckCircle className="w-4 h-4" /> : level}
-                  </div>
+                    <div
+                      key={level}
+                      className={`
+                        w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                        ${isMastered 
+                          ? 'bg-success text-white' 
+                          : isSelected 
+                            ? 'bg-white/20 text-white' 
+                            : 'bg-muted text-muted-foreground'
+                        }
+                      `}
+                      title={isMastered ? `L${level} Mastered` : `L${level} — need ${Math.round(getThresholdForLevel(level) * 100)}% to pass`}
+                    >
+                      {isMastered ? <CheckCircle className="w-4 h-4" /> : level}
+                    </div>
                 );
               })}
             </div>
