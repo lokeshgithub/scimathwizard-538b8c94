@@ -532,7 +532,6 @@ export type Database = {
       get_public_questions: {
         Args: never
         Returns: {
-          correct_answer: string
           created_at: string
           explanation: string
           hint: string
@@ -559,7 +558,6 @@ export type Database = {
       get_questions_by_topics: {
         Args: { p_topic_ids: string[] }
         Returns: {
-          correct_answer: string
           created_at: string
           explanation: string
           hint: string

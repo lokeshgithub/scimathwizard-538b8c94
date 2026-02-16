@@ -10,7 +10,7 @@ import {
   calculateSkillScore, 
   getSkillTier 
 } from '@/types/adaptiveChallenge';
-import { logAnswerToServer } from '@/services/questionService';
+import { validateAnswer, getShuffleMap } from '@/services/questionService';
 
 const initialState: AdaptiveState = {
   isActive: false,
@@ -151,16 +151,17 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
 
     const timeSpent = (Date.now() - questionStartTime) / 1000;
     
-    // INSTANT LOCAL VALIDATION - no network call needed!
-    // The correct answer is already loaded in memory
-    const isCorrect = selectedIndex === state.currentQuestion.correct;
-    const shuffledCorrectIndex = state.currentQuestion.correct;
-
-    // Log to server in background (non-blocking, fire-and-forget)
+    // SERVER-SIDE VALIDATION via edge function
     const originalSelectedIndex = state.currentQuestion.shuffleMap 
       ? state.currentQuestion.shuffleMap[selectedIndex] 
       : selectedIndex;
-    logAnswerToServer(state.currentQuestion.id, originalSelectedIndex, isCorrect);
+    const serverResult = await validateAnswer(state.currentQuestion.id, originalSelectedIndex);
+    
+    const isCorrect = serverResult.isCorrect;
+    const shuffleMap = state.currentQuestion.shuffleMap || getShuffleMap(state.currentQuestion.id);
+    const shuffledCorrectIndex = shuffleMap 
+      ? shuffleMap.findIndex(origIdx => origIdx === serverResult.correctIndex)
+      : serverResult.correctIndex;
 
     const topicName = getQuestionTopic(state.currentQuestion.id, state.subject, state.selectedTopics);
 

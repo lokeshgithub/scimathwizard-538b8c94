@@ -4,7 +4,7 @@ import { DailyChallenge, DailyChallengeStats, getDailyChallengeBonus } from '@/t
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Flame, Trophy, Clock, CheckCircle, XCircle, Star, X, Loader2 } from 'lucide-react';
-import { logAnswerToServer } from '@/services/questionService';
+import { validateAnswer, getShuffleMap } from '@/services/questionService';
 
 interface DailyChallengeCardProps {
   challenge: DailyChallenge | null;
@@ -70,25 +70,33 @@ export const DailyChallengeCard = ({
     setSelectedAnswer(index);
     setIsValidating(true);
 
-    // INSTANT LOCAL VALIDATION - no network call needed!
-    // The correct answer is already loaded in memory
-    const answerIsCorrect = index === challenge.question.correct;
-    const answerCorrectIndex = challenge.question.correct;
+    // SERVER-SIDE VALIDATION via edge function
+    try {
+      const shuffleMap = getShuffleMap(challenge.question.id);
+      const originalSelectedIndex = shuffleMap
+        ? shuffleMap[index]
+        : index;
+      const serverResult = await validateAnswer(challenge.question.id, originalSelectedIndex);
+      
+      const answerCorrectIndex = shuffleMap
+        ? shuffleMap.findIndex(origIdx => origIdx === serverResult.correctIndex)
+        : serverResult.correctIndex;
+      const answerIsCorrect = serverResult.isCorrect;
 
-    // Log to server in background (non-blocking, fire-and-forget)
-    logAnswerToServer(challenge.question.id, index, answerIsCorrect);
-
-    setIsCorrect(answerIsCorrect);
-    setCorrectIndex(answerCorrectIndex);
-    setIsAnswered(true);
-    setIsValidating(false);
+      setIsCorrect(answerIsCorrect);
+      setCorrectIndex(answerCorrectIndex);
+      setIsAnswered(true);
+      setIsValidating(false);
     
-    if (timerRef.current) clearInterval(timerRef.current);
-    const timeSpent = (Date.now() - startTimeRef.current) / 1000;
+      if (timerRef.current) clearInterval(timerRef.current);
+      const timeSpent = (Date.now() - startTimeRef.current) / 1000;
     
-    onComplete(answerIsCorrect, timeSpent);
+      onComplete(answerIsCorrect, timeSpent);
+    } catch (err) {
+      console.error('Failed to validate answer:', err);
+      setIsValidating(false);
+    }
   };
-
   const nextStreakBonus = getDailyChallengeBonus(stats.currentStreak + 1);
 
   if (isLoading || !challenge) return null;

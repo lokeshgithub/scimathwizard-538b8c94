@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { BattleRoom, BattlePresence, generateRoomCode, generatePlayerId, getRandomPlayerName } from '@/types/battle';
 import { Question, QuestionBank } from '@/types/quiz';
-import { logAnswerToServer } from '@/services/questionService';
+import { validateAnswer, getShuffleMap } from '@/services/questionService';
 
 const PLAYER_ID_KEY = 'battle-player-id';
 const PLAYER_NAME_KEY = 'battle-player-name';
@@ -309,36 +309,40 @@ export const useBattleRoom = (banks: QuestionBank) => {
     }));
   }, [state.room, state.isHost, state.battleQuestions]);
 
-  // Submit answer with instant local validation
+  // Submit answer with server-side validation
   const submitAnswer = useCallback(async (answerIndex: number) => {
     if (!state.room || !channelRef.current || state.myAnswer !== null || !state.currentQuestion) return;
 
-    // INSTANT LOCAL VALIDATION - no network call needed!
-    const isCorrect = answerIndex === state.currentQuestion.correct;
-
-    // Immediately record the answer locally
-    setState(prev => ({ 
-      ...prev, 
-      myAnswer: answerIndex,
-      myAnswerCorrect: isCorrect,
-    }));
-
-    // Log to server in background (non-blocking)
-    const originalSelectedIndex = state.currentQuestion.shuffleMap
-      ? state.currentQuestion.shuffleMap[answerIndex]
+    // SERVER-SIDE VALIDATION via edge function
+    const shuffleMap = state.currentQuestion.shuffleMap || getShuffleMap(state.currentQuestion.id);
+    const originalSelectedIndex = shuffleMap
+      ? shuffleMap[answerIndex]
       : answerIndex;
-    logAnswerToServer(state.currentQuestion.id, originalSelectedIndex, isCorrect);
 
-    // Broadcast answer with locally-validated result
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'answer',
-      payload: { 
-        playerId: state.playerId, 
-        answerIndex,
-        isCorrect,
-      },
-    });
+    try {
+      const serverResult = await validateAnswer(state.currentQuestion.id, originalSelectedIndex);
+      const isCorrect = serverResult.isCorrect;
+
+      // Record the answer locally
+      setState(prev => ({ 
+        ...prev, 
+        myAnswer: answerIndex,
+        myAnswerCorrect: isCorrect,
+      }));
+
+      // Broadcast answer with server-validated result
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'answer',
+        payload: { 
+          playerId: state.playerId, 
+          answerIndex,
+          isCorrect,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to validate battle answer:', err);
+    }
   }, [state.room, state.playerId, state.myAnswer, state.currentQuestion]);
 
   // Process round result when both players have answered (using server-validated results)
