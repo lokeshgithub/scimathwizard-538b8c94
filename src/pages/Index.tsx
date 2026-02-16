@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { toast } from 'sonner';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useQuizStore } from '@/hooks/useQuizStore';
@@ -725,7 +726,8 @@ const Index = () => {
                     const isActive = lvl === quiz.level;
                     const unlocked = quiz.isLevelUnlocked(quiz.topic!, lvl);
                     const isMastered = quiz.getTopicProgress(quiz.topic!)[lvl]?.mastered;
-                    return (
+                      const thresholdPct = Math.round(getThresholdForLevel(lvl) * 100);
+                      return (
                       <button
                         key={lvl}
                         onClick={() => {
@@ -735,7 +737,8 @@ const Index = () => {
                         }}
                         disabled={!unlocked}
                         className={`
-                          w-7 h-7 rounded-full text-xs font-bold transition-all
+                          flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all
+                          min-w-[36px] h-[42px] px-1
                           ${isActive
                             ? 'bg-primary text-primary-foreground ring-2 ring-primary/30 scale-110'
                             : isMastered
@@ -745,9 +748,14 @@ const Index = () => {
                                 : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
                           }
                         `}
-                        title={isMastered ? `Level ${lvl} ✓` : unlocked ? `Switch to Level ${lvl}` : `Level ${lvl} locked`}
+                        title={isMastered ? `Level ${lvl} ✓ (${thresholdPct}%)` : unlocked ? `Level ${lvl} — need ${thresholdPct}% to pass` : `Level ${lvl} locked`}
                       >
-                        {unlocked ? lvl : '🔒'}
+                        <span>{unlocked ? lvl : '🔒'}</span>
+                        {unlocked && (
+                          <span className={`text-[9px] font-medium leading-none ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                            {thresholdPct}%
+                          </span>
+                        )}
                       </button>
                     );
                   })}
