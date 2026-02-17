@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { 
   Trophy, Target, Clock, Zap, TrendingUp, Award, ChevronRight, 
   RotateCcw, Home, AlertTriangle, BookOpen, Lightbulb, ChevronDown,
-  CheckCircle, XCircle, Loader2, Cloud, Users, Star
+  CheckCircle, XCircle, Loader2, Cloud, Users, Star, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AdaptiveState, TopicPerformance, StudyRecommendation } from '@/types/adaptiveChallenge';
 import { SKILL_TIERS, analyzeTopicPerformance, generateRecommendations, getEstimatedPercentile } from '@/types/adaptiveChallenge';
+import { exportAdaptiveResultsToPdf } from '@/utils/exportAdaptiveReport';
 
 interface AdaptiveChallengeResultsProps {
   state: AdaptiveState;
@@ -447,6 +448,24 @@ export const AdaptiveChallengeResults = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.1 }}
           >
+            <Button
+              onClick={() => exportAdaptiveResultsToPdf({
+                state,
+                tier,
+                accuracy,
+                avgTime,
+                duration,
+                topicPerformances,
+                recommendations,
+                percentile: percentileData?.percentile,
+                estimatedPercentile: showEstimatedPercentile ? estimatedPercentile : undefined,
+              })}
+              variant="outline"
+              className="flex-1"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Report
+            </Button>
             <Button
               onClick={onRetry}
               className={`flex-1 bg-gradient-to-r ${tier.colorClass} text-white hover:opacity-90`}
