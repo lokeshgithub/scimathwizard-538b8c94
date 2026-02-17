@@ -91,9 +91,18 @@ const AdaptiveChallenge = () => {
     }
   };
 
-  const handleStartChallenge = () => {
+  const [isStarting, setIsStarting] = useState(false);
+
+  const handleStartChallenge = async () => {
     const topics = selectedTopics.length > 0 ? selectedTopics : availableTopics;
-    adaptive.startChallenge(selectedSubject, topics);
+    setIsStarting(true);
+    try {
+      // Ensure all selected topics are lazy-loaded before starting
+      await Promise.all(topics.map(t => quiz.ensureTopicLoaded(t, selectedSubject)));
+      adaptive.startChallenge(selectedSubject, topics);
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const handleAnswer = useCallback(async (selectedIndex: number) => {
@@ -121,12 +130,15 @@ const AdaptiveChallenge = () => {
   }, [adaptive, sound, confetti]);
 
   const handleNext = useCallback(() => {
-    // Check if challenge is complete
+    // Advance to next question (or complete)
+    adaptive.advanceToNext();
+    
+    // Check if challenge will be complete after advancing
     if (adaptive.state.isComplete) {
       sound.playLevelUp();
       confetti.fireMastery();
     }
-  }, [adaptive.state.isComplete, sound, confetti]);
+  }, [adaptive, sound, confetti]);
 
   // Save results when challenge is complete
   useEffect(() => {
@@ -379,15 +391,37 @@ const AdaptiveChallenge = () => {
               >
                 <Button
                   onClick={handleStartChallenge}
+                  disabled={isStarting}
                   className="w-full py-6 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                   size="lg"
                 >
-                  <Play className="w-5 h-5 mr-2" />
-                  Start Adaptive Challenge
+                  {isStarting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Loading Questions...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 mr-2" />
+                      Start Adaptive Challenge
+                    </>
+                  )}
                 </Button>
               </motion.div>
             )}
           </motion.div>
+        )}
+
+        {/* Fallback: active but no question available */}
+        {adaptive.state.isActive && !adaptive.state.currentQuestion && !adaptive.state.isComplete && (
+          <div className="bg-card rounded-2xl p-8 shadow-card text-center space-y-4">
+            <p className="text-muted-foreground">
+              No questions available for this challenge configuration.
+            </p>
+            <Button variant="outline" onClick={() => { adaptive.resetChallenge(); }}>
+              Go Back
+            </Button>
+          </div>
         )}
 
         {/* Active Challenge - key forces full re-mount on question change to prevent answer state bleeding */}
@@ -408,7 +442,7 @@ const AdaptiveChallenge = () => {
             </div>
 
             <AdaptiveQuizCard
-              key={`${adaptive.state.currentQuestion.id}-${adaptive.state.totalQuestions}`}
+              key={adaptive.state.currentQuestion.id}
               question={adaptive.state.currentQuestion}
               currentLevel={adaptive.state.currentLevel}
               progress={adaptive.progressPercentage}

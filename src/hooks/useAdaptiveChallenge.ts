@@ -35,6 +35,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
   const [config] = useState<AdaptiveConfig>(DEFAULT_ADAPTIVE_CONFIG);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [usedQuestionIds, setUsedQuestionIds] = useState<Set<string>>(new Set());
+  const [pendingNext, setPendingNext] = useState<{ question: Question | null; shouldEnd: boolean } | null>(null);
 
   // Get all questions for a subject, organized by level (also track topic names)
   const getQuestionsByLevel = useCallback((subject: Subject, topics: string[]): Map<number, Question[]> => {
@@ -109,12 +110,24 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
     
     setUsedQuestionIds(new Set());
     
-    // Get first question
+    // Get first question - try start level first, then nearby levels
     const levelMap = getQuestionsByLevel(subject, topics);
-    const questionsAtLevel = levelMap.get(startLevel) || [];
-    const firstQuestion = questionsAtLevel.length > 0 
-      ? questionsAtLevel[Math.floor(Math.random() * questionsAtLevel.length)]
-      : null;
+    const maxLvl = getMaxLevel(subject, topics);
+    let firstQuestion: Question | null = null;
+    
+    const levelsToTry = [startLevel];
+    for (let offset = 1; offset <= maxLvl; offset++) {
+      if (startLevel + offset <= maxLvl) levelsToTry.push(startLevel + offset);
+      if (startLevel - offset >= 1) levelsToTry.push(startLevel - offset);
+    }
+    
+    for (const lvl of levelsToTry) {
+      const questionsAtLevel = levelMap.get(lvl) || [];
+      if (questionsAtLevel.length > 0) {
+        firstQuestion = questionsAtLevel[Math.floor(Math.random() * questionsAtLevel.length)];
+        break;
+      }
+    }
     
     if (firstQuestion) {
       setUsedQuestionIds(new Set([firstQuestion.id]));
@@ -252,6 +265,9 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
       }
     }
 
+    // Store the next question for later advancement (when user clicks Continue)
+    setPendingNext({ question: shouldEnd ? null : nextQuestion, shouldEnd: shouldEnd || !nextQuestion });
+
     setState(prev => ({
       ...prev,
       questionHistory: [...prev.questionHistory, result],
@@ -261,16 +277,11 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
       correctAtCurrentLevel: resetLevelStats ? (isCorrect ? 1 : 0) : newCorrectAtLevel,
       totalQuestions: newTotalQuestions,
       totalCorrect: newTotalCorrect,
-      currentQuestion: shouldEnd ? null : nextQuestion,
-      isComplete: shouldEnd || !nextQuestion,
+      // Keep currentQuestion the same so feedback can be shown
       endTime: shouldEnd ? Date.now() : undefined,
       finalScore,
       skillTier,
     }));
-
-    if (!shouldEnd && nextQuestion) {
-      setQuestionStartTime(Date.now());
-    }
 
     return { isCorrect, correctIndex: shuffledCorrectIndex };
   }, [
@@ -281,6 +292,23 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
     getMaxLevel, 
     usedQuestionIds
   ]);
+
+  // Advance to the next question (called when user clicks Continue)
+  const advanceToNext = useCallback(() => {
+    if (!pendingNext) return;
+    
+    setState(prev => ({
+      ...prev,
+      currentQuestion: pendingNext.question,
+      isComplete: pendingNext.shouldEnd,
+    }));
+    
+    if (pendingNext.question) {
+      setQuestionStartTime(Date.now());
+    }
+    
+    setPendingNext(null);
+  }, [pendingNext]);
 
   // Complete the challenge early
   const endChallenge = useCallback(() => {
@@ -310,6 +338,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
   const resetChallenge = useCallback(() => {
     setState(initialState);
     setUsedQuestionIds(new Set());
+    setPendingNext(null);
   }, []);
 
   // Available topics for the subject
@@ -329,6 +358,7 @@ export const useAdaptiveChallenge = (banks: QuestionBank) => {
     progressPercentage,
     startChallenge,
     answerQuestion,
+    advanceToNext,
     endChallenge,
     resetChallenge,
     getMaxLevel,
