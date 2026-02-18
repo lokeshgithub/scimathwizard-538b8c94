@@ -172,18 +172,22 @@ export function useOlympiadTest(banks: QuestionBank) {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const difficultyMapRef = useRef<Map<string, 'easy' | 'medium' | 'hard'>>(new Map());
   const topicMapRef = useRef<Map<string, string>>(new Map());
+  
+  // Keep a ref to always have latest banks value
+  const banksRef = useRef(banks);
+  banksRef.current = banks;
 
   // Build topic map for questions
   const buildTopicMap = useCallback((subject: Subject, topics: string[]) => {
     const map = new Map<string, string>();
     for (const topic of topics) {
-      const questions = banks[subject]?.[topic] || [];
+      const questions = banksRef.current[subject]?.[topic] || [];
       for (const q of questions) {
         map.set(q.id, topic);
       }
     }
     topicMapRef.current = map;
-  }, [banks]);
+  }, []);
 
   // Start a new Olympiad test
   const startTest = useCallback((
@@ -193,7 +197,7 @@ export function useOlympiadTest(banks: QuestionBank) {
   ) => {
     const examConfig = config[examType];
     const { questions, difficultyMap } = generateOlympiadSequence(
-      banks,
+      banksRef.current,
       subject,
       topics,
       examConfig.questionCount,
@@ -224,7 +228,7 @@ export function useOlympiadTest(banks: QuestionBank) {
     });
 
     setQuestionStartTime(Date.now());
-  }, [banks, config, buildTopicMap]);
+  }, [config, buildTopicMap]);
 
   // Answer current question
   const answerQuestion = useCallback(async (selectedIndex: number): Promise<{

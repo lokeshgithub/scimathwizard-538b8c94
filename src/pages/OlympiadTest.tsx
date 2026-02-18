@@ -112,8 +112,24 @@ export default function OlympiadTest() {
     }
   };
 
-  const handleStartTest = () => {
+  const [isStarting, setIsStarting] = useState(false);
+
+  const handleStartTest = async () => {
     const topics = selectedTopics.length > 0 ? selectedTopics : availableTopics;
+    
+    // Ensure all selected topics have their questions loaded before starting
+    setIsStarting(true);
+    try {
+      await Promise.all(
+        topics.map(t => quiz.ensureTopicLoaded(t, selectedSubject))
+      );
+      // Small delay to let state update propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Failed to load topics for Olympiad:', error);
+    }
+    setIsStarting(false);
+    
     olympiad.startTest(selectedSubject, topics, selectedExamType);
   };
 
@@ -340,10 +356,19 @@ export default function OlympiadTest() {
                 size="lg"
                 className="w-full"
                 onClick={handleStartTest}
-                disabled={availableTopics.length === 0}
+                disabled={availableTopics.length === 0 || isStarting}
               >
-                <Play className="w-5 h-5 mr-2" />
-                Start {examTypeInfo[selectedExamType].label} Test
+                {isStarting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Loading Questions...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-5 h-5 mr-2" />
+                    Start {examTypeInfo[selectedExamType].label} Test
+                  </>
+                )}
               </Button>
             </motion.div>
           ) : olympiad.state.isComplete && olympiad.getResults ? (
