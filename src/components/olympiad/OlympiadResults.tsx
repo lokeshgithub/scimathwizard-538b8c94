@@ -5,8 +5,9 @@ import {
   TrendingUp, Home, CheckCircle, XCircle,
   ChevronDown, ChevronUp, FileText, Brain,
   Lightbulb, Footprints, ShieldCheck, AlertTriangle, Key, Sparkles,
-  ClipboardList
+  ClipboardList, Download
 } from 'lucide-react';
+import { exportOlympiadResultsToPdf } from '@/utils/exportOlympiadReport';
 import { Button } from '@/components/ui/button';
 import type { OlympiadQuestionResult } from '@/hooks/useOlympiadTest';
 import { OlympiadQuestionReview } from './OlympiadQuestionReview';
@@ -31,6 +32,8 @@ interface OlympiadResultsProps {
   };
   questionResults?: OlympiadQuestionResult[];
   strictMode?: boolean;
+  studentName?: string;
+  subject?: string;
   onRetry: () => void;
   onHome: () => void;
 }
@@ -92,7 +95,7 @@ const formatExplanation = (explanation: string) => {
   return formatted;
 };
 
-export function OlympiadResults({ results, questionResults, strictMode, onRetry, onHome }: OlympiadResultsProps) {
+export function OlympiadResults({ results, questionResults, strictMode, studentName, subject, onRetry, onHome }: OlympiadResultsProps) {
   const [showReview, setShowReview] = useState(false);
   const [showFullPaper, setShowFullPaper] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
@@ -400,6 +403,16 @@ export function OlympiadResults({ results, questionResults, strictMode, onRetry,
           </AnimatePresence>
         </div>
       )}
+
+      {/* Download Report */}
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => exportOlympiadResultsToPdf({ results, questionResults, studentName, subject })}
+      >
+        <Download className="w-4 h-4 mr-2" />
+        Download Olympiad Report (PDF)
+      </Button>
 
       {/* Actions */}
       <div className="flex gap-3">
