@@ -19,6 +19,7 @@ import {
 import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useOlympiadTest } from '@/hooks/useOlympiadTest';
+import { useAuth } from '@/hooks/useAuth';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useConfetti } from '@/hooks/useConfetti';
 import { OlympiadQuizCard } from '@/components/olympiad/OlympiadQuizCard';
@@ -53,6 +54,7 @@ export default function OlympiadTest() {
   const navigate = useNavigate();
   const quiz = useQuizStore();
   const olympiad = useOlympiadTest(quiz.banks);
+  const { profile } = useAuth();
   const sound = useSoundEffects();
   const confetti = useConfetti();
 
@@ -383,6 +385,8 @@ export default function OlympiadTest() {
                 results={olympiad.getResults}
                 questionResults={olympiad.state.questionResults}
                 strictMode={strictMode}
+                studentName={profile?.display_name}
+                subject={selectedSubject}
                 onRetry={handleRetry}
                 onHome={handleHome}
               />
