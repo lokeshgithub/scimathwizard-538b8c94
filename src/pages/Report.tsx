@@ -35,6 +35,7 @@ import { ReportStats } from '@/components/report/ReportStats';
 import { ReportTopicBreakdown } from '@/components/report/ReportTopicBreakdown';
 import { ReportStrengthsWeaknesses } from '@/components/report/ReportStrengthsWeaknesses';
 import { ReportHistoryList } from '@/components/report/ReportHistoryList';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const Report = () => {
   const quiz = useQuizStore();
@@ -152,7 +153,7 @@ const Report = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Filters - only for logged in users */}
+        <ErrorBoundary section="Report">
         {user && (
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1">
@@ -391,6 +392,7 @@ const Report = () => {
             )}
           </motion.div>
         )}
+        </ErrorBoundary>
       </main>
     </div>
   );

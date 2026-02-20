@@ -27,6 +27,7 @@ import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
 import { TopicDashboardSkeleton } from '@/components/quiz/TopicDashboardSkeleton';
 import { QuizCardSkeleton } from '@/components/quiz/QuizCardSkeleton';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
@@ -674,30 +675,32 @@ const Index = () => {
           <>
             {/* Show Dashboard when not in a quiz */}
             {!quiz.currentQuestion && (
-              <>
-                <TopicDashboard
-                  topics={topics}
-                  currentTopic={quiz.topic}
-                  getProgress={quiz.getTopicProgress}
-                  onSelectTopic={quiz.selectTopic}
-                  onStartMixedQuiz={quiz.startMixedQuiz}
-                  onStartLevel={quiz.startUnlimitedPractice}
-                  getTopicLevels={quiz.getTopicLevels}
-                  isAdmin={false}
-                  currentSubject={quiz.subject}
-                  isLoggedIn={!!user}
-                  dueTopics={dueTopics}
-                  isLevelUnlocked={quiz.isLevelUnlocked}
-                  onRequestUnlock={handleRequestUnlock}
-                  onStartReview={quiz.startReviewMode}
-                  onResetProgress={quiz.resetTopicProgress}
-                  getSolvedCount={quiz.getSolvedQuestionsCount}
-                  questionTimings={quiz.sessionPerformance.questionTimings}
-                />
+              <ErrorBoundary section="Dashboard">
+                <>
+                  <TopicDashboard
+                    topics={topics}
+                    currentTopic={quiz.topic}
+                    getProgress={quiz.getTopicProgress}
+                    onSelectTopic={quiz.selectTopic}
+                    onStartMixedQuiz={quiz.startMixedQuiz}
+                    onStartLevel={quiz.startUnlimitedPractice}
+                    getTopicLevels={quiz.getTopicLevels}
+                    isAdmin={false}
+                    currentSubject={quiz.subject}
+                    isLoggedIn={!!user}
+                    dueTopics={dueTopics}
+                    isLevelUnlocked={quiz.isLevelUnlocked}
+                    onRequestUnlock={handleRequestUnlock}
+                    onStartReview={quiz.startReviewMode}
+                    onResetProgress={quiz.resetTopicProgress}
+                    getSolvedCount={quiz.getSolvedQuestionsCount}
+                    questionTimings={quiz.sessionPerformance.questionTimings}
+                  />
 
-                {/* Spaced Repetition Card - show when logged in */}
-                {user && <SpacedRepetitionCard />}
-              </>
+                  {/* Spaced Repetition Card - show when logged in */}
+                  {user && <SpacedRepetitionCard />}
+                </>
+              </ErrorBoundary>
             )}
 
             {!hasTopics && (
@@ -790,18 +793,20 @@ const Index = () => {
 
             {quiz.currentQuestion && (
               <div ref={quizCardRef} className="scroll-mt-4">
-                <QuizCard
-                  question={quiz.currentQuestion}
-                  level={quiz.level}
-                  levelStats={quiz.levelStats}
-                  sessionStats={quiz.sessionStats}
-                  onAnswer={handleAnswer}
-                  onNext={handleNext}
-                  onPrevious={quiz.previousQuestion}
-                  canGoBack={quiz.canGoBack}
-                  onSolutionViewed={quiz.markSolutionViewed}
-                  onPrefetchNext={quiz.prefetchNextQuestion}
-                />
+                <ErrorBoundary section="Quiz">
+                  <QuizCard
+                    question={quiz.currentQuestion}
+                    level={quiz.level}
+                    levelStats={quiz.levelStats}
+                    sessionStats={quiz.sessionStats}
+                    onAnswer={handleAnswer}
+                    onNext={handleNext}
+                    onPrevious={quiz.previousQuestion}
+                    canGoBack={quiz.canGoBack}
+                    onSolutionViewed={quiz.markSolutionViewed}
+                    onPrefetchNext={quiz.prefetchNextQuestion}
+                  />
+                </ErrorBoundary>
               </div>
             )}
 
