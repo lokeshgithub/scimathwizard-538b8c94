@@ -8,6 +8,7 @@ import {
   ClipboardList, Download
 } from 'lucide-react';
 import { exportOlympiadResultsToPdf } from '@/utils/exportOlympiadReport';
+import { exportOlympiadCertificateToPdf } from '@/utils/exportOlympiadCertificate';
 import { Button } from '@/components/ui/button';
 import type { OlympiadQuestionResult } from '@/hooks/useOlympiadTest';
 import { OlympiadQuestionReview } from './OlympiadQuestionReview';
@@ -413,6 +414,29 @@ export function OlympiadResults({ results, questionResults, strictMode, studentN
         <Download className="w-4 h-4 mr-2" />
         Download Olympiad Report (PDF)
       </Button>
+
+      {/* Download Certificate - Gold/Silver only */}
+      {(results.medal === 'Gold' || results.medal === 'Silver') && (
+        <Button
+          variant="outline"
+          className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+          onClick={() => exportOlympiadCertificateToPdf({
+            studentName: studentName || 'Student',
+            medal: results.medal,
+            medalEmoji: results.medalEmoji,
+            rank: results.rank,
+            examType: results.examType,
+            subject: subject || 'General',
+            accuracy: results.accuracy,
+            correctAnswers: results.correctAnswers,
+            totalQuestions: results.totalQuestions,
+            date: new Date(),
+          })}
+        >
+          <Trophy className="w-4 h-4 mr-2" />
+          Download {results.medal} Medal Certificate (PDF)
+        </Button>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3">
