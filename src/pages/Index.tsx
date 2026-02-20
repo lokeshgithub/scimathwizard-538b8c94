@@ -25,6 +25,8 @@ import { AchievementUnlocked } from '@/components/quiz/AchievementUnlocked';
 import { DailyGoalTracker } from '@/components/quiz/DailyGoalTracker';
 import { DailyStreakTracker } from '@/components/quiz/DailyStreakTracker';
 import { DailyChallengeCard } from '@/components/quiz/DailyChallengeCard';
+import { TopicDashboardSkeleton } from '@/components/quiz/TopicDashboardSkeleton';
+import { QuizCardSkeleton } from '@/components/quiz/QuizCardSkeleton';
 
 import { BattleMode } from '@/components/quiz/BattleMode';
 import { Leaderboard } from '@/components/quiz/Leaderboard';
@@ -653,14 +655,7 @@ const Index = () => {
         )}
         
         {quiz.isLoading ? (
-          <motion.div
-            className="flex flex-col items-center justify-center py-16"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground">Loading magical questions...</p>
-          </motion.div>
+          <TopicDashboardSkeleton />
         ) : quiz.loadError ? (
           <motion.div
             className="flex flex-col items-center justify-center py-16 text-center"
