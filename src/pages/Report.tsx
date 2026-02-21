@@ -36,6 +36,7 @@ import { ReportTopicBreakdown } from '@/components/report/ReportTopicBreakdown';
 import { ReportStrengthsWeaknesses } from '@/components/report/ReportStrengthsWeaknesses';
 import { ReportHistoryList } from '@/components/report/ReportHistoryList';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 const Report = () => {
   const quiz = useQuizStore();
@@ -127,8 +128,28 @@ const Report = () => {
   const formatName = (name: string) =>
     name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      if (user) await handleRefresh();
+    },
+  });
+
   return (
-    <div className="min-h-screen bg-background" data-testid="report-page">
+    <div ref={pullToRefresh.containerRef} className="min-h-screen bg-background" data-testid="report-page">
+      {/* Pull-to-refresh indicator */}
+      {(pullToRefresh.isPulling || pullToRefresh.refreshing) && (
+        <motion.div
+          initial={{ height: 0 }}
+          animate={{ height: pullToRefresh.pullDistance || 40 }}
+          className="flex items-center justify-center overflow-hidden bg-muted"
+        >
+          <Loader2 className={`w-5 h-5 text-primary ${pullToRefresh.refreshing ? 'animate-spin' : ''}`} />
+          <span className="ml-2 text-xs text-muted-foreground">
+            {pullToRefresh.refreshing ? 'Refreshing...' : 'Pull to refresh'}
+          </span>
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.header
         className="bg-gradient-magical text-white py-4 px-4"

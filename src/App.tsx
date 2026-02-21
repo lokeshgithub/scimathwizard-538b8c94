@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { MobileBottomNav } from "./components/MobileBottomNav";
+import { OfflineIndicator } from "./components/OfflineIndicator";
+import { QuizModeProvider } from "./contexts/QuizModeContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -33,21 +35,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="pb-14 md:pb-0">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<Suspense fallback={<PageLoader />}><Admin /></Suspense>} />
-            <Route path="/adaptive" element={<Suspense fallback={<PageLoader />}><AdaptiveChallenge /></Suspense>} />
-            <Route path="/adaptive/history" element={<Suspense fallback={<PageLoader />}><AdaptiveHistory /></Suspense>} />
-            <Route path="/adaptive/focus" element={<Suspense fallback={<PageLoader />}><FocusedPractice /></Suspense>} />
-            <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
-            <Route path="/report" element={<Suspense fallback={<PageLoader />}><Report /></Suspense>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-        <MobileBottomNav />
+        <QuizModeProvider>
+          <OfflineIndicator />
+          <div className="pb-14 md:pb-0">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<Suspense fallback={<PageLoader />}><Admin /></Suspense>} />
+              <Route path="/adaptive" element={<Suspense fallback={<PageLoader />}><AdaptiveChallenge /></Suspense>} />
+              <Route path="/adaptive/history" element={<Suspense fallback={<PageLoader />}><AdaptiveHistory /></Suspense>} />
+              <Route path="/adaptive/focus" element={<Suspense fallback={<PageLoader />}><FocusedPractice /></Suspense>} />
+              <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
+              <Route path="/report" element={<Suspense fallback={<PageLoader />}><Report /></Suspense>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+          <MobileBottomNav />
+        </QuizModeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
