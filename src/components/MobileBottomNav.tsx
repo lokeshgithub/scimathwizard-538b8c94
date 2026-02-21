@@ -3,6 +3,7 @@ import { Home, Brain, BarChart3, User } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '@/utils/haptics';
 
 const tabs = [
   { path: '/', icon: Home, label: 'Home' },
@@ -35,7 +36,7 @@ export const MobileBottomNav = () => {
           return (
             <button
               key={path}
-              onClick={() => navigate(path)}
+              onClick={() => { haptics.light(); navigate(path); }}
               className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative"
             >
               {isActive && (
