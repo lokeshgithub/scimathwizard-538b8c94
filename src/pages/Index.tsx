@@ -52,6 +52,7 @@ import {
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuizMode } from '@/contexts/QuizModeContext';
+import { haptics } from '@/utils/haptics';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -361,14 +362,16 @@ const Index = () => {
   }, [isInQuizMode, setIsInQuizMode]);
 
   const handleAnswer = useCallback(async (selectedIndex: number) => {
+    haptics.medium();
     const result = await quiz.answerQuestion(selectedIndex);
     
     // Play sound effects only - no confetti during quiz for snappy flow
     if (result.isCorrect) {
       sound.playCorrect();
-      // Confetti disabled during quiz for faster flow
+      haptics.success();
     } else {
       sound.playIncorrect();
+      haptics.error();
     }
     
     // Record for achievements
