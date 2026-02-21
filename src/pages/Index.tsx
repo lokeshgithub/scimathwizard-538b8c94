@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuizMode } from '@/contexts/QuizModeContext';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -351,6 +352,13 @@ const Index = () => {
 
   // Determine if we're in focused quiz mode (actively answering questions)
   const isInQuizMode = !!(quiz.currentQuestion && (quiz.topic || quiz.mixedTopics));
+
+  // Sync quiz mode to context for MobileBottomNav
+  const { setIsInQuizMode } = useQuizMode();
+  useEffect(() => {
+    setIsInQuizMode(isInQuizMode);
+    return () => setIsInQuizMode(false);
+  }, [isInQuizMode, setIsInQuizMode]);
 
   const handleAnswer = useCallback(async (selectedIndex: number) => {
     const result = await quiz.answerQuestion(selectedIndex);
