@@ -20,6 +20,7 @@ const AdaptiveHistory = lazy(() => import("./pages/AdaptiveHistory"));
 const FocusedPractice = lazy(() => import("./pages/FocusedPractice"));
 const OlympiadTest = lazy(() => import("./pages/OlympiadTest"));
 const Report = lazy(() => import("./pages/Report"));
+const Install = lazy(() => import("./pages/Install"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/adaptive/focus" element={<Suspense fallback={<PageLoader />}><FocusedPractice /></Suspense>} />
               <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
               <Route path="/report" element={<Suspense fallback={<PageLoader />}><Report /></Suspense>} />
+              <Route path="/install" element={<Suspense fallback={<PageLoader />}><Install /></Suspense>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
