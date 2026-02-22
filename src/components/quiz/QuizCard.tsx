@@ -5,6 +5,7 @@ import { Character, themeLevels } from '@/data/characters';
 import { FunElement } from '@/data/funElements';
 import { FunElementCard } from './FunElementCard';
 import { SimpleFeedback } from './SimpleFeedback';
+import { AnswerFeedbackSheet } from './AnswerFeedbackSheet';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
 
@@ -293,9 +294,10 @@ export const QuizCard = ({
   return (
     <motion.div
       className="bg-card rounded-2xl shadow-card overflow-hidden"
-      initial={{ opacity: 0.9 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.1 }}
+      initial={{ opacity: 0, x: 60 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
+      key={question.id}
       data-testid="quiz-card"
     >
       {/* Header */}
@@ -463,191 +465,31 @@ export const QuizCard = ({
           })}
         </div>
 
-        {/* Time Feedback after answering */}
-        {isAnswered && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
+        {/* Previous button (only when answered and can go back) */}
+        {isAnswered && canGoBack && onPrevious && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex items-center gap-2 mb-4 text-sm ${
-              isCorrect && elapsedTime < 15 ? 'text-success' : elapsedTime < 45 ? 'text-foreground' : 'text-amber-600'
-            }`}
+            onClick={onPrevious}
+            className="w-full p-3 bg-muted hover:bg-muted/80 rounded-xl text-foreground font-semibold flex items-center justify-center gap-2 transition-colors border border-border mt-4"
           >
-            <Clock className="w-4 h-4" />
-            <span>
-              Time taken: {formatTime(elapsedTime)}
-              {isCorrect && elapsedTime < 15 && ' ⚡ Quick!'}
-              {elapsedTime > 60 && ' - Take your time to understand the concept!'}
-            </span>
-          </motion.div>
-        )}
-
-        {/* Feedback - shows ONE of: simple message, character message, or fun element */}
-        <AnimatePresence>
-          {isAnswered && feedbackResult && (
-            <>
-              {/* Simple feedback */}
-              {feedbackResult.type === 'simple' && feedbackResult.simpleMessage && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="mb-4"
-                >
-                  <SimpleFeedback message={feedbackResult.simpleMessage} isCorrect={isCorrect} />
-                </motion.div>
-              )}
-              
-              {/* Character feedback (only for exceptional performance) */}
-              {feedbackResult.type === 'character' && feedbackResult.character && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className={`
-                    p-4 rounded-xl mb-4
-                    ${isCorrect ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}
-                  `}
-                >
-                  <div className="flex items-start gap-3">
-                    <motion.span 
-                      className="text-4xl"
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      {feedbackResult.character.emoji}
-                    </motion.span>
-                    <div>
-                      <p className="font-semibold text-foreground mb-1">{feedbackResult.character.name} says:</p>
-                      <p className="text-muted-foreground italic">"{feedbackResult.message}"</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              
-              {/* Fun element (rare surprise) */}
-              {feedbackResult.type === 'fun_element' && feedbackResult.funElement && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="mb-4"
-                >
-                  <FunElementCard element={feedbackResult.funElement} />
-                </motion.div>
-              )}
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Show Answer Button */}
-        <AnimatePresence>
-          {isAnswered && !showExplanation && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              onClick={handleShowExplanation}
-              className="w-full p-4 bg-primary/10 hover:bg-primary/20 rounded-xl text-primary font-semibold flex items-center justify-center gap-2 mb-4 transition-colors"
-            >
-              <Lightbulb className="w-5 h-5" />
-              Show Step-by-Step Explanation
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        {/* Explanation */}
-        <AnimatePresence>
-          {showExplanation && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-muted rounded-xl p-5 mb-4 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <h4 className="font-bold text-foreground">Step-by-Step Solution</h4>
-              </div>
-              
-              {!isCorrect && correctIndex >= 0 && (
-                <div className="mb-4 p-3 bg-success/10 rounded-lg">
-                  <p className="text-sm text-success font-semibold">
-                    ✓ Correct Answer: {String.fromCharCode(65 + correctIndex)}. {question.options[correctIndex]}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
-                {formatExplanation(question.explanation).map((section, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-background/50 rounded-lg p-4 border border-border/50"
-                  >
-                    <h5 className={`font-semibold mb-2 flex items-center gap-2 ${sectionColors[section.title] || 'text-primary'}`}>
-                      {sectionIcons[section.title] || <Sparkles className="w-4 h-4" />}
-                      {section.title}
-                    </h5>
-                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm break-words">
-                      {section.content}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {question.concepts.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Concepts covered:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {question.concepts.map((concept, i) => (
-                      <span 
-                        key={i}
-                        className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full"
-                      >
-                        {concept}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Navigation Buttons */}
-        {isAnswered && (
-          <div className="flex gap-3">
-            {/* Previous Question Button */}
-            {canGoBack && onPrevious && (
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={onPrevious}
-                className="flex-1 p-4 bg-muted hover:bg-muted/80 rounded-xl text-foreground font-semibold flex items-center justify-center gap-2 transition-colors border border-border"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Previous
-              </motion.button>
-            )}
-            
-            {/* Next Question Button */}
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={handleNext}
-              className="flex-1 p-4 bg-gradient-magical hover:opacity-90 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-opacity shadow-magical"
-            >
-              Next Question
-              <ArrowRight className="w-5 h-5" />
-            </motion.button>
-          </div>
+            <ArrowLeft className="w-5 h-5" />
+            Previous
+          </motion.button>
         )}
       </div>
 
-      {/* Pop-up milestone animations removed for snappier flow */}
-      {/* Level completion modal still shows via LevelCompleteModal in Index.tsx */}
+      {/* Duolingo-style bottom sheet feedback */}
+      <AnswerFeedbackSheet
+        isVisible={isAnswered}
+        isCorrect={isCorrect}
+        correctIndex={correctIndex}
+        question={question}
+        feedbackResult={feedbackResult}
+        elapsedTime={elapsedTime}
+        onNext={handleNext}
+        onSolutionViewed={onSolutionViewed}
+      />
     </motion.div>
   );
 };
