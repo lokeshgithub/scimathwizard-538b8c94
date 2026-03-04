@@ -382,48 +382,8 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
   // Clear and rebuild shuffleMap cache
   shuffleMapCache.clear();
 
-  // Organize questions (correct answers NOT included - validated server-side)
-  for (const q of questions) {
-    const topic = topicMap.get(q.topic_id);
-    if (!topic) continue;
-
-    const subject = subjectMap.get(topic.subject_id);
-    if (!subject) continue;
-
-    const subjectKey = subject.name.toLowerCase() as Subject;
-    const topicName = topic.name;
-
-    if (!bank[subjectKey]) {
-      bank[subjectKey] = {};
-    }
-    if (!bank[subjectKey][topicName]) {
-      bank[subjectKey][topicName] = [];
-    }
-
-    // Shuffle options for each student session
-    const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
-    const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
-
-    // Store shuffleMap for server response reverse-mapping
-    shuffleMapCache.set(q.id, shuffleMap);
-
-    // Use only custom hints from database - no auto-generation
-    const hint = q.hint || undefined;
-
-    bank[subjectKey][topicName].push({
-      id: q.id,
-      level: q.level,
-      question: q.question,
-      options: shuffledOptions,
-      correct: -1, // Unknown until server validates
-      explanation: q.explanation || '',
-      concepts: [],
-      hint,
-      shuffleMap,
-      subTopic: q.sub_topic || undefined,
-      chapter: topicName,
-    });
-  }
+// Organize questions using shared helper
+  organizeQuestionsIntoBank(questions, subjectMap, topicMap, bank);
 
   logger.debug(`Loaded ${questions.length} questions into memory for instant validation`);
 
@@ -433,10 +393,52 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
   return bank;
 }
 
+/**
+ * Shared helper: organize raw DB questions into a QuestionBank structure.
+ * Used by both fetchAllQuestions and refreshQuestionsInBackground.
+ */
+function organizeQuestionsIntoBank(
+  questions: DBQuestion[],
+  subjectMap: Map<string, DBSubject>,
+  topicMap: Map<string, DBTopic>,
+  bank: QuestionBank
+): void {
+  for (const q of questions) {
+    const topic = topicMap.get(q.topic_id);
+    if (!topic) continue;
+    const subject = subjectMap.get(topic.subject_id);
+    if (!subject) continue;
+
+    const subjectKey = subject.name.toLowerCase() as Subject;
+    const topicName = topic.name;
+
+    if (!bank[subjectKey]) bank[subjectKey] = {};
+    if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
+
+    const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
+
+    shuffleMapCache.set(q.id, shuffleMap);
+
+    bank[subjectKey][topicName].push({
+      id: q.id,
+      level: q.level,
+      question: q.question,
+      options: shuffledOptions,
+      correct: -1, // Unknown until server validates
+      explanation: q.explanation || '',
+      concepts: [],
+      hint: q.hint || undefined,
+      shuffleMap,
+      subTopic: q.sub_topic || undefined,
+      chapter: topicName,
+    });
+  }
+}
+
 // Background refresh - fetches latest questions without blocking UI
 async function refreshQuestionsInBackground(): Promise<void> {
   try {
-    // Fetch from database silently
     const { data: subjects } = await supabase.from('subjects').select('*');
     const { data: topics } = await supabase.from('topics').select('*');
 
@@ -462,7 +464,6 @@ async function refreshQuestionsInBackground(): Promise<void> {
     }
 
     if (allQuestions.length > 0) {
-      // Build new bank (same logic as fetchAllQuestions)
       const bank: QuestionBank = {};
       const subjectMap = new Map<string, DBSubject>(
         (subjects as DBSubject[]).map(s => [s.id, s])
@@ -471,44 +472,12 @@ async function refreshQuestionsInBackground(): Promise<void> {
         (topics as DBTopic[]).map(t => [t.id, t])
       );
 
-      for (const q of allQuestions) {
-        const topic = topicMap.get(q.topic_id);
-        if (!topic) continue;
-        const subject = subjectMap.get(topic.subject_id);
-        if (!subject) continue;
+      organizeQuestionsIntoBank(allQuestions, subjectMap, topicMap, bank);
 
-        const subjectKey = subject.name.toLowerCase() as Subject;
-        const topicName = topic.name;
-
-        if (!bank[subjectKey]) bank[subjectKey] = {};
-        if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
-
-        const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
-        const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
-
-        shuffleMapCache.set(q.id, shuffleMap);
-
-        bank[subjectKey][topicName].push({
-          id: q.id,
-          level: q.level,
-          question: q.question,
-          options: shuffledOptions,
-          correct: -1, // Unknown until server validates
-          explanation: q.explanation || '',
-          concepts: [],
-          hint: q.hint || undefined,
-          shuffleMap,
-          subTopic: q.sub_topic || undefined,
-          chapter: topicName,
-        });
-      }
-
-      // Update cache for next load
       saveQuestionsToCache(bank);
       logger.debug('Background refresh completed - cache updated');
     }
   } catch (e) {
-    // Silent fail - background refresh is optional
     console.error('Background refresh failed:', e);
   }
 }
