@@ -19,6 +19,7 @@ import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
 import { getThresholdForLevel } from '@/utils/levelThresholds';
+import { sanitizeQuestionFields } from '@/utils/sanitize';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
@@ -614,13 +615,19 @@ export const useQuizStore = () => {
     for (let i = 1; i < rows.length; i++) {
       const values = rows[i];
       if (values.length >= 9) {
+        // Sanitize all text fields to prevent XSS from malicious CSV
+        const sanitized = sanitizeQuestionFields({
+          question: values[2],
+          options: [values[3], values[4], values[5], values[6]],
+          explanation: values[8],
+        });
         questions.push({
           id: values[0],
           level: parseInt(values[1]) || 1,
-          question: values[2],
-          options: [values[3], values[4], values[5], values[6]],
+          question: sanitized.question,
+          options: sanitized.options,
           correct: values[7].toUpperCase().charCodeAt(0) - 65,
-          explanation: values[8],
+          explanation: sanitized.explanation,
           concepts: values[9] ? values[9].split(';').map(c => c.trim()) : [],
         });
       }
