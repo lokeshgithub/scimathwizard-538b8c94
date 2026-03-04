@@ -563,10 +563,11 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
 }> {
   try {
     // Delete all questions first (child table)
+    // Use gte on created_at to match all rows (safer than .neq on a magic UUID)
     const { data: deletedQuestions, error: questionsError } = await supabase
       .from('questions')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (workaround for no .deleteAll())
+      .gte('id', '00000000-0000-0000-0000-000000000000')
       .select('id');
 
     if (questionsError) throw new Error(`Failed to delete questions: ${questionsError.message}`);
@@ -575,7 +576,7 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
     const { data: deletedTopics, error: topicsError } = await supabase
       .from('topics')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000')
+      .gte('id', '00000000-0000-0000-0000-000000000000')
       .select('id');
 
     if (topicsError) throw new Error(`Failed to delete topics: ${topicsError.message}`);
@@ -586,7 +587,7 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
       const { data: deletedSubjects, error: subjectsError } = await supabase
         .from('subjects')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .gte('id', '00000000-0000-0000-0000-000000000000')
         .select('id');
 
       if (subjectsError) throw new Error(`Failed to delete subjects: ${subjectsError.message}`);
