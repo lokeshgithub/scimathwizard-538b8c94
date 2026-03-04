@@ -9,6 +9,7 @@ import { MobileBottomNav } from "./components/MobileBottomNav";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { QuizModeProvider } from "./contexts/QuizModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ProtectedRoute, AdminRoute } from "./components/RouteGuards";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -44,13 +45,13 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/admin" element={<Suspense fallback={<PageLoader />}><Admin /></Suspense>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/admin" element={<AdminRoute><Suspense fallback={<PageLoader />}><Admin /></Suspense></AdminRoute>} />
               <Route path="/adaptive" element={<Suspense fallback={<PageLoader />}><AdaptiveChallenge /></Suspense>} />
               <Route path="/adaptive/history" element={<Suspense fallback={<PageLoader />}><AdaptiveHistory /></Suspense>} />
               <Route path="/adaptive/focus" element={<Suspense fallback={<PageLoader />}><FocusedPractice /></Suspense>} />
               <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
-              <Route path="/report" element={<Suspense fallback={<PageLoader />}><Report /></Suspense>} />
+              <Route path="/report" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Report /></Suspense></ProtectedRoute>} />
               <Route path="/install" element={<Suspense fallback={<PageLoader />}><Install /></Suspense>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
