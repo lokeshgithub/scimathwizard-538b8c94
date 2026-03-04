@@ -32,15 +32,16 @@ test.describe('Critical Path v2: Core Flows', () => {
   });
 
   test('should navigate between main pages', async ({ page }) => {
-    // Navigate to Report
+    // Navigate to Report — redirects to /auth for unauthenticated users
     const reportBtn = page.locator('[data-testid="nav-report"]');
     if (await reportBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await reportBtn.click();
-      await page.waitForTimeout(500);
-      expect(await page.url()).toContain('report');
+      await page.waitForLoadState('networkidle');
+      expect(await page.url()).toContain('auth');
     }
 
     // Navigate back to Practice
+    await page.goto('/');
     const practiceBtn = page.locator('[data-testid="nav-practice"]');
     if (await practiceBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await practiceBtn.click();
@@ -65,15 +66,12 @@ test.describe('Critical Path v2: Core Flows', () => {
     }
   });
 
-  test('should load report page', async ({ page }) => {
+  test('should redirect /report to /auth when unauthenticated', async ({ page }) => {
     await page.goto('/report');
-    await dismissWelcomeModal(page);
+    await page.waitForLoadState('networkidle');
 
-    // Should load without errors
-    const hasReportPage = await isVisible(page, '[data-testid="report-page"]');
-    const hasReportContent = await isVisible(page, 'text=/Report|Performance|Session/i');
-
-    expect(hasReportPage || hasReportContent).toBeTruthy();
+    // ProtectedRoute should redirect to /auth
+    await expect(page).toHaveURL('/auth');
   });
 
   test('should handle deep link', async ({ page }) => {
@@ -107,24 +105,23 @@ test.describe('Critical Path v2: Core Flows', () => {
 });
 
 test.describe('Critical Path v2: Report Feature', () => {
-  test('should load report page without console errors', async ({ page }) => {
+  test('should redirect /report to /auth without console errors', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', msg => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
 
-    await setupTest(page, '/report');
+    await page.goto('/report');
+    await page.waitForLoadState('networkidle');
 
+    await expect(page).toHaveURL('/auth');
     expect(consoleErrors.length).toBe(0);
   });
 
-  test('should show report UI elements', async ({ page }) => {
+  test.skip('should show report UI elements (requires auth)', async ({ page }) => {
     await setupTest(page, '/report');
 
-    // Should have report page indicator
     const hasReportPage = await isVisible(page, '[data-testid="report-page"]');
-
-    // Should have either empty state or data
     const hasContent = await isVisible(page, 'text=/No.*Data|Session|Performance|Question/i');
 
     expect(hasReportPage || hasContent).toBeTruthy();
@@ -151,6 +148,7 @@ test.describe('Critical Path v2: Navigation', () => {
   test('should navigate smoothly between pages', async ({ page }) => {
     await setupTest(page, '/');
 
+    // Test public pages + /report (which redirects to /auth)
     const pages = ['/', '/adaptive', '/olympiad', '/report'];
 
     for (const path of pages) {
@@ -159,7 +157,7 @@ test.describe('Critical Path v2: Navigation', () => {
       await page.waitForLoadState('networkidle');
       const navTime = Date.now() - startTime;
 
-      // Should navigate quickly
+      // Should navigate (or redirect) quickly
       expect(navTime).toBeLessThan(3000);
     }
   });
