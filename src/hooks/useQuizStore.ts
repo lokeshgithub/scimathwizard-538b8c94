@@ -20,6 +20,7 @@ import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
 import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { sanitizeQuestionFields } from '@/utils/sanitize';
+import { adaptiveReorder, type AnswerRecord } from '@/utils/adaptiveDifficulty';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
@@ -328,6 +329,9 @@ export const useQuizStore = () => {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [sessionPerformance, setSessionPerformance] = useState<SessionPerformance>(initialSessionPerformance);
   const [showSessionSummary, setShowSessionSummary] = useState(false);
+
+  // Adaptive difficulty: recent answer history for within-level question reordering
+  const [recentAnswers, setRecentAnswers] = useState<AnswerRecord[]>([]);
 
   // Get max level for a specific topic (dynamic based on data)
   const getTopicMaxLevel = useCallback((topicName: string): number => {
@@ -703,7 +707,7 @@ export const useQuizStore = () => {
     setMixedTopics(null); // Clear mixed mode
     setUnlimitedPractice(startUnlimited);
     setIsReviewMode(false); // Ensure not in review mode
-    setQuestionHistory([]); // Reset question history
+    setQuestionHistory([]); setRecentAnswers([]); // Reset question history
     setSessionAnsweredIds(new Set()); // Clear session tracking - new topic = fresh questions
 
     // CRITICAL: Get raw progress directly from localStorage to ensure we have latest data
@@ -838,7 +842,7 @@ export const useQuizStore = () => {
     setMixedTopics(selectedTopics);
     setLevel(1);
     setLevelStats({ correct: 0, total: 0 });
-    setQuestionHistory([]); // Reset question history
+    setQuestionHistory([]); setRecentAnswers([]); // Reset question history
     setUnlimitedPractice(false);
     setIsReviewMode(false); // Ensure not in review mode
     setSessionAnsweredIds(new Set()); // Clear session tracking for fresh quiz
@@ -968,6 +972,9 @@ export const useQuizStore = () => {
 
     // Track this question as answered in current session (no repeats)
     setSessionAnsweredIds(prev => new Set(prev).add(currentQ.id));
+
+    // Record for adaptive difficulty engine
+    setRecentAnswers(prev => [...prev, { questionId: currentQ.id, wasCorrect: isCorrect }]);
 
     return { isCorrect, correctIndex, question: currentQ, timeSpent };
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic, isReviewMode]);
@@ -1139,16 +1146,16 @@ export const useQuizStore = () => {
     setQuestionHistory(prev => [...prev, questionIndex]);
     
     if (questionIndex + 1 >= currentQuestions.length) {
-      // Reshuffle and start over
-      const shuffled = [...currentQuestions].sort(() => Math.random() - 0.5);
-      setCurrentQuestions(shuffled);
+      // Adaptively reorder questions based on running accuracy & tracking history
+      const reordered = adaptiveReorder(currentQuestions, questionTracking, recentAnswers);
+      setCurrentQuestions(reordered);
       setQuestionIndex(0);
     } else {
       setQuestionIndex(prev => prev + 1);
     }
     setPrefetchedNextIndex(null);
     setQuestionStartTime(Date.now());
-  }, [questionIndex, currentQuestions]);
+  }, [questionIndex, currentQuestions, questionTracking, recentAnswers]);
 
   // Navigate to previous question (for review)
   const previousQuestion = useCallback(() => {
