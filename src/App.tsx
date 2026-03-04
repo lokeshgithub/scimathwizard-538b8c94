@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { QuizModeProvider } from "./contexts/QuizModeContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -35,6 +36,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <ErrorBoundary section="App">
       <BrowserRouter>
         <QuizModeProvider>
           <OfflineIndicator />
@@ -56,6 +58,7 @@ const App = () => (
           <MobileBottomNav />
         </QuizModeProvider>
       </BrowserRouter>
+      </ErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );
