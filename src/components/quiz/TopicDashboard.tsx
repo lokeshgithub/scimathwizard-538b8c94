@@ -31,7 +31,7 @@ import {
 import { getThresholdForLevel } from '@/utils/levelThresholds';
 
 interface TopicDashboardProps {
-  topics: { [name: string]: any[] };
+  topics: { [name: string]: unknown[] };
   currentTopic: string | null;
   getProgress: (topic: string) => TopicProgress;
   onSelectTopic: (topic: string) => void;

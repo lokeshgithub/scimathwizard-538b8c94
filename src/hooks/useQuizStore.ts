@@ -661,7 +661,7 @@ export const useQuizStore = () => {
     const maxLevel = getTopicMaxLevel(topicName);
     
     if (!progress[topicName]) {
-      const newProgress: any = {};
+      const newProgress: Record<number, { correct: number; total: number; mastered: boolean }> = {};
       for (let i = 1; i <= maxLevel; i++) {
         newProgress[i] = { correct: 0, total: 0, mastered: false };
       }
