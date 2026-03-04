@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
 import * as XLSX from 'xlsx';
@@ -95,7 +96,7 @@ export function loadQuestionsFromCache(): QuestionBank | null {
           }
         }
       }
-      console.log('Loaded questions from localStorage cache');
+      logger.debug('Loaded questions from localStorage cache');
       return parsed.bank;
     }
   } catch (e) {
@@ -114,7 +115,7 @@ function saveQuestionsToCache(bank: QuestionBank): void {
   } catch (e: any) {
     // Handle localStorage quota exceeded error
     if (e?.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded - clearing questions cache to make room');
+      logger.warn('localStorage quota exceeded - clearing questions cache to make room');
       try {
         // Clear just this cache to make room
         localStorage.removeItem(QUESTIONS_CACHE_KEY);
@@ -298,7 +299,7 @@ export async function fetchQuestionsForTopics(
       saveTopicToCache(topicId, processed);
     }
 
-    console.log(`Lazy-loaded ${allQuestions.length} questions for ${uncachedIds.length} topics`);
+    logger.debug(`Lazy-loaded ${allQuestions.length} questions for ${uncachedIds.length} topics`);
   }
 
   return bank;
@@ -368,7 +369,7 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
   
-  console.log(`Fetched ${questions.length} questions from database (paginated)`);
+  logger.debug(`Fetched ${questions.length} questions from database (paginated)`);
 
   // Build lookup maps
   const subjectMap = new Map<string, DBSubject>(
@@ -424,7 +425,7 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     });
   }
 
-  console.log(`Loaded ${questions.length} questions into memory for instant validation`);
+  logger.debug(`Loaded ${questions.length} questions into memory for instant validation`);
 
   // Save to cache for faster subsequent loads
   saveQuestionsToCache(bank);
@@ -504,7 +505,7 @@ async function refreshQuestionsInBackground(): Promise<void> {
 
       // Update cache for next load
       saveQuestionsToCache(bank);
-      console.log('Background refresh completed - cache updated');
+      logger.debug('Background refresh completed - cache updated');
     }
   } catch (e) {
     // Silent fail - background refresh is optional
@@ -1125,7 +1126,7 @@ export function findBlueprintMatch(inputTopic: string, subject: string): string 
   }
 
   if (bestMatch) {
-    console.log(`Fuzzy matched "${inputTopic}" → "${bestMatch}" (${(bestScore * 100).toFixed(0)}% similarity)`);
+    logger.debug(`Fuzzy matched "${inputTopic}" → "${bestMatch}" (${(bestScore * 100).toFixed(0)}% similarity)`);
   }
 
   return bestMatch;
@@ -1415,7 +1416,7 @@ export async function uploadQuestionsFromCSV(
 
       // If sub_topic column doesn't exist, retry without it
       if (insertError && insertError.message?.includes('sub_topic')) {
-        console.log('sub_topic column not found, retrying without it...');
+        logger.debug('sub_topic column not found, retrying without it...');
         const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
         const retryResult = await supabase
           .from('questions')
@@ -1776,7 +1777,7 @@ export async function smartUploadQuestions(
 
       // If sub_topic column doesn't exist, retry without it
       if (insertError && insertError.message?.includes('sub_topic')) {
-        console.log('sub_topic column not found, retrying without it...');
+        logger.debug('sub_topic column not found, retrying without it...');
         const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
         const retryResult = await supabase
           .from('questions')

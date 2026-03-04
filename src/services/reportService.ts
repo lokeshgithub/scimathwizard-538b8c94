@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
 import type { SessionAnalysis, Subject } from '@/types/quiz';
 
@@ -60,7 +61,7 @@ export const saveSessionReport = async (
         .eq('session_id', sessionId)
         .limit(1);
       if (existing && existing.length > 0) {
-        console.log('[reportService] Duplicate session_id, skipping save:', sessionId);
+        logger.debug('[reportService] Duplicate session_id, skipping save:', sessionId);
         return true; // Already saved, treat as success
       }
     }
@@ -243,7 +244,7 @@ export const aggregateReports = (reports: StoredReport[]): {
   // Filter out invalid reports
   const validReports = reports.filter(isValidReport);
   if (validReports.length === 0) {
-    console.warn('[aggregateReports] No valid reports after validation');
+    logger.warn('[aggregateReports] No valid reports after validation');
     return getEmptyAggregation();
   }
 
