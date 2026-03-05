@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupSupabaseMocks } from './helpers/mock-supabase';
 
 /**
  * E2E Tests: Accessibility
@@ -8,6 +9,10 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Keyboard Navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
+  });
+
   test('should navigate through dashboard using Tab key', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(1000);
@@ -104,6 +109,10 @@ test.describe('Keyboard Navigation', () => {
 });
 
 test.describe('Screen Reader Support', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
+  });
+
   test('should have proper heading hierarchy', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(1000);
@@ -173,6 +182,10 @@ test.describe('Screen Reader Support', () => {
 });
 
 test.describe('Visual Accessibility', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
+  });
+
   test('should have sufficient color contrast', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(1000);
@@ -241,6 +254,10 @@ test.describe('Visual Accessibility', () => {
 });
 
 test.describe('Focus Management', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
+  });
+
   test('should show visible focus indicators', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(1000);

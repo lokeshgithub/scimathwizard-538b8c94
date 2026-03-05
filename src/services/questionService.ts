@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
 import type { Question, QuestionBank, Subject } from '@/types/quiz';
 import * as XLSX from 'xlsx';
@@ -95,7 +96,7 @@ export function loadQuestionsFromCache(): QuestionBank | null {
           }
         }
       }
-      console.log('Loaded questions from localStorage cache');
+      logger.debug('Loaded questions from localStorage cache');
       return parsed.bank;
     }
   } catch (e) {
@@ -114,7 +115,7 @@ function saveQuestionsToCache(bank: QuestionBank): void {
   } catch (e: any) {
     // Handle localStorage quota exceeded error
     if (e?.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded - clearing questions cache to make room');
+      logger.warn('localStorage quota exceeded - clearing questions cache to make room');
       try {
         // Clear just this cache to make room
         localStorage.removeItem(QUESTIONS_CACHE_KEY);
@@ -298,7 +299,7 @@ export async function fetchQuestionsForTopics(
       saveTopicToCache(topicId, processed);
     }
 
-    console.log(`Lazy-loaded ${allQuestions.length} questions for ${uncachedIds.length} topics`);
+    logger.debug(`Lazy-loaded ${allQuestions.length} questions for ${uncachedIds.length} topics`);
   }
 
   return bank;
@@ -368,7 +369,7 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
     return bank;
   }
   
-  console.log(`Fetched ${questions.length} questions from database (paginated)`);
+  logger.debug(`Fetched ${questions.length} questions from database (paginated)`);
 
   // Build lookup maps
   const subjectMap = new Map<string, DBSubject>(
@@ -381,33 +382,43 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
   // Clear and rebuild shuffleMap cache
   shuffleMapCache.clear();
 
-  // Organize questions (correct answers NOT included - validated server-side)
+// Organize questions using shared helper
+  organizeQuestionsIntoBank(questions, subjectMap, topicMap, bank);
+
+  logger.debug(`Loaded ${questions.length} questions into memory for instant validation`);
+
+  // Save to cache for faster subsequent loads
+  saveQuestionsToCache(bank);
+
+  return bank;
+}
+
+/**
+ * Shared helper: organize raw DB questions into a QuestionBank structure.
+ * Used by both fetchAllQuestions and refreshQuestionsInBackground.
+ */
+function organizeQuestionsIntoBank(
+  questions: DBQuestion[],
+  subjectMap: Map<string, DBSubject>,
+  topicMap: Map<string, DBTopic>,
+  bank: QuestionBank
+): void {
   for (const q of questions) {
     const topic = topicMap.get(q.topic_id);
     if (!topic) continue;
-
     const subject = subjectMap.get(topic.subject_id);
     if (!subject) continue;
 
     const subjectKey = subject.name.toLowerCase() as Subject;
     const topicName = topic.name;
 
-    if (!bank[subjectKey]) {
-      bank[subjectKey] = {};
-    }
-    if (!bank[subjectKey][topicName]) {
-      bank[subjectKey][topicName] = [];
-    }
+    if (!bank[subjectKey]) bank[subjectKey] = {};
+    if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
 
-    // Shuffle options for each student session
     const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
     const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
 
-    // Store shuffleMap for server response reverse-mapping
     shuffleMapCache.set(q.id, shuffleMap);
-
-    // Use only custom hints from database - no auto-generation
-    const hint = q.hint || undefined;
 
     bank[subjectKey][topicName].push({
       id: q.id,
@@ -417,25 +428,17 @@ export async function fetchAllQuestions(): Promise<QuestionBank> {
       correct: -1, // Unknown until server validates
       explanation: q.explanation || '',
       concepts: [],
-      hint,
+      hint: q.hint || undefined,
       shuffleMap,
       subTopic: q.sub_topic || undefined,
       chapter: topicName,
     });
   }
-
-  console.log(`Loaded ${questions.length} questions into memory for instant validation`);
-
-  // Save to cache for faster subsequent loads
-  saveQuestionsToCache(bank);
-
-  return bank;
 }
 
 // Background refresh - fetches latest questions without blocking UI
 async function refreshQuestionsInBackground(): Promise<void> {
   try {
-    // Fetch from database silently
     const { data: subjects } = await supabase.from('subjects').select('*');
     const { data: topics } = await supabase.from('topics').select('*');
 
@@ -461,7 +464,6 @@ async function refreshQuestionsInBackground(): Promise<void> {
     }
 
     if (allQuestions.length > 0) {
-      // Build new bank (same logic as fetchAllQuestions)
       const bank: QuestionBank = {};
       const subjectMap = new Map<string, DBSubject>(
         (subjects as DBSubject[]).map(s => [s.id, s])
@@ -470,44 +472,12 @@ async function refreshQuestionsInBackground(): Promise<void> {
         (topics as DBTopic[]).map(t => [t.id, t])
       );
 
-      for (const q of allQuestions) {
-        const topic = topicMap.get(q.topic_id);
-        if (!topic) continue;
-        const subject = subjectMap.get(topic.subject_id);
-        if (!subject) continue;
+      organizeQuestionsIntoBank(allQuestions, subjectMap, topicMap, bank);
 
-        const subjectKey = subject.name.toLowerCase() as Subject;
-        const topicName = topic.name;
-
-        if (!bank[subjectKey]) bank[subjectKey] = {};
-        if (!bank[subjectKey][topicName]) bank[subjectKey][topicName] = [];
-
-        const originalOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
-        const { shuffledOptions, shuffleMap } = shuffleOptions(originalOptions);
-
-        shuffleMapCache.set(q.id, shuffleMap);
-
-        bank[subjectKey][topicName].push({
-          id: q.id,
-          level: q.level,
-          question: q.question,
-          options: shuffledOptions,
-          correct: -1, // Unknown until server validates
-          explanation: q.explanation || '',
-          concepts: [],
-          hint: q.hint || undefined,
-          shuffleMap,
-          subTopic: q.sub_topic || undefined,
-          chapter: topicName,
-        });
-      }
-
-      // Update cache for next load
       saveQuestionsToCache(bank);
-      console.log('Background refresh completed - cache updated');
+      logger.debug('Background refresh completed - cache updated');
     }
   } catch (e) {
-    // Silent fail - background refresh is optional
     console.error('Background refresh failed:', e);
   }
 }
@@ -593,10 +563,11 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
 }> {
   try {
     // Delete all questions first (child table)
+    // Use gte on created_at to match all rows (safer than .neq on a magic UUID)
     const { data: deletedQuestions, error: questionsError } = await supabase
       .from('questions')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (workaround for no .deleteAll())
+      .gte('id', '00000000-0000-0000-0000-000000000000')
       .select('id');
 
     if (questionsError) throw new Error(`Failed to delete questions: ${questionsError.message}`);
@@ -605,7 +576,7 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
     const { data: deletedTopics, error: topicsError } = await supabase
       .from('topics')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000')
+      .gte('id', '00000000-0000-0000-0000-000000000000')
       .select('id');
 
     if (topicsError) throw new Error(`Failed to delete topics: ${topicsError.message}`);
@@ -616,7 +587,7 @@ export async function deleteAllQuestionData(options: { keepSubjects?: boolean } 
       const { data: deletedSubjects, error: subjectsError } = await supabase
         .from('subjects')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .gte('id', '00000000-0000-0000-0000-000000000000')
         .select('id');
 
       if (subjectsError) throw new Error(`Failed to delete subjects: ${subjectsError.message}`);
@@ -1125,7 +1096,7 @@ export function findBlueprintMatch(inputTopic: string, subject: string): string 
   }
 
   if (bestMatch) {
-    console.log(`Fuzzy matched "${inputTopic}" → "${bestMatch}" (${(bestScore * 100).toFixed(0)}% similarity)`);
+    logger.debug(`Fuzzy matched "${inputTopic}" → "${bestMatch}" (${(bestScore * 100).toFixed(0)}% similarity)`);
   }
 
   return bestMatch;
@@ -1415,7 +1386,7 @@ export async function uploadQuestionsFromCSV(
 
       // If sub_topic column doesn't exist, retry without it
       if (insertError && insertError.message?.includes('sub_topic')) {
-        console.log('sub_topic column not found, retrying without it...');
+        logger.debug('sub_topic column not found, retrying without it...');
         const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
         const retryResult = await supabase
           .from('questions')
@@ -1776,7 +1747,7 @@ export async function smartUploadQuestions(
 
       // If sub_topic column doesn't exist, retry without it
       if (insertError && insertError.message?.includes('sub_topic')) {
-        console.log('sub_topic column not found, retrying without it...');
+        logger.debug('sub_topic column not found, retrying without it...');
         const questionsWithoutSubTopic = questionsToInsert.map(({ sub_topic, ...rest }) => rest);
         const retryResult = await supabase
           .from('questions')

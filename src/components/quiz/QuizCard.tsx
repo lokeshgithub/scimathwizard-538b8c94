@@ -311,7 +311,9 @@ export const QuizCard = ({
           </div>
           <div className="flex items-center gap-3">
             {/* Timer */}
-            <motion.div 
+            <motion.div
+              aria-live="polite"
+              aria-label={`Time elapsed: ${formatTime(elapsedTime)}`}
               className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
                 isAnswered 
                   ? 'bg-white/20 text-white' 
@@ -408,18 +410,22 @@ export const QuizCard = ({
         )}
 
         {/* Options */}
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3 mb-6" role="radiogroup" aria-label="Answer options">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
             const isCorrectAnswer = index === correctIndex;
             const showAsCorrect = isAnswered && isCorrectAnswer;
             const showAsIncorrect = isAnswered && isSelected && !isCorrectAnswer;
+            const optionLabel = String.fromCharCode(65 + index);
 
             return (
               <motion.button
                 key={index}
                 onClick={() => handleAnswer(index)}
                 disabled={isAnswered || isValidating}
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={`Option ${optionLabel}: ${option}${showAsCorrect ? ' (correct answer)' : ''}${showAsIncorrect ? ' (incorrect)' : ''}`}
                 data-testid={`answer-option-${String.fromCharCode(97 + index)}`}
                 className={`
                   w-full p-4 rounded-xl text-left transition-colors duration-150 flex items-center gap-3

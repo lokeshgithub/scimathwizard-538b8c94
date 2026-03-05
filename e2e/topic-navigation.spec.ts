@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupSupabaseMocks } from './helpers/mock-supabase';
 
 /**
  * E2E Tests: Topic Navigation & Dashboard
@@ -16,6 +17,7 @@ async function dismissModal(page) {
 
 test.describe('Topic Dashboard', () => {
   test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
     await page.goto('/');
     // Wait for page to load
     await page.waitForLoadState('networkidle');
@@ -81,6 +83,7 @@ test.describe('Topic Dashboard', () => {
 
 test.describe('Mixed Mode', () => {
   test('should start mixed quiz', async ({ page }) => {
+    await setupSupabaseMocks(page);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await dismissModal(page);

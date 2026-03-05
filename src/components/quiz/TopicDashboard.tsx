@@ -31,7 +31,7 @@ import {
 import { getThresholdForLevel } from '@/utils/levelThresholds';
 
 interface TopicDashboardProps {
-  topics: { [name: string]: any[] };
+  topics: { [name: string]: unknown[] };
   currentTopic: string | null;
   getProgress: (topic: string) => TopicProgress;
   onSelectTopic: (topic: string) => void;
@@ -55,6 +55,20 @@ interface TopicDashboardProps {
 const formatName = (name: string) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
+
+// Computed summary for a single topic in the dashboard
+interface TopicSummary {
+  name: string;
+  questionCount: number;
+  levels: number[];
+  masteredCount: number;
+  totalLevels: number;
+  percentage: number;
+  icon: string;
+  isComplete: boolean;
+  progress: TopicProgress;
+  isDue: boolean;
+}
 
 // Category type definition
 type CategoryDef = { name: string; icon: string; color: string; keywords: string[] };
@@ -262,7 +276,7 @@ export const TopicDashboard = ({
 
   // Calculate topic stats and group by category
   const { categorizedTopics, overallStats } = useMemo(() => {
-    const categories: { [cat: string]: any[] } = {};
+    const categories: { [cat: string]: TopicSummary[] } = {};
     let totalMastered = 0;
     let totalLevels = 0;
 
@@ -319,7 +333,7 @@ export const TopicDashboard = ({
     if (!searchQuery.trim()) return categorizedTopics;
 
     const query = searchQuery.toLowerCase();
-    const filtered: { [cat: string]: any[] } = {};
+    const filtered: { [cat: string]: TopicSummary[] } = {};
 
     for (const [cat, topics] of Object.entries(categorizedTopics)) {
       const matching = topics.filter(t => t.name.toLowerCase().includes(query));

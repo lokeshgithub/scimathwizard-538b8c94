@@ -1,10 +1,13 @@
 import { Page } from '@playwright/test';
+import { setupSupabaseMocks } from './mock-supabase';
 
 /**
  * Test Setup Helpers
  *
  * Common utilities for E2E tests to handle modals, waits, and navigation
  */
+
+export { setupSupabaseMocks };
 
 /**
  * Dismisses the welcome modal if present
@@ -17,7 +20,7 @@ export async function dismissWelcomeModal(page: Page): Promise<void> {
     // Wait a bit for modal to appear
     await page.waitForTimeout(1000);
 
-    // Look for any modal dialog
+    // Look for any modal dialog (with or without ARIA role)
     const modal = page.locator('[role="dialog"], [role="alertdialog"]').first();
 
     if (await modal.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -30,8 +33,8 @@ export async function dismissWelcomeModal(page: Page): Promise<void> {
       ];
 
       for (const btn of closeButtons) {
-        if (await btn.isVisible({ timeout: 500 }).catch(() => false)) {
-          await btn.click();
+        if (await btn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+          await btn.first().click();
           await page.waitForTimeout(500);
 
           // Verify modal is gone
@@ -47,6 +50,14 @@ export async function dismissWelcomeModal(page: Page): Promise<void> {
         await backdrop.click({ position: { x: 5, y: 5 } });
         await page.waitForTimeout(500);
       }
+    }
+
+    // Fallback: welcome modal may not have role="dialog" — look for
+    // a "Get Started" button directly on the page.
+    const getStartedBtn = page.locator('button').filter({ hasText: /Get Started/i }).first();
+    if (await getStartedBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await getStartedBtn.click();
+      await page.waitForTimeout(500);
     }
   } catch (error) {
     // Modal dismissal is optional - don't fail test if it doesn't work
@@ -73,6 +84,7 @@ export async function waitForAppReady(page: Page): Promise<void> {
  * Use this in test.beforeEach() for most tests
  */
 export async function setupTest(page: Page, url: string = '/'): Promise<void> {
+  await setupSupabaseMocks(page);
   await page.goto(url);
   await waitForAppReady(page);
   await dismissWelcomeModal(page);
@@ -114,25 +126,30 @@ export async function startQuiz(
   topicName: string = 'Integers',
   level: number = 1
 ): Promise<void> {
-  // Expand topic
+  // Prefer the specific data-testid level button on the topic card
+  const levelBtn = page.locator(`[data-testid="level-button-${level}"]`).first();
+  if (await levelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await levelBtn.click();
+    await page.waitForTimeout(1500);
+    return;
+  }
+
+  // Fallback: click topic name (starts quiz at the first un-mastered level)
   const topicLocator = page.locator(`text=${topicName}`).first();
   await topicLocator.click();
-  await page.waitForTimeout(500);
-
-  // Click level button
-  const levelBtn = page
-    .locator('button')
-    .filter({ hasText: new RegExp(`Level\\s*${level}|L${level}`, 'i') })
-    .first();
-  await levelBtn.click();
   await page.waitForTimeout(1500);
 }
 
 /**
- * Checks if an element is visible without throwing
+ * Checks if an element is visible, with auto-wait (up to 3s)
  */
 export async function isVisible(page: Page, selector: string): Promise<boolean> {
-  return await page.locator(selector).isVisible({ timeout: 2000 }).catch(() => false);
+  try {
+    await page.locator(selector).first().waitFor({ state: 'visible', timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

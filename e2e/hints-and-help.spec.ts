@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupSupabaseMocks } from './helpers/mock-supabase';
 
 /**
  * E2E Tests: Hints & Help System
@@ -9,6 +10,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Hint System', () => {
   test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
     await page.goto('/');
     await page.waitForTimeout(1000);
   });
@@ -121,6 +123,7 @@ test.describe('Hint System', () => {
 
 test.describe('Explanation Display', () => {
   test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
     await page.goto('/');
     await page.waitForTimeout(1000);
   });
@@ -179,14 +182,20 @@ test.describe('Explanation Display', () => {
 
 test.describe('Session Summary & Reports', () => {
   test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
     await page.goto('/');
     await page.waitForTimeout(1000);
   });
 
   test('should show View Report button after answering questions', async ({ page }) => {
-    // Look for report button
-    const reportBtn = page.locator('button').filter({ hasText: /report|summary|analysis|📊/i });
-    await expect(reportBtn.first()).toBeVisible({ timeout: 5000 });
+    // The report link is in the header — it may be a <button> or <a> (Link).
+    // Use data-testid or match any element type.
+    const reportBtn = page.locator('[data-testid="nav-report"]').first();
+    const reportLink = page.locator('a, button').filter({ hasText: /report/i }).first();
+
+    const hasTestId = await reportBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    const hasLink = await reportLink.isVisible({ timeout: 2000 }).catch(() => false);
+    expect(hasTestId || hasLink).toBeTruthy();
   });
 
   test('should display session statistics', async ({ page }) => {

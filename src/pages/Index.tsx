@@ -34,6 +34,7 @@ import { Leaderboard } from '@/components/quiz/Leaderboard';
 import { SoundToggle } from '@/components/quiz/SoundToggle';
 import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { PathwayProgress } from '@/components/quiz/PathwayProgress';
+import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
@@ -688,6 +689,14 @@ const Index = () => {
             {!quiz.currentQuestion && (
               <ErrorBoundary section="Dashboard">
                 <>
+                  {/* Topic Prerequisite Graph — collapsible learning path */}
+                  <TopicPrereqGraph
+                    topics={Object.keys(topics)}
+                    subject={quiz.subject}
+                    getProgress={quiz.getTopicProgress}
+                    onSelectTopic={quiz.selectTopic}
+                  />
+
                   <TopicDashboard
                     topics={topics}
                     currentTopic={quiz.topic}

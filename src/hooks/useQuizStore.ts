@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -18,6 +19,8 @@ import { getMilestoneBonus } from '@/data/funElements';
 import { updatePracticeSchedule } from '@/services/spacedRepetitionService';
 import { getQuestionStars, getLevelCompletionStars } from '@/data/masteryRewards';
 import { getThresholdForLevel } from '@/utils/levelThresholds';
+import { sanitizeQuestionFields } from '@/utils/sanitize';
+import { adaptiveReorder, type AnswerRecord } from '@/utils/adaptiveDifficulty';
 
 const STORAGE_KEY = 'magical-mastery-quiz';
 const SESSION_KEY = 'magical-mastery-active-session'; // Separate key for active session
@@ -129,7 +132,7 @@ const loadFromStorage = (): Partial<QuizState> => {
           ...sessionStats,
           stars: 0, // Reset stars - will sync from database
         };
-        console.log('[Migration v4] Reset localStorage stars to 0 - will sync from database');
+        logger.debug('[Migration v4] Reset localStorage stars to 0 - will sync from database');
       }
 
       // Progress stays the same - existing mastered levels remain mastered
@@ -162,7 +165,7 @@ const saveToStorage = (state: Partial<QuizState>) => {
   } catch (e: any) {
     // Handle localStorage quota exceeded error
     if (e?.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded for quiz state - attempting cleanup');
+      logger.warn('localStorage quota exceeded for quiz state - attempting cleanup');
       try {
         // Clear old caches to make room
         localStorage.removeItem('magical-mastery-questions-cache');
@@ -174,7 +177,7 @@ const saveToStorage = (state: Partial<QuizState>) => {
           // Drop questionTracking if still too big - it can be rebuilt
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(slimData));
-        console.log('Saved slim quiz state after cleanup');
+        logger.debug('Saved slim quiz state after cleanup');
       } catch (retryError) {
         console.error('Failed to save quiz state even after cleanup:', retryError);
       }
@@ -326,6 +329,9 @@ export const useQuizStore = () => {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [sessionPerformance, setSessionPerformance] = useState<SessionPerformance>(initialSessionPerformance);
   const [showSessionSummary, setShowSessionSummary] = useState(false);
+
+  // Adaptive difficulty: recent answer history for within-level question reordering
+  const [recentAnswers, setRecentAnswers] = useState<AnswerRecord[]>([]);
 
   // Get max level for a specific topic (dynamic based on data)
   const getTopicMaxLevel = useCallback((topicName: string): number => {
@@ -613,13 +619,19 @@ export const useQuizStore = () => {
     for (let i = 1; i < rows.length; i++) {
       const values = rows[i];
       if (values.length >= 9) {
+        // Sanitize all text fields to prevent XSS from malicious CSV
+        const sanitized = sanitizeQuestionFields({
+          question: values[2],
+          options: [values[3], values[4], values[5], values[6]],
+          explanation: values[8],
+        });
         questions.push({
           id: values[0],
           level: parseInt(values[1]) || 1,
-          question: values[2],
-          options: [values[3], values[4], values[5], values[6]],
+          question: sanitized.question,
+          options: sanitized.options,
           correct: values[7].toUpperCase().charCodeAt(0) - 65,
-          explanation: values[8],
+          explanation: sanitized.explanation,
           concepts: values[9] ? values[9].split(';').map(c => c.trim()) : [],
         });
       }
@@ -653,7 +665,7 @@ export const useQuizStore = () => {
     const maxLevel = getTopicMaxLevel(topicName);
     
     if (!progress[topicName]) {
-      const newProgress: any = {};
+      const newProgress: Record<number, { correct: number; total: number; mastered: boolean }> = {};
       for (let i = 1; i <= maxLevel; i++) {
         newProgress[i] = { correct: 0, total: 0, mastered: false };
       }
@@ -695,7 +707,7 @@ export const useQuizStore = () => {
     setMixedTopics(null); // Clear mixed mode
     setUnlimitedPractice(startUnlimited);
     setIsReviewMode(false); // Ensure not in review mode
-    setQuestionHistory([]); // Reset question history
+    setQuestionHistory([]); setRecentAnswers([]); // Reset question history
     setSessionAnsweredIds(new Set()); // Clear session tracking - new topic = fresh questions
 
     // CRITICAL: Get raw progress directly from localStorage to ensure we have latest data
@@ -707,13 +719,13 @@ export const useQuizStore = () => {
     const maxLevel = getTopicMaxLevel(topicName);
 
     // DEBUG: Log the mastery status for each level to help diagnose level regression bugs
-    console.log(`[selectTopic] Loading topic "${topicName}":`);
-    console.log(`[selectTopic] Raw localStorage progress:`, savedTopicProgress);
-    console.log(`[selectTopic] Computed progress:`, prog);
+    logger.debug(`[selectTopic] Loading topic "${topicName}":`);
+    logger.debug(`[selectTopic] Raw localStorage progress:`, savedTopicProgress);
+    logger.debug(`[selectTopic] Computed progress:`, prog);
     for (let i = 1; i <= maxLevel; i++) {
       const savedMastered = savedTopicProgress?.[i]?.mastered;
       const computedMastered = prog[i]?.mastered;
-      console.log(`[selectTopic] Level ${i}: savedMastered=${savedMastered}, computedMastered=${computedMastered}`);
+      logger.debug(`[selectTopic] Level ${i}: savedMastered=${savedMastered}, computedMastered=${computedMastered}`);
     }
 
     // FIRST: Check if there's an active session for this specific topic - restore their level!
@@ -730,7 +742,7 @@ export const useQuizStore = () => {
       currentLevel = activeSession.level;
       restoredLevelStats = activeSession.levelStats;
       restoredFromSession = true;
-      console.log(`[selectTopic] Restored from active session for "${topicName}": level ${currentLevel}, stats:`, restoredLevelStats);
+      logger.debug(`[selectTopic] Restored from active session for "${topicName}": level ${currentLevel}, stats:`, restoredLevelStats);
     } else {
       // No active session - find the appropriate level
       // Check explicitly unlocked levels first
@@ -759,7 +771,7 @@ export const useQuizStore = () => {
       // But cap at maxLevel
       currentLevel = Math.min(currentLevel, maxLevel);
 
-      console.log(`[selectTopic] Calculated level: ${currentLevel} (firstNonMastered: ${firstNonMastered}, highestUnlocked: ${highestUnlocked})`);
+      logger.debug(`[selectTopic] Calculated level: ${currentLevel} (firstNonMastered: ${firstNonMastered}, highestUnlocked: ${highestUnlocked})`);
 
       // Try to reconstruct progress from questionTracking
       const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
@@ -830,7 +842,7 @@ export const useQuizStore = () => {
     setMixedTopics(selectedTopics);
     setLevel(1);
     setLevelStats({ correct: 0, total: 0 });
-    setQuestionHistory([]); // Reset question history
+    setQuestionHistory([]); setRecentAnswers([]); // Reset question history
     setUnlimitedPractice(false);
     setIsReviewMode(false); // Ensure not in review mode
     setSessionAnsweredIds(new Set()); // Clear session tracking for fresh quiz
@@ -961,6 +973,9 @@ export const useQuizStore = () => {
     // Track this question as answered in current session (no repeats)
     setSessionAnsweredIds(prev => new Set(prev).add(currentQ.id));
 
+    // Record for adaptive difficulty engine
+    setRecentAnswers(prev => [...prev, { questionId: currentQ.id, wasCorrect: isCorrect }]);
+
     return { isCorrect, correctIndex, question: currentQ, timeSpent };
   }, [currentQuestions, questionIndex, markQuestionAnswered, questionStartTime, topic, isReviewMode]);
 
@@ -987,7 +1002,7 @@ export const useQuizStore = () => {
 
     const threshold = getThresholdForLevel(level);
     if (accuracy >= threshold) {
-      console.log(`[checkMastery] PASSED level ${level} for topic "${topic}" with accuracy ${(accuracy * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%)`);
+      logger.debug(`[checkMastery] PASSED level ${level} for topic "${topic}" with accuracy ${(accuracy * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%)`);
 
       // Mark level as mastered
       setProgress(prev => {
@@ -1004,10 +1019,10 @@ export const useQuizStore = () => {
         for (let i = 1; i < level; i++) {
           if (!topicProg[i]) {
             topicProg[i] = { correct: 0, total: 0, mastered: true };
-            console.log(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
+            logger.debug(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
           } else if (!topicProg[i].mastered) {
             topicProg[i] = { ...topicProg[i], mastered: true };
-            console.log(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
+            logger.debug(`[checkMastery] Auto-marking level ${i} as mastered (safeguard for level ${level})`);
           }
         }
 
@@ -1021,7 +1036,7 @@ export const useQuizStore = () => {
           parsed.progress = newProgress;
           parsed.schemaVersion = SCHEMA_VERSION;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          console.log(`[checkMastery] Immediately persisted mastery for ${topic} level ${level}:`, topicProg[level]);
+          logger.debug(`[checkMastery] Immediately persisted mastery for ${topic} level ${level}:`, topicProg[level]);
         } catch (e) {
           console.error('[checkMastery] Failed to persist progress immediately:', e);
         }
@@ -1052,7 +1067,7 @@ export const useQuizStore = () => {
   const advanceLevel = useCallback(() => {
     if (level < currentMaxLevel) {
       const newLevel = level + 1;
-      console.log(`[advanceLevel] Advancing from level ${level} to ${newLevel} for topic "${topic}"`);
+      logger.debug(`[advanceLevel] Advancing from level ${level} to ${newLevel} for topic "${topic}"`);
       setLevel(newLevel);
       setLevelStats({ correct: 0, total: 0 });
 
@@ -1066,7 +1081,7 @@ export const useQuizStore = () => {
       setQuestionIndex(0);
       setQuestionStartTime(Date.now());
 
-      console.log(`[advanceLevel] Now at level ${newLevel} with ${shuffled.length} questions`);
+      logger.debug(`[advanceLevel] Now at level ${newLevel} with ${shuffled.length} questions`);
     }
   }, [level, currentMaxLevel, topic, getAvailableQuestions, banks, subject]);
 
@@ -1131,16 +1146,16 @@ export const useQuizStore = () => {
     setQuestionHistory(prev => [...prev, questionIndex]);
     
     if (questionIndex + 1 >= currentQuestions.length) {
-      // Reshuffle and start over
-      const shuffled = [...currentQuestions].sort(() => Math.random() - 0.5);
-      setCurrentQuestions(shuffled);
+      // Adaptively reorder questions based on running accuracy & tracking history
+      const reordered = adaptiveReorder(currentQuestions, questionTracking, recentAnswers);
+      setCurrentQuestions(reordered);
       setQuestionIndex(0);
     } else {
       setQuestionIndex(prev => prev + 1);
     }
     setPrefetchedNextIndex(null);
     setQuestionStartTime(Date.now());
-  }, [questionIndex, currentQuestions]);
+  }, [questionIndex, currentQuestions, questionTracking, recentAnswers]);
 
   // Navigate to previous question (for review)
   const previousQuestion = useCallback(() => {
@@ -1370,7 +1385,7 @@ export const useQuizStore = () => {
 
     // No solved questions to review
     if (solvedQuestions.length === 0) {
-      console.log('[startReviewMode] No solved questions found for', topicName, 'level:', reviewLevel);
+      logger.debug('[startReviewMode] No solved questions found for', topicName, 'level:', reviewLevel);
       return false;
     }
 
