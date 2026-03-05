@@ -65,7 +65,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests (Chromium)
-        run: npx playwright test --project='Desktop Chrome'
+        run: npx playwright test --project='Chrome'
 
       - name: Upload test report
         if: ${{ !cancelled() }}

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupSupabaseMocks } from './helpers/mock-supabase';
 
 /**
  * E2E Tests: Performance
@@ -6,6 +7,10 @@ import { test, expect } from '@playwright/test';
  * Critical for Indian students with varied network conditions
  * Focus: Fast load times, smooth animations, no jank
  */
+
+test.beforeEach(async ({ page }) => {
+  await setupSupabaseMocks(page);
+});
 
 test.describe('Page Load Performance', () => {
   test('should load dashboard in under 3 seconds', async ({ page }) => {
