@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { TopicProgress, QuestionTiming } from '@/types/quiz';
 import {
   Sparkles, Flame, Target, ChevronDown, ChevronRight,
-  Zap, Award, BookOpen, Lock, Bell, Play, Search, Eye, RotateCcw, MoreVertical
+  Zap, Award, BookOpen, Lock, Bell, Play, Search, Eye, RotateCcw, MoreVertical, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
