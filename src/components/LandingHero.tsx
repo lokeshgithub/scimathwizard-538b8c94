@@ -50,7 +50,7 @@ export function LandingHero({ onGetStarted }: LandingHeroProps) {
               transition={{ delay: 0.2 }}
             >
               <Sparkles className="w-4 h-4" />
-              Free for all students — No credit card needed
+              Start free — Upgrade to Premium for AI coaching & more
             </motion.div>
 
             {/* H1 Heading */}
