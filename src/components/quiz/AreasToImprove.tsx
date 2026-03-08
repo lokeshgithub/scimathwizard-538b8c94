@@ -1,11 +1,14 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Play, Clock, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Play, Clock, Target, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QuestionTiming } from '@/types/quiz';
 
 interface AreasToImproveProps {
   questionTimings: QuestionTiming[];
   onPractice: (topic: string) => void;
+  currentSubject?: string;
+  currentGrade?: number;
 }
 
 interface WeakTopic {
@@ -16,7 +19,7 @@ interface WeakTopic {
   avgTimeSeconds: number;
 }
 
-export const AreasToImprove = ({ questionTimings, onPractice }: AreasToImproveProps) => {
+export const AreasToImprove = ({ questionTimings, onPractice, currentSubject = 'math', currentGrade = 7 }: AreasToImproveProps) => {
   // Group timings by topic and calculate accuracy
   const topicStats = new Map<string, { correct: number; total: number; totalTime: number }>();
 
@@ -106,16 +109,28 @@ export const AreasToImprove = ({ questionTimings, onPractice }: AreasToImprovePr
                 </span>
               </div>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onPractice(weak.topic)}
-              className="ml-2 shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50"
-              data-testid={`practice-${weak.topic}`}
-            >
-              <Play className="w-3 h-3 mr-1" />
-              Practice
-            </Button>
+            <div className="flex gap-1.5 ml-2 shrink-0">
+              <Link to={`/learn/${weak.topic}?subject=${currentSubject}&grade=${currentGrade}`}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-primary/30 hover:bg-primary/10 text-primary"
+                >
+                  <BookOpen className="w-3 h-3 mr-1" />
+                  Learn
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onPractice(weak.topic)}
+                className="border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                data-testid={`practice-${weak.topic}`}
+              >
+                <Play className="w-3 h-3 mr-1" />
+                Practice
+              </Button>
+            </div>
           </div>
         ))}
       </div>
