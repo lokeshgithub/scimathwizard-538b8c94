@@ -39,6 +39,7 @@ import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { OnboardingTour } from '@/components/quiz/OnboardingTour';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
+import { PwaInstallBanner } from '@/components/quiz/PwaInstallBanner';
 import { usePremiumCheck } from '@/components/PremiumGate';
 import { PremiumGate } from '@/components/PremiumGate';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
@@ -669,6 +670,9 @@ const Index = () => {
         {/* Dashboard elements - hidden during focused quiz mode */}
         {!isInQuizMode && (
           <>
+            {/* PWA Install Banner */}
+            <PwaInstallBanner />
+
             {/* Daily Goal & Streak */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
