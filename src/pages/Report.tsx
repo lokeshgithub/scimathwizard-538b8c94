@@ -205,6 +205,7 @@ const Report = () => {
                 availableTopics={availableTopics}
                 showHistory={showHistory}
                 onToggleHistory={() => setShowHistory(!showHistory)}
+                isPremium={isPremium}
               />
             </div>
             <Button
