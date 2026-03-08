@@ -10,6 +10,9 @@ import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
 import { offlineSyncService } from '@/services/offlineSyncService';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { usePremium } from '@/hooks/usePremium';
+import { PremiumGate } from '@/components/PremiumGate';
 
 interface SessionSummaryProps {
   analysis: SessionAnalysis;
