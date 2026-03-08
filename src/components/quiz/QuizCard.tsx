@@ -411,6 +411,7 @@ export const QuizCard = ({
 
         {/* Options */}
         <div className="space-y-3 mb-6" role="radiogroup" aria-label="Answer options">
+          <AnimatePresence mode="wait">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
             const isCorrectAnswer = index === correctIndex;
@@ -428,47 +429,66 @@ export const QuizCard = ({
                 aria-label={`Option ${optionLabel}: ${option}${showAsCorrect ? ' (correct answer)' : ''}${showAsIncorrect ? ' (incorrect)' : ''}`}
                 data-testid={`answer-option-${String.fromCharCode(97 + index)}`}
                 className={`
-                  w-full p-4 rounded-xl text-left transition-colors duration-150 flex items-center gap-3
+                  w-full p-4 rounded-xl text-left transition-all duration-200 flex items-center gap-3 option-ripple
                   ${isValidating && isSelected
-                    ? 'bg-primary/30 ring-2 ring-primary'
+                    ? 'bg-primary/30 ring-2 ring-primary shadow-md'
                     : !isAnswered
-                      ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30'
+                      ? 'bg-muted hover:bg-primary/10 hover:ring-2 hover:ring-primary/30 hover:shadow-md active:shadow-inner'
                       : showAsCorrect
-                        ? 'bg-success/20 ring-2 ring-success'
+                        ? 'bg-success/20 ring-2 ring-success shadow-md'
                         : showAsIncorrect
                           ? 'bg-destructive/20 ring-2 ring-destructive'
-                          : 'bg-muted opacity-60'
+                          : 'bg-muted opacity-50'
                   }
                 `}
-                initial={{ opacity: 0.8 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{
-                  opacity: 1,
-                  scale: isValidating && isSelected ? [1, 1.01, 1] : 1
+                  opacity: isAnswered && !showAsCorrect && !showAsIncorrect ? 0.5 : 1,
+                  y: 0,
+                  scale: showAsCorrect ? [1, 1.02, 1] : showAsIncorrect ? [1, 0.98, 1] : 1,
                 }}
                 transition={{
-                  duration: 0.1,
-                  scale: { duration: 0.3, repeat: isValidating && isSelected ? Infinity : 0 }
+                  duration: 0.25,
+                  delay: index * 0.05,
+                  scale: { duration: 0.4, ease: 'easeOut' },
                 }}
-                whileHover={!isAnswered && !isValidating ? { scale: 1.01 } : undefined}
-                whileTap={!isAnswered && !isValidating ? { scale: 0.99 } : undefined}
+                whileHover={!isAnswered && !isValidating ? { scale: 1.015, y: -2 } : undefined}
+                whileTap={!isAnswered && !isValidating ? { scale: 0.97 } : undefined}
               >
-                <span className={`
-                  w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
-                  ${showAsCorrect 
-                    ? 'bg-success text-white' 
-                    : showAsIncorrect 
-                      ? 'bg-destructive text-white' 
-                      : 'bg-primary/10 text-primary'
-                  }
-                `}>
+                <motion.span 
+                  className={`
+                    w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300
+                    ${showAsCorrect 
+                      ? 'bg-success text-white' 
+                      : showAsIncorrect 
+                        ? 'bg-destructive text-white' 
+                        : isSelected && isValidating
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-primary/10 text-primary'
+                    }
+                  `}
+                  animate={showAsCorrect ? { rotate: [0, -10, 10, 0], scale: [1, 1.2, 1] } : showAsIncorrect ? { x: [0, -4, 4, -4, 0] } : {}}
+                  transition={{ duration: 0.5 }}
+                >
                   {showAsCorrect ? <CheckCircle className="w-5 h-5" /> :
                    showAsIncorrect ? <XCircle className="w-5 h-5" /> :
                    String.fromCharCode(65 + index)}
-                </span>
+                </motion.span>
                 <span className="flex-1 text-foreground break-words">{option}</span>
+                {showAsCorrect && (
+                  <motion.span
+                    className="text-success star-burst"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 500 }}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                  </motion.span>
+                )}
               </motion.button>
             );
           })}
+          </AnimatePresence>
         </div>
 
         {/* Previous button (only when answered and can go back) */}
