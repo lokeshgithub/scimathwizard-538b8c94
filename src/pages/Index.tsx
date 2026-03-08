@@ -624,7 +624,7 @@ const Index = () => {
       </motion.header>
 
       {/* Main Content */}
-      <main className={`max-w-4xl mx-auto px-4 ${isInQuizMode ? 'py-3' : 'py-6'}`}>
+      <main className={`max-w-4xl mx-auto px-3 sm:px-4 ${isInQuizMode ? 'py-3' : 'py-4 sm:py-6'} pb-20 sm:pb-6`}>
         {/* Dashboard elements - hidden during focused quiz mode */}
         {!isInQuizMode && (
           <>

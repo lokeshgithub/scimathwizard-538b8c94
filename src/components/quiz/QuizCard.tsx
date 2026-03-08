@@ -294,13 +294,27 @@ export const QuizCard = ({
   return (
     <AnimatePresence mode="wait">
     <motion.div
-      className="bg-card rounded-2xl shadow-card overflow-hidden"
+      className="bg-card rounded-2xl shadow-card overflow-hidden touch-pan-y"
       initial={{ opacity: 0, x: 40, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: -40, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       key={question.id}
       data-testid="quiz-card"
+      drag={isAnswered ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(_e, info) => {
+        if (Math.abs(info.offset.x) > 80) {
+          if (info.offset.x < -80) {
+            // Swipe left → next question
+            handleNext();
+          } else if (info.offset.x > 80 && canGoBack && onPrevious) {
+            // Swipe right → previous question
+            onPrevious();
+          }
+        }
+      }}
     >
       {/* Header */}
       <div className={`bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} p-4`}>
@@ -337,8 +351,8 @@ export const QuizCard = ({
       </div>
 
       {/* Question */}
-      <div className="p-6">
-        <p className="text-lg font-medium text-foreground mb-4 leading-relaxed" data-testid="question-text">
+      <div className="p-4 sm:p-6">
+        <p className="text-base sm:text-lg font-medium text-foreground mb-4 leading-relaxed" data-testid="question-text">
           {question.question}
         </p>
 
@@ -431,7 +445,7 @@ export const QuizCard = ({
                 aria-label={`Option ${optionLabel}: ${option}${showAsCorrect ? ' (correct answer)' : ''}${showAsIncorrect ? ' (incorrect)' : ''}`}
                 data-testid={`answer-option-${String.fromCharCode(97 + index)}`}
                 className={`
-                  w-full p-4 rounded-xl text-left transition-all duration-200 flex items-center gap-3 option-ripple
+                  w-full p-3 sm:p-4 rounded-xl text-left transition-all duration-200 flex items-center gap-3 option-ripple min-h-[48px]
                   ${isValidating && isSelected
                     ? 'bg-primary/30 ring-2 ring-primary shadow-md'
                     : !isAnswered
@@ -459,7 +473,7 @@ export const QuizCard = ({
               >
                 <motion.span 
                   className={`
-                    w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300
+                    w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 flex-shrink-0
                     ${showAsCorrect 
                       ? 'bg-success text-white' 
                       : showAsIncorrect 

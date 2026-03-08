@@ -511,7 +511,7 @@ export const TopicDashboard = ({
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(categoryName)}
-                  className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                  className="w-full p-3 sm:p-3 flex items-center justify-between hover:bg-muted/50 transition-colors min-h-[48px]"
                   aria-expanded={isExpanded}
                   aria-label={`${categoryName} category, ${categoryMastered} of ${categoryTopics.length} complete. Click to ${isExpanded ? 'collapse' : 'expand'}`}
                 >
@@ -646,7 +646,7 @@ export const TopicDashboard = ({
                                           handleStartLevel(topic.name, level);
                                         }}
                                         className={`
-                                          w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                                          w-7 h-7 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-xs sm:text-[10px] font-bold
                                           transition-all hover:scale-110
                                           ${isMastered
                                             ? `${colors.bg} text-white`
