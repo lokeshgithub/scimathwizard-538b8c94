@@ -157,53 +157,66 @@ const Admin = () => {
     setLessonGenProgress({ current: 0, total: tasks.length });
     lessonAbortRef.current = false;
 
-    // Process in batches of 5
-    const batchSize = 5;
     const allResults: typeof lessonGenResults = [];
 
-    for (let i = 0; i < tasks.length; i += batchSize) {
+    // Process ONE at a time using generate-single-lesson to avoid timeouts
+    for (let i = 0; i < tasks.length; i++) {
       if (lessonAbortRef.current) break;
-      const batch = tasks.slice(i, i + batchSize);
+      const task = tasks[i];
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        // Check if lesson already exists (skip if not overwriting)
+        if (!lessonOverwrite) {
+          const { data: existing } = await supabase
+            .from('lessons')
+            .select('id')
+            .eq('topic_name', task.topic)
+            .eq('subject', task.subject)
+            .eq('grade', task.grade)
+            .eq('level', task.level)
+            .maybeSingle();
+
+          if (existing) {
+            allResults.push({ ...task, status: 'exists' });
+            setLessonGenResults([...allResults]);
+            setLessonGenProgress({ current: i + 1, total: tasks.length });
+            continue;
+          }
+        }
 
         const resp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lesson-bulk`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-single-lesson`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
-            body: JSON.stringify({ topics: batch, overwrite: lessonOverwrite }),
+            body: JSON.stringify(task),
           }
         );
 
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({ error: 'Request failed' }));
-          for (const t of batch) {
-            allResults.push({ ...t, status: 'error', error: err.error || `HTTP ${resp.status}` });
+          allResults.push({ ...task, status: 'error', error: err.error || `HTTP ${resp.status}` });
+          if (resp.status === 429) {
+            toast.error('Rate limited. Waiting 30s before retrying...');
+            await new Promise(r => setTimeout(r, 30000));
+          }
+          if (resp.status === 402) {
+            toast.error('AI credits exhausted.');
+            break;
           }
         } else {
           const data = await resp.json();
-          allResults.push(...(data.results || []));
+          allResults.push({ ...task, status: data.status || 'generated' });
         }
       } catch (e) {
-        for (const t of batch) {
-          allResults.push({ ...t, status: 'error', error: (e as Error).message });
-        }
+        allResults.push({ ...task, status: 'error', error: (e as Error).message });
       }
 
       setLessonGenResults([...allResults]);
-      setLessonGenProgress({ current: Math.min(i + batchSize, tasks.length), total: tasks.length });
-
-      // Check for rate limit
-      if (allResults.some(r => r.topic === 'RATE_LIMITED')) {
-        toast.error('Rate limited. Try again later.');
-        break;
-      }
+      setLessonGenProgress({ current: i + 1, total: tasks.length });
     }
 
     setIsGeneratingLessons(false);
