@@ -36,6 +36,7 @@ import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { PathwayProgress } from '@/components/quiz/PathwayProgress';
 import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
+import { OnboardingTour } from '@/components/quiz/OnboardingTour';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { StarShop } from '@/components/quiz/StarShop';
