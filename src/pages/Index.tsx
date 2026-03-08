@@ -36,6 +36,7 @@ import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { PathwayProgress } from '@/components/quiz/PathwayProgress';
 import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
+import { OnboardingTour } from '@/components/quiz/OnboardingTour';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { StarShop } from '@/components/quiz/StarShop';
@@ -644,12 +645,14 @@ const Index = () => {
         {!isInQuizMode && (
           <>
             {/* Daily Goal & Streak */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
               <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
             </div>
 
-            <StatsBar stats={quiz.sessionStats} />
+            <div data-tour="stats-bar">
+              <StatsBar stats={quiz.sessionStats} />
+            </div>
 
             {/* Pathway Progress - Journey visualization */}
             <PathwayProgress
@@ -953,6 +956,9 @@ const Index = () => {
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
+
+      {/* Onboarding Tour - step-by-step walkthrough after welcome */}
+      {!isInQuizMode && <OnboardingTour />}
 
       {/* Exit Quiz Confirmation */}
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
