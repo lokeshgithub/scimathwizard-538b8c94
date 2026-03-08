@@ -17,6 +17,7 @@ import {
   Loader2,
   History,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuizStore } from '@/hooks/useQuizStore';
@@ -37,6 +38,7 @@ import { ReportStrengthsWeaknesses } from '@/components/report/ReportStrengthsWe
 import { ReportHistoryList } from '@/components/report/ReportHistoryList';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { exportAggregatedReportToPdf } from '@/utils/exportReportPdf';
 
 const Report = () => {
   const quiz = useQuizStore();
@@ -88,6 +90,23 @@ const Report = () => {
 
   // Aggregate data for the current filter
   const aggregated = useMemo(() => aggregateReports(reports), [reports]);
+
+  // PDF download handler
+  const handleDownloadPdf = useCallback(() => {
+    const filterLabel = filters.timeRange === 'last_session' ? 'Last Session'
+      : filters.timeRange === 'last_week' ? 'Last Week'
+      : filters.timeRange === 'last_3_weeks' ? 'Last 3 Weeks'
+      : filters.timeRange === 'last_month' ? 'Last Month'
+      : 'All Time';
+    const subjectLabel = filters.subject === 'all' ? 'All Subjects' : filters.subject;
+    exportAggregatedReportToPdf(
+      aggregated,
+      filters.subject,
+      profile?.display_name || undefined,
+      `${subjectLabel} • ${filterLabel}`
+    );
+    toast.success('PDF downloaded!');
+  }, [aggregated, filters, profile]);
 
   // Filter topic breakdown by selected topic
   const filteredTopicSummary = useMemo(() => {
@@ -339,7 +358,11 @@ const Report = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
+              <Button onClick={handleDownloadPdf} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
               <Link to="/">
                 <Button variant="outline">
                   <ArrowLeft className="w-4 h-4 mr-2" />
