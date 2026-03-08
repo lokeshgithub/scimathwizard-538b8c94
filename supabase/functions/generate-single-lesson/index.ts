@@ -111,18 +111,23 @@ serve(async (req) => {
   try {
     const { topic, subject, grade, level, secret } = await req.json();
 
-    // Auth: either admin token or service secret
-    const expectedSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Auth: service role key in body OR admin user token in header
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
     
     let authorized = false;
     
-    // Check service secret
-    if (secret && secret === expectedSecret) {
+    // Check if auth header IS the service role key (server-to-server)
+    if (authHeader && authHeader === serviceRoleKey) {
       authorized = true;
     }
     
-    // Check admin role via auth header
+    // Check if body contains the service secret
+    if (!authorized && secret && secret === serviceRoleKey) {
+      authorized = true;
+    }
+    
+    // Check admin role via user auth token
     if (!authorized && authHeader) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
