@@ -358,7 +358,11 @@ const Report = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
+              <Button onClick={handleDownloadPdf} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
               <Link to="/">
                 <Button variant="outline">
                   <ArrowLeft className="w-4 h-4 mr-2" />
