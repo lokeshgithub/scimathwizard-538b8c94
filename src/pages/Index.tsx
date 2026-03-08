@@ -75,6 +75,11 @@ const Index = () => {
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [gradeTopicCounts, setGradeTopicCounts] = useState<Record<number, number>>({});
+  const [showLanding, setShowLanding] = useState(() => {
+    // Show landing for first-time visitors who haven't started playing
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('smw-has-visited');
+  });
 
   // Pull-to-refresh for topic dashboard
   const pullToRefresh = usePullToRefresh({
