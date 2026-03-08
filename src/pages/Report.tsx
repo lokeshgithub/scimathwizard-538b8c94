@@ -17,6 +17,7 @@ import {
   Loader2,
   History,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuizStore } from '@/hooks/useQuizStore';
