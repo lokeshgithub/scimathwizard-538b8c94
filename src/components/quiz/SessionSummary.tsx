@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SessionAnalysis, SessionStats, Subject } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
