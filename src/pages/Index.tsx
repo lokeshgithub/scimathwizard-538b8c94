@@ -482,7 +482,15 @@ const Index = () => {
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div ref={!isInQuizMode ? pullToRefresh.containerRef : undefined} className="min-h-screen bg-background overflow-x-hidden">
+      {/* Pull-to-refresh indicator (dashboard only) */}
+      {!isInQuizMode && (
+        <PullToRefreshIndicator
+          isPulling={pullToRefresh.isPulling}
+          refreshing={pullToRefresh.refreshing}
+          pullDistance={pullToRefresh.pullDistance}
+        />
+      )}
       {/* Header - Compact in quiz mode, full in dashboard mode */}
       <motion.header
         className={`bg-gradient-magical text-white px-4 overflow-hidden ${isInQuizMode ? 'py-2' : 'py-4'}`}
