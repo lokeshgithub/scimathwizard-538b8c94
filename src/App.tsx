@@ -58,7 +58,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
               <Route path="/profile" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Profile /></Suspense></ProtectedRoute>} />
-              <Route path="/admin" element={<AdminRoute><Suspense fallback={<PageLoader />}><Admin /></Suspense></AdminRoute>} />
+              <Route path="/admin" element={<Suspense fallback={<PageLoader />}><Admin /></Suspense>} />
               <Route path="/adaptive" element={<Suspense fallback={<PageLoader />}><AdaptiveChallenge /></Suspense>} />
               <Route path="/adaptive/history" element={<Suspense fallback={<PageLoader />}><AdaptiveHistory /></Suspense>} />
               <Route path="/adaptive/focus" element={<Suspense fallback={<PageLoader />}><FocusedPractice /></Suspense>} />
