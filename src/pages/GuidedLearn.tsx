@@ -60,6 +60,145 @@ function parseSections(markdown: string) {
   return sections;
 }
 
+/** Detect visual aid type from blockquote text */
+function getBlockquoteType(text: string): 'formula' | 'key-idea' | 'wrong' | 'correct' | 'answer' | 'normal' {
+  if (text.includes('📐') && text.includes('Formula')) return 'formula';
+  if (text.includes('🔑') && text.includes('Key Idea')) return 'key-idea';
+  if (text.includes('❌') && text.includes('Wrong')) return 'wrong';
+  if (text.includes('✅') && text.includes('Correct')) return 'correct';
+  if (text.includes('🎯') && text.includes('Answer')) return 'answer';
+  return 'normal';
+}
+
+function extractText(children: ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) return children.map(extractText).join('');
+  if (children && typeof children === 'object' && 'props' in children) {
+    return extractText((children as any).props.children);
+  }
+  return '';
+}
+
+/** Custom markdown components for visual aids */
+function useVisualAidComponents(): Components {
+  return useMemo<Components>(() => ({
+    blockquote: ({ children, ...props }) => {
+      const text = extractText(children);
+      const type = getBlockquoteType(text);
+
+      const styles: Record<string, string> = {
+        'formula': 'bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary rounded-xl p-4 my-4 shadow-sm',
+        'key-idea': 'bg-gradient-to-r from-accent/15 via-accent/5 to-transparent border-l-4 border-accent rounded-xl p-4 my-4 shadow-sm',
+        'wrong': 'bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent border-l-4 border-destructive rounded-xl p-4 my-3',
+        'correct': 'bg-gradient-to-r from-success/10 via-success/5 to-transparent border-l-4 border-success rounded-xl p-4 my-3',
+        'answer': 'bg-gradient-to-r from-success/15 via-success/5 to-transparent border-l-4 border-success rounded-xl p-4 my-4 shadow-md ring-1 ring-success/20',
+        'normal': 'border-l-4 border-muted-foreground/30 bg-muted/30 rounded-xl p-4 my-3',
+      };
+
+      return (
+        <motion.div
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+          className={styles[type]}
+        >
+          <blockquote className="[&>p]:m-0 [&>p]:leading-relaxed" {...props}>
+            {children}
+          </blockquote>
+        </motion.div>
+      );
+    },
+
+    // Render ```diagram blocks as visual diagram cards
+    code: ({ className, children, ...props }) => {
+      const match = /language-(\w+)/.exec(className || '');
+      const lang = match?.[1];
+
+      if (lang === 'diagram') {
+        return (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="my-5 rounded-2xl bg-card border-2 border-dashed border-primary/30 p-5 overflow-x-auto shadow-sm"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Target className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <span className="text-xs font-semibold text-primary uppercase tracking-wide">Diagram</span>
+            </div>
+            <pre className="font-mono text-sm leading-relaxed text-foreground/90 whitespace-pre m-0 bg-transparent border-0 p-0">
+              {children}
+            </pre>
+          </motion.div>
+        );
+      }
+
+      // Regular code blocks
+      return (
+        <code className={`${className || ''} bg-muted px-1.5 py-0.5 rounded text-sm`} {...props}>
+          {children}
+        </code>
+      );
+    },
+
+    // Enhanced tables
+    table: ({ children, ...props }) => (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="my-5 rounded-xl border border-border overflow-hidden shadow-sm"
+      >
+        <table className="w-full text-sm" {...props}>{children}</table>
+      </motion.div>
+    ),
+    thead: ({ children }) => (
+      <thead className="bg-primary/10">{children}</thead>
+    ),
+    th: ({ children, ...props }) => (
+      <th className="px-4 py-2.5 text-left font-bold text-foreground text-xs uppercase tracking-wider border-b border-border" {...props}>
+        {children}
+      </th>
+    ),
+    td: ({ children, ...props }) => (
+      <td className="px-4 py-2.5 border-b border-border/50 text-foreground/90" {...props}>
+        {children}
+      </td>
+    ),
+
+    // Step-by-step detection in paragraphs
+    p: ({ children, ...props }) => {
+      const text = extractText(children);
+      const stepMatch = text.match(/^\*?\*?Step\s+(\d+)\s*→\*?\*?\s*/);
+
+      if (stepMatch) {
+        const stepNum = stepMatch[1];
+        return (
+          <div className="flex gap-3 items-start my-3">
+            <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm">
+              <span className="text-xs font-bold text-primary-foreground">{stepNum}</span>
+            </div>
+            <p className="flex-1 pt-1 text-foreground/90 leading-relaxed" {...props}>
+              {children}
+            </p>
+          </div>
+        );
+      }
+
+      return <p className="leading-relaxed" {...props}>{children}</p>;
+    },
+
+    // Enhanced strong for step markers
+    strong: ({ children, ...props }) => {
+      const text = extractText(children);
+      if (text.match(/^Step\s+\d+\s*→/)) {
+        return <strong className="text-primary font-bold" {...props}>{children}</strong>;
+      }
+      return <strong {...props}>{children}</strong>;
+    },
+  }), []);
+}
+
 export default function GuidedLearn() {
   const { topic } = useParams<{ topic: string }>();
   const [searchParams] = useSearchParams();
