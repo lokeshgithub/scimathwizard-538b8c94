@@ -69,6 +69,23 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
       ? (subject as Subject)
       : 'math';
 
+    // If offline, queue for later sync
+    if (!navigator.onLine) {
+      offlineSyncService.enqueue({
+        type: 'session_report',
+        payload: { sessionId, analysis, subject: validatedSubject, sessionStats: stats },
+      });
+      // Mark as saved locally
+      try {
+        const savedSessions = JSON.parse(localStorage.getItem(SAVED_SESSIONS_KEY) || '[]');
+        savedSessions.push(sessionId);
+        localStorage.setItem(SAVED_SESSIONS_KEY, JSON.stringify(savedSessions.slice(-100)));
+      } catch (e) { /* ignore */ }
+      setIsSaving(false);
+      toast.info('Session saved offline. Will sync when you reconnect.', { duration: 4000 });
+      return;
+    }
+
     saveSessionReport(sessionId, analysis, validatedSubject, stats).then(saved => {
       if (saved) {
         // Mark as saved
@@ -92,9 +109,13 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
         });
       } else {
         console.error('[Report] Failed to save session report');
-        toast.error('Failed to save session history', {
+        // Queue for retry
+        offlineSyncService.enqueue({
+          type: 'session_report',
+          payload: { sessionId, analysis, subject: validatedSubject, sessionStats: stats },
+        });
+        toast.error('Failed to save session history. Will retry automatically.', {
           duration: 6000,
-          description: 'Your progress is safe locally. Try logging in again.'
         });
       }
       setIsSaving(false);
