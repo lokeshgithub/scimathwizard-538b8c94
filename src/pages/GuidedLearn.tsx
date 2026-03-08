@@ -288,6 +288,48 @@ export default function GuidedLearn() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Text selection detection for "Ask about this"
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const text = selection?.toString().trim() || '';
+      
+      if (text.length > 5 && text.length < 500 && contentRef.current) {
+        const anchorNode = selection?.anchorNode;
+        if (anchorNode && contentRef.current.contains(anchorNode)) {
+          const range = selection!.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setSelectionPopup({
+            text,
+            x: rect.left + rect.width / 2,
+            y: rect.top - 10,
+          });
+        } else {
+          setSelectionPopup(null);
+        }
+      } else {
+        setSelectionPopup(null);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    const dismissPopup = () => setSelectionPopup(null);
+    window.addEventListener('scroll', dismissPopup, { passive: true });
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      window.removeEventListener('scroll', dismissPopup);
+    };
+  }, []);
+
+  const handleAskAboutSelection = useCallback(() => {
+    if (selectionPopup) {
+      setHighlightedText(selectionPopup.text);
+      setSelectionPopup(null);
+      window.getSelection()?.removeAllRanges();
+      haptics.light();
+    }
+  }, [selectionPopup]);
+
   const sections = parseSections(lessonMarkdown);
   const progress = isStreaming
     ? Math.min(90, (lessonMarkdown.length / 3000) * 100)
