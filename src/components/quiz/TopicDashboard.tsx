@@ -646,7 +646,7 @@ export const TopicDashboard = ({
                                           handleStartLevel(topic.name, level);
                                         }}
                                         className={`
-                                          w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                                          w-7 h-7 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-xs sm:text-[10px] font-bold
                                           transition-all hover:scale-110
                                           ${isMastered
                                             ? `${colors.bg} text-white`
