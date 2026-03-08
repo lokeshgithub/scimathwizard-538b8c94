@@ -745,8 +745,13 @@ const Index = () => {
                     questionTimings={quiz.sessionPerformance.questionTimings}
                   />
 
-                  {/* Spaced Repetition Card - show when logged in */}
-                  {user && <SpacedRepetitionCard />}
+                  {/* Spaced Repetition Card - Premium only, show when logged in */}
+                  {user && isPremium && <SpacedRepetitionCard />}
+                  {user && !isPremium && (
+                    <PremiumGate feature="spaced_repetition" message="Spaced repetition helps you review weak topics at optimal intervals. Upgrade to Premium to unlock!">
+                      <SpacedRepetitionCard />
+                    </PremiumGate>
+                  )}
                 </>
               </ErrorBoundary>
             )}
