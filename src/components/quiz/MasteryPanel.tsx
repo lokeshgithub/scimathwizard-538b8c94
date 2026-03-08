@@ -24,7 +24,6 @@ interface MasteryPanelProps {
   progress: TopicProgress;
   levelStats: { correct: number; total: number };
   perLevel: number;
-  threshold?: number;
   topicLevels?: number[];
   onResetProgress?: () => void;
   onPracticeLevel?: (level: number) => void;
