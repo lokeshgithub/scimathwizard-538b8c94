@@ -1245,7 +1245,148 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        <Card className="mt-6">
+        {/* Lesson Upload & Management */}
+        <Card className="mt-6 border-accent/30 bg-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              📖 Lesson Upload & Management
+            </CardTitle>
+            <CardDescription>
+              Upload lesson content via CSV, download existing lessons, or view inventory. Use the template to see the exact format.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Action buttons row */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadLessonTemplate} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download Template
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadAllLessons} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download All Lessons
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLessonInventory(!showLessonInventory)}
+                className="gap-2"
+              >
+                {showLessonInventory ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showLessonInventory ? 'Hide' : 'Show'} Inventory
+              </Button>
+            </div>
+
+            {/* Overwrite toggle */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="overwrite-lessons-upload"
+                checked={lessonUploadOverwrite}
+                onChange={(e) => setLessonUploadOverwrite(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Label htmlFor="overwrite-lessons-upload" className="cursor-pointer text-sm">
+                Overwrite existing lessons (update if same topic/subject/grade/level exists)
+              </Label>
+            </div>
+
+            {/* Upload area */}
+            <label className="block cursor-pointer">
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt"
+                multiple
+                onChange={handleLessonFileUpload}
+                className="hidden"
+                disabled={isUploadingLessons}
+              />
+              <motion.div
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                  isUploadingLessons
+                    ? 'border-muted bg-muted/20'
+                    : 'border-border hover:border-accent hover:bg-accent/5'
+                }`}
+                whileHover={!isUploadingLessons ? { scale: 1.01 } : {}}
+              >
+                {isUploadingLessons ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                    <p className="font-medium text-sm">Uploading lessons...</p>
+                  </div>
+                ) : (
+                  <>
+                    <BookOpen className="w-6 h-6 text-accent mx-auto mb-2" />
+                    <p className="font-semibold text-foreground text-sm">Click to upload lesson CSV files</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Format: topic_name, subject, grade, level, content (content in quotes for multi-line)
+                    </p>
+                  </>
+                )}
+              </motion.div>
+            </label>
+
+            {/* Upload results */}
+            {lessonUploadResults && (
+              <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1">
+                <p className="font-medium">Upload Results:</p>
+                <p className="text-success">✅ {lessonUploadResults.inserted} lesson(s) uploaded</p>
+                {lessonUploadResults.skipped > 0 && (
+                  <p className="text-muted-foreground">⏭️ {lessonUploadResults.skipped} skipped (already exist)</p>
+                )}
+                {lessonUploadResults.errors.length > 0 && (
+                  <div className="text-destructive">
+                    <p>❌ {lessonUploadResults.errors.length} error(s):</p>
+                    {lessonUploadResults.errors.map((err, i) => (
+                      <p key={i} className="text-xs ml-4">{err}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Inventory */}
+            {showLessonInventory && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Lesson Inventory ({lessonInventory.length} topics)</h4>
+                {lessonInventory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No lessons found. Upload or generate some!</p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Subject</th>
+                          <th className="px-3 py-2 text-left">Topic</th>
+                          <th className="px-3 py-2 text-center">Levels</th>
+                          <th className="px-3 py-2 text-right">Size</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lessonInventory.map((item, i) => (
+                          <tr key={i} className="border-t border-border/50">
+                            <td className="px-3 py-1.5 capitalize">{item.subject}</td>
+                            <td className="px-3 py-1.5">{item.topic_name}</td>
+                            <td className="px-3 py-1.5 text-center">
+                              {item.levels.sort((a, b) => a - b).join(', ')}
+                              {item.levels.length === 6 && <span className="ml-1 text-success">✓</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-muted-foreground">
+                              {Math.round(item.total_length / 1024)}KB
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="w-5 h-5" />
