@@ -57,6 +57,7 @@ export default function OlympiadTest() {
   const quiz = useQuizStore();
   const olympiad = useOlympiadTest(quiz.banks);
   const { profile } = useAuth();
+  const { isPremium, loading: premiumLoading } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
 
