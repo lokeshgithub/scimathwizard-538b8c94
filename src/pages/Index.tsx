@@ -670,6 +670,9 @@ const Index = () => {
         {/* Dashboard elements - hidden during focused quiz mode */}
         {!isInQuizMode && (
           <>
+            {/* PWA Install Banner */}
+            <PwaInstallBanner />
+
             {/* Daily Goal & Streak */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
