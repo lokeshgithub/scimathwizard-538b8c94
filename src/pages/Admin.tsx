@@ -86,70 +86,27 @@ const Admin = () => {
   const [availableTopics, setAvailableTopics] = useState<Array<{ name: string; subject: string; questionCount: number; levels: number[] }>>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
-  // Fetch available topics for test mode - use RPC like quiz app (bypasses RLS)
+  // Fetch available topics using the lightweight summary RPC (no need to fetch all 11K+ questions)
   const fetchAvailableTopics = useCallback(async () => {
     setIsLoadingTopics(true);
     try {
-      const { data: subjects } = await supabase.from('subjects').select('*');
-      const { data: topics } = await supabase.from('topics').select('*');
+      const { data: summary, error } = await supabase.rpc('get_question_summary');
 
-      // Use RPC function to get questions (same as quiz app - bypasses RLS)
-      let allQuestions: Array<{ id: string; level: number; topic_id: string }> = [];
-      let offset = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data: batch, error } = await supabase
-          .rpc('get_public_questions')
-          .range(offset, offset + pageSize - 1);
-
-        if (error) {
-          console.error('RPC error:', error);
-          break;
-        }
-
-        if (!batch || batch.length === 0) {
-          hasMore = false;
-        } else {
-          allQuestions = [...allQuestions, ...batch];
-          offset += pageSize;
-          hasMore = batch.length === pageSize;
-        }
-      }
-
-      if (!subjects || !topics) {
-        console.error('Failed to fetch subjects/topics');
+      if (error || !summary) {
+        console.error('Failed to fetch question summary:', error);
         setAvailableTopics([]);
         return;
       }
 
-      console.log(`Fetched: ${subjects.length} subjects, ${topics.length} topics, ${allQuestions.length} questions`);
+      console.log(`Fetched question summary: ${summary.length} topic entries`);
 
-      // Build lookup maps
-      const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
-
-      // Group questions by topic
-      const topicQuestionMap = new Map<string, { levels: Set<number>; count: number }>();
-      for (const q of allQuestions) {
-        if (!topicQuestionMap.has(q.topic_id)) {
-          topicQuestionMap.set(q.topic_id, { levels: new Set(), count: 0 });
-        }
-        const entry = topicQuestionMap.get(q.topic_id)!;
-        entry.levels.add(q.level);
-        entry.count++;
-      }
-
-      // Build final topic list
       const topicData: Array<{ name: string; subject: string; questionCount: number; levels: number[] }> = [];
-      for (const topic of topics) {
-        const subjectName = subjectMap.get(topic.subject_id) || 'Unknown';
-        const questionData = topicQuestionMap.get(topic.id);
+      for (const row of summary) {
         topicData.push({
-          name: topic.name,
-          subject: subjectName,
-          questionCount: questionData?.count || 0,
-          levels: questionData ? [...questionData.levels].sort((a, b) => a - b) : [],
+          name: row.topic_name,
+          subject: row.subject_name,
+          questionCount: Number(row.question_count) || 0,
+          levels: [], // Summary doesn't include per-level breakdown, but not needed for bulk generation
         });
       }
 
