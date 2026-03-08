@@ -10,6 +10,7 @@ interface ReportFiltersBarProps {
   availableTopics: string[];
   showHistory: boolean;
   onToggleHistory: () => void;
+  isPremium?: boolean;
 }
 
 const TIME_RANGES = [
