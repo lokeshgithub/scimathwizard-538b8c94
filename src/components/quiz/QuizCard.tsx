@@ -379,7 +379,21 @@ export const QuizCard = ({
           </motion.div>
         )}
 
-        {/* Progressive Hints - Only show for levels 4+ and if hints exist */}
+        {/* Premium hint upsell for non-premium users */}
+        {!isAnswered && !isPremium && level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0 && (
+          <div className="mb-4">
+            <button
+              onClick={() => toast?.('Hints are a Premium feature. Request a free trial from your Profile!')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-amber-100/50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>Need a hint?</span>
+              <span className="ml-1 text-xs bg-amber-200 dark:bg-amber-800 px-1.5 py-0.5 rounded-full">Premium</span>
+            </button>
+          </div>
+        )}
+
+        {/* Progressive Hints - Only show for premium users at levels 4+ with hints */}
         {!isAnswered && hasHintsAvailable && (
           <div className="mb-4 space-y-3">
             {/* Show revealed hints */}

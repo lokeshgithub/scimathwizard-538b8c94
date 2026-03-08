@@ -37,7 +37,12 @@ export const ReportFiltersBar = ({
   availableTopics,
   showHistory,
   onToggleHistory,
+  isPremium = false,
 }: ReportFiltersBarProps) => {
+  // Free users can only see last_session
+  const availableTimeRanges = isPremium
+    ? TIME_RANGES
+    : TIME_RANGES.filter(t => t.value === 'last_session');
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
