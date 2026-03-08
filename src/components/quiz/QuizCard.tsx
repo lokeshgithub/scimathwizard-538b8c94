@@ -41,6 +41,7 @@ export const QuizCard = ({
   onSolutionViewed,
   onPrefetchNext
 }: QuizCardProps) => {
+  const isMobile = useIsMobile();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
