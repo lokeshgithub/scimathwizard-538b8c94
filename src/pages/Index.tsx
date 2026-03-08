@@ -67,6 +67,7 @@ const Index = () => {
   // Pass user progress for adaptive daily challenge difficulty
   const dailyChallenge = useDailyChallenge(quiz.banks, quiz.progress);
   const { user, profile, isAdmin, signOut, updateStats, updateGrade } = useAuth();
+  const { isPremium } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
   const [searchParams, setSearchParams] = useSearchParams();
