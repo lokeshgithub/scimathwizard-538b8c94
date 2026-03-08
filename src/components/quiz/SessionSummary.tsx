@@ -453,7 +453,7 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
                   })}
                 </div>
               </div>
-              <PremiumGate feature="ai_analysis" message="Unlock AI-powered personalized coaching with detailed topic analysis, study plans, and improvement strategies." />
+              <PremiumGate feature="ai_analysis" message="Unlock AI-powered personalized coaching with detailed topic analysis, study plans, and improvement strategies."><span /></PremiumGate>
             </div>
           )}
 
