@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { LandingHero } from '@/components/LandingHero';
 import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { toast } from 'sonner';
@@ -74,6 +75,11 @@ const Index = () => {
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [gradeTopicCounts, setGradeTopicCounts] = useState<Record<number, number>>({});
+  const [showLanding, setShowLanding] = useState(() => {
+    // Show landing for first-time visitors who haven't started playing
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('smw-has-visited');
+  });
 
   // Pull-to-refresh for topic dashboard
   const pullToRefresh = usePullToRefresh({
@@ -480,6 +486,16 @@ const Index = () => {
   const topics = quiz.banks[quiz.subject] || {};
   const hasTopics = Object.keys(topics).length > 0;
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
+
+  // Show landing hero for first-time visitors
+  if (showLanding && !user) {
+    return (
+      <LandingHero onGetStarted={() => {
+        localStorage.setItem('smw-has-visited', '1');
+        setShowLanding(false);
+      }} />
+    );
+  }
 
   return (
     <div ref={!isInQuizMode ? pullToRefresh.containerRef : undefined} className="min-h-screen bg-background overflow-x-hidden">
