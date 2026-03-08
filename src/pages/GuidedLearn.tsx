@@ -592,6 +592,28 @@ export default function GuidedLearn() {
         )}
       </main>
 
+      {/* Selection popup - "Ask about this" */}
+      <AnimatePresence>
+        {selectionPopup && (
+          <motion.button
+            initial={{ opacity: 0, y: 5, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleAskAboutSelection}
+            className="fixed z-[60] flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary text-primary-foreground shadow-xl text-xs font-semibold hover:bg-primary/90 transition-colors"
+            style={{
+              left: Math.min(Math.max(selectionPopup.x - 70, 16), window.innerWidth - 156),
+              top: Math.max(selectionPopup.y + window.scrollY - 44, 8),
+              position: 'absolute',
+            }}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Ask tutor about this
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* AI Tutor Chat */}
       {!isStreaming && lessonMarkdown && (
         <TutorChat
@@ -599,6 +621,8 @@ export default function GuidedLearn() {
           subject={subject}
           grade={grade}
           lessonContext={lessonMarkdown}
+          highlightedText={highlightedText}
+          onHighlightConsumed={() => setHighlightedText('')}
         />
       )}
 
