@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SessionAnalysis, SessionStats, Subject } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Download, Timer, AlertCircle, CheckCircle2, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
@@ -498,6 +499,35 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
                   Download PDF
                 </Button>
               </div>
+            </motion.div>
+          )}
+
+          {/* Subtle PWA install prompt — only on first session */}
+          {!window.matchMedia('(display-mode: standalone)').matches && 
+           !localStorage.getItem('pwa-post-quiz-dismissed') &&
+           (sessionStats?.solved ?? analysis.totalQuestions) <= 20 && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/15"
+            >
+              <Smartphone className="w-5 h-5 text-primary shrink-0" />
+              <p className="text-xs text-muted-foreground flex-1">
+                <span className="font-medium text-foreground">Install the app</span> for offline practice & instant access
+              </p>
+              <Link to="/install">
+                <Button size="sm" variant="ghost" className="text-xs text-primary h-7 px-2">
+                  Learn more
+                </Button>
+              </Link>
+              <button
+                onClick={() => localStorage.setItem('pwa-post-quiz-dismissed', '1')}
+                className="text-muted-foreground hover:text-foreground p-0.5"
+                aria-label="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </motion.div>
           )}
 
