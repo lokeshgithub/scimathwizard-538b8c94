@@ -501,6 +501,7 @@ export default function GuidedLearn() {
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
+                components={markdownComponents}
               >
                 {lessonMarkdown}
               </ReactMarkdown>
