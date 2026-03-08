@@ -218,6 +218,8 @@ export default function GuidedLearn() {
   const contentRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(Date.now());
 
+  const markdownComponents = useVisualAidComponents();
+
   // Hide bottom nav during learning
   useEffect(() => {
     setIsInQuizMode(true);
