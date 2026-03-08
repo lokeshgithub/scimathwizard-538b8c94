@@ -431,7 +431,7 @@ export const QuizCard = ({
                 aria-label={`Option ${optionLabel}: ${option}${showAsCorrect ? ' (correct answer)' : ''}${showAsIncorrect ? ' (incorrect)' : ''}`}
                 data-testid={`answer-option-${String.fromCharCode(97 + index)}`}
                 className={`
-                  w-full p-4 rounded-xl text-left transition-all duration-200 flex items-center gap-3 option-ripple
+                  w-full p-3 sm:p-4 rounded-xl text-left transition-all duration-200 flex items-center gap-3 option-ripple min-h-[48px]
                   ${isValidating && isSelected
                     ? 'bg-primary/30 ring-2 ring-primary shadow-md'
                     : !isAnswered
