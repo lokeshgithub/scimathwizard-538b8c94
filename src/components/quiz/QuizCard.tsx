@@ -43,6 +43,7 @@ export const QuizCard = ({
   onPrefetchNext
 }: QuizCardProps) => {
   const isMobile = useIsMobile();
+  const { isPremium } = usePremiumCheck();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
