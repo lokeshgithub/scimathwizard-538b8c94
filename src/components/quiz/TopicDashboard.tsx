@@ -401,7 +401,7 @@ export const TopicDashboard = ({
 
   return (
     <>
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-6" data-tour="topic-grid">
         {/* Guest Limit Banner */}
         {!isLoggedIn && (
           <motion.div

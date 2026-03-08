@@ -956,6 +956,9 @@ const Index = () => {
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
 
+      {/* Onboarding Tour - step-by-step walkthrough after welcome */}
+      {!isInQuizMode && <OnboardingTour />}
+
       {/* Exit Quiz Confirmation */}
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>
