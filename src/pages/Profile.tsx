@@ -244,6 +244,9 @@ const Profile = () => {
           )}
         </motion.div>
 
+        {/* Premium Status */}
+        <PremiumStatusCard userId={user.id} />
+
         {/* Badges & Titles */}
         <motion.div
           className="bg-card rounded-2xl shadow-card p-6"

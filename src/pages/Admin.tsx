@@ -1193,6 +1193,9 @@ const Admin = () => {
           <QuestionBankSummary key={summaryRefreshKey} />
         </div>
         <div className="mt-6">
+          <PremiumManagement />
+        </div>
+        <div className="mt-6">
           <UsageDashboard />
         </div>
 
