@@ -14,6 +14,7 @@ import { LEVEL_REWARDS, getLevelReward, getHighestUnlockedReward, getTotalBonusS
 import { exportCertificateToPdf } from '@/utils/exportCertificate';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { AvatarCustomizer } from '@/components/profile/AvatarCustomizer';
+import { PremiumStatusCard } from '@/components/profile/PremiumStatusCard';
 
 interface AdaptiveResult {
   id: string;
@@ -242,6 +243,9 @@ const Profile = () => {
             </motion.div>
           )}
         </motion.div>
+
+        {/* Premium Status */}
+        <PremiumStatusCard userId={user.id} />
 
         {/* Badges & Titles */}
         <motion.div

@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { UsageDashboard } from '@/components/admin/UsageDashboard';
 import { QuestionBankSummary } from '@/components/admin/QuestionBankSummary';
+import { PremiumManagement } from '@/components/admin/PremiumManagement';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1190,6 +1191,9 @@ const Admin = () => {
 
         <div className="mt-6">
           <QuestionBankSummary key={summaryRefreshKey} />
+        </div>
+        <div className="mt-6">
+          <PremiumManagement />
         </div>
         <div className="mt-6">
           <UsageDashboard />
