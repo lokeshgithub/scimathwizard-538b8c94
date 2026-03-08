@@ -80,6 +80,13 @@ const Admin = () => {
   const [lessonOverwrite, setLessonOverwrite] = useState(false);
   const lessonAbortRef = useRef(false);
 
+  // Lesson upload state
+  const [isUploadingLessons, setIsUploadingLessons] = useState(false);
+  const [lessonUploadResults, setLessonUploadResults] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
+  const [lessonInventory, setLessonInventory] = useState<Array<{ subject: string; topic_name: string; levels: number[]; total_length: number }>>([]);
+  const [showLessonInventory, setShowLessonInventory] = useState(false);
+  const [lessonUploadOverwrite, setLessonUploadOverwrite] = useState(true);
+
   // Test Mode state
   const [testSubject, setTestSubject] = useState('Math');
   const [testTopic, setTestTopic] = useState('');
