@@ -519,5 +519,6 @@ export const QuizCard = ({
         onSolutionViewed={onSolutionViewed}
       />
     </motion.div>
+    </AnimatePresence>
   );
 };
