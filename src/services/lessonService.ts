@@ -1,6 +1,8 @@
 /**
- * Lesson generation service — streams AI-generated lessons
+ * Lesson generation service — DB-first with AI fallback + caching
  */
+
+import { supabase } from "@/integrations/supabase/client";
 
 const LESSON_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lesson`;
 
@@ -15,6 +17,49 @@ export interface LessonRequest {
     studentAnswer: string;
     correctAnswer: string;
   }>;
+}
+
+/** Check DB for a cached lesson */
+export async function fetchCachedLesson(
+  topic: string,
+  subject: string,
+  grade: number,
+  level: number
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("lessons" as any)
+      .select("content")
+      .eq("topic_name", topic)
+      .eq("subject", subject)
+      .eq("grade", grade)
+      .eq("level", level)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return (data as any).content as string;
+  } catch {
+    return null;
+  }
+}
+
+/** Save a generated lesson to DB for future use (fire-and-forget) */
+export function cacheLessonInDB(
+  topic: string,
+  subject: string,
+  grade: number,
+  level: number,
+  content: string
+) {
+  // Use edge function to cache since service role is needed
+  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lesson`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ topic, subject, grade, level, content }),
+  }).catch(() => { /* silent fail for caching */ });
 }
 
 export async function streamLesson({
