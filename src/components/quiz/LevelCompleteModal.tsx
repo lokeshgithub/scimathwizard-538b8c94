@@ -208,7 +208,12 @@ export const LevelCompleteModal = ({
                   ? (isTopicComplete 
                       ? "Congratulations! You've mastered this topic! 🌟" 
                       : `Ready for Level ${level + 1}? ${progressMessage}`)
-                  : "You need 90% accuracy (9/10) to advance. Let's try again!"
+                {(() => {
+                  const thresholdPct = Math.round(getThresholdForLevel(level) * 100);
+                  const needed = Math.ceil(stats.total * getThresholdForLevel(level));
+                  return `You need ${thresholdPct}% accuracy (${needed}/${stats.total}) to advance. Let's try again!`;
+                })()}
+
                 }
               </p>
 
