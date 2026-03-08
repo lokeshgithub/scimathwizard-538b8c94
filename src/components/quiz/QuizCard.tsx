@@ -8,6 +8,7 @@ import { SimpleFeedback } from './SimpleFeedback';
 import { AnswerFeedbackSheet } from './AnswerFeedbackSheet';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { SessionStats } from '@/types/quiz';
 import { SwipeHint } from './SwipeHint';

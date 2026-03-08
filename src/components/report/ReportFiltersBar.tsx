@@ -65,9 +65,17 @@ export const ReportFiltersBar = ({
             }
             className="w-full px-3 py-2 rounded-lg border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            {TIME_RANGES.map((tr) => (
+            {availableTimeRanges.map((tr) => (
               <option key={tr.value} value={tr.value}>
                 {tr.label}
+              </option>
+            ))}
+            {!isPremium && (
+              <option disabled value="">── Premium ──</option>
+            )}
+            {!isPremium && TIME_RANGES.filter(t => t.value !== 'last_session').map((tr) => (
+              <option key={tr.value} value={tr.value} disabled>
+                🔒 {tr.label}
               </option>
             ))}
           </select>
