@@ -490,6 +490,7 @@ export const TopicDashboard = ({
         <AreasToImprove
           questionTimings={questionTimings}
           onPractice={handleSelectTopic}
+          currentSubject={currentSubject}
         />
 
         {/* Category Groups */}
