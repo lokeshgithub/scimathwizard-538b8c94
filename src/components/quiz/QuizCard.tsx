@@ -535,6 +535,11 @@ export const QuizCard = ({
         onNext={handleNext}
         onSolutionViewed={onSolutionViewed}
       />
+
+      {/* Swipe hint on mobile after answering */}
+      {isMobile && (
+        <SwipeHint isVisible={isAnswered} canGoBack={canGoBack} />
+      )}
     </motion.div>
     </AnimatePresence>
   );
