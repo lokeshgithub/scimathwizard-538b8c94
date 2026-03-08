@@ -44,6 +44,7 @@ import { exportAggregatedReportToPdf } from '@/utils/exportReportPdf';
 const Report = () => {
   const quiz = useQuizStore();
   const { user, profile } = useAuth();
+  const { isPremium } = usePremiumCheck();
 
   // Current session analysis (in-memory, for non-logged-in or live session)
   const liveAnalysis = useMemo(() => quiz.calculateSessionAnalysis(), [quiz]);
