@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { streamLesson, type LessonRequest } from '@/services/lessonService';
+import { TutorChat } from '@/components/learn/TutorChat';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { haptics } from '@/utils/haptics';
 
@@ -403,15 +404,25 @@ export default function GuidedLearn() {
         )}
       </main>
 
+      {/* AI Tutor Chat */}
+      {!isStreaming && lessonMarkdown && (
+        <TutorChat
+          topic={topic || ''}
+          subject={subject}
+          grade={grade}
+          lessonContext={lessonMarkdown}
+        />
+      )}
+
       {/* Scroll to top FAB */}
       <AnimatePresence>
-        {showScrollTop && (
+        {showScrollTop && !isStreaming && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+            className="fixed bottom-6 left-6 z-40 w-10 h-10 rounded-full bg-muted text-muted-foreground shadow-lg flex items-center justify-center hover:bg-muted/80 transition-colors border border-border"
           >
             <ChevronUp className="w-5 h-5" />
           </motion.button>
