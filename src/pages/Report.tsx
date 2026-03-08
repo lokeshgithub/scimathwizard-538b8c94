@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { usePremiumCheck } from '@/components/PremiumGate';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart3,
