@@ -649,7 +649,9 @@ const Index = () => {
               <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
             </div>
 
-            <StatsBar stats={quiz.sessionStats} />
+            <div data-tour="stats-bar">
+              <StatsBar stats={quiz.sessionStats} />
+            </div>
 
             {/* Pathway Progress - Journey visualization */}
             <PathwayProgress

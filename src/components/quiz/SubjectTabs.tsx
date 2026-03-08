@@ -15,7 +15,7 @@ const subjects: { id: Subject; label: string; icon: typeof Calculator; emoji: st
 
 export const SubjectTabs = ({ currentSubject, onSelectSubject }: SubjectTabsProps) => {
   return (
-    <div className="flex gap-3 mb-6">
+    <div className="flex gap-3 mb-6" data-tour="subject-tabs">
       {subjects.map((subject) => {
         const isActive = currentSubject === subject.id;
         
