@@ -39,6 +39,7 @@ import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { OnboardingTour } from '@/components/quiz/OnboardingTour';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
+import { PwaInstallBanner } from '@/components/quiz/PwaInstallBanner';
 import { usePremiumCheck } from '@/components/PremiumGate';
 import { PremiumGate } from '@/components/PremiumGate';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
