@@ -487,6 +487,16 @@ const Index = () => {
   const hasTopics = Object.keys(topics).length > 0;
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
 
+  // Show landing hero for first-time visitors
+  if (showLanding && !user) {
+    return (
+      <LandingHero onGetStarted={() => {
+        localStorage.setItem('smw-has-visited', '1');
+        setShowLanding(false);
+      }} />
+    );
+  }
+
   return (
     <div ref={!isInQuizMode ? pullToRefresh.containerRef : undefined} className="min-h-screen bg-background overflow-x-hidden">
       {/* Pull-to-refresh indicator (dashboard only) */}
