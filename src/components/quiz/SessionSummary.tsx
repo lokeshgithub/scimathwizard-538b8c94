@@ -34,6 +34,8 @@ const formatName = (name: string) => {
 };
 
 export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onClose }: SessionSummaryProps) => {
+  const { user } = useAuth();
+  const { isPremium } = usePremium(user?.id);
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
