@@ -25,6 +25,7 @@ const FocusedPractice = lazy(() => import("./pages/FocusedPractice"));
 const OlympiadTest = lazy(() => import("./pages/OlympiadTest"));
 const Report = lazy(() => import("./pages/Report"));
 const Install = lazy(() => import("./pages/Install"));
+const GuidedLearn = lazy(() => import("./pages/GuidedLearn"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
