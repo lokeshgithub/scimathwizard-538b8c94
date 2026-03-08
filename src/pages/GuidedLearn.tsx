@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { streamLesson, type LessonRequest } from '@/services/lessonService';
+import { streamLesson, fetchCachedLesson, cacheLessonInDB, type LessonRequest } from '@/services/lessonService';
 import { TutorChat } from '@/components/learn/TutorChat';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { haptics } from '@/utils/haptics';
