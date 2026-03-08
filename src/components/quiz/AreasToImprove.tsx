@@ -19,7 +19,7 @@ interface WeakTopic {
   avgTimeSeconds: number;
 }
 
-export const AreasToImprove = ({ questionTimings, onPractice }: AreasToImproveProps) => {
+export const AreasToImprove = ({ questionTimings, onPractice, currentSubject = 'math', currentGrade = 7 }: AreasToImproveProps) => {
   // Group timings by topic and calculate accuracy
   const topicStats = new Map<string, { correct: number; total: number; totalTime: number }>();
 
