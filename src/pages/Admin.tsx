@@ -1355,7 +1355,7 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-
+        <Card className="mt-6 border-destructive/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="w-5 h-5" />
