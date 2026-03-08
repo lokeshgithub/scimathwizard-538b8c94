@@ -7,7 +7,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {
   ArrowLeft, BookOpen, Loader2, RefreshCw, Sparkles,
-  Brain, AlertCircle, ChevronUp, Play, GraduationCap
+  Brain, AlertCircle, ChevronUp, Play, GraduationCap,
+  Lightbulb, CheckCircle2, XCircle, Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
