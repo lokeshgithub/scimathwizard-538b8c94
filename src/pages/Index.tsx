@@ -644,7 +644,7 @@ const Index = () => {
         {!isInQuizMode && (
           <>
             {/* Daily Goal & Streak */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
               <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
             </div>
