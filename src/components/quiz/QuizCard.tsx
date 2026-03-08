@@ -12,6 +12,7 @@ import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCir
 import { SessionStats } from '@/types/quiz';
 import { SwipeHint } from './SwipeHint';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePremiumCheck } from '@/components/PremiumGate';
 
 // Hints only available for levels 4+ (easier levels should be manageable without hints)
 const MIN_LEVEL_FOR_HINTS = 4;
