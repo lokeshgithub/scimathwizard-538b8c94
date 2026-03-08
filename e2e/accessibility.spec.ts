@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { setupSupabaseMocks } from './helpers/mock-supabase';
 
 /**
@@ -6,7 +7,90 @@ import { setupSupabaseMocks } from './helpers/mock-supabase';
  *
  * Ensuring the app is usable by all ICSE students
  * Including those with visual or motor impairments
+ * Now with automated WCAG audits via axe-core
  */
+
+// ─── Automated WCAG Audits (axe-core) ─────────────────────────────
+test.describe('Automated WCAG Audits', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupSupabaseMocks(page);
+  });
+
+  test('dashboard should have no critical accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(1500);
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .exclude('.recharts-wrapper') // Exclude chart SVGs which have known issues
+      .analyze();
+
+    // Log violations for debugging
+    if (results.violations.length > 0) {
+      console.log('Accessibility violations found:');
+      results.violations.forEach(v => {
+        console.log(`  [${v.impact}] ${v.id}: ${v.description}`);
+        console.log(`    Help: ${v.helpUrl}`);
+        v.nodes.slice(0, 3).forEach(n => {
+          console.log(`    → ${n.html.slice(0, 120)}`);
+        });
+      });
+    }
+
+    // No critical or serious violations
+    const critical = results.violations.filter(v => v.impact === 'critical');
+    const serious = results.violations.filter(v => v.impact === 'serious');
+    
+    expect(critical).toHaveLength(0);
+    expect(serious.length).toBeLessThanOrEqual(3); // Allow some serious for now, track improvement
+  });
+
+  test('quiz page should have no critical accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(1500);
+
+    // Navigate to quiz
+    await page.locator('text=Integers').first().click().catch(() => {});
+    await page.waitForTimeout(500);
+
+    const levelBtn = page.locator('button').filter({ hasText: /Level|Start/i }).first();
+    if (await levelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await levelBtn.click();
+      await page.waitForTimeout(1500);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze();
+
+      const critical = results.violations.filter(v => v.impact === 'critical');
+      expect(critical).toHaveLength(0);
+    }
+  });
+
+  test('auth page should have no critical accessibility violations', async ({ page }) => {
+    await page.goto('/auth');
+    await page.waitForTimeout(1500);
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .analyze();
+
+    const critical = results.violations.filter(v => v.impact === 'critical');
+    expect(critical).toHaveLength(0);
+  });
+
+  test('report page should have no critical accessibility violations', async ({ page }) => {
+    await page.goto('/report');
+    await page.waitForTimeout(1500);
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .analyze();
+
+    const critical = results.violations.filter(v => v.impact === 'critical');
+    expect(critical).toHaveLength(0);
+  });
+});
 
 test.describe('Keyboard Navigation', () => {
   test.beforeEach(async ({ page }) => {
