@@ -69,6 +69,16 @@ const Admin = () => {
   }>>([]);
   const [smartUploadReports, setSmartUploadReports] = useState<SmartUploadReport[]>([]);
 
+  // Lesson generation state
+  const [isGeneratingLessons, setIsGeneratingLessons] = useState(false);
+  const [lessonGenResults, setLessonGenResults] = useState<Array<{ topic: string; subject: string; grade: number; level: number; status: string; error?: string }>>([]);
+  const [lessonGenProgress, setLessonGenProgress] = useState({ current: 0, total: 0 });
+  const [lessonGenGrade, setLessonGenGrade] = useState(7);
+  const [lessonGenSubject, setLessonGenSubject] = useState('Math');
+  const [lessonGenLevels, setLessonGenLevels] = useState('1-3');
+  const [lessonOverwrite, setLessonOverwrite] = useState(false);
+  const lessonAbortRef = useRef(false);
+
   // Test Mode state
   const [testSubject, setTestSubject] = useState('Math');
   const [testTopic, setTestTopic] = useState('');
