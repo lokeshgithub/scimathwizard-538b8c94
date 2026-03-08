@@ -75,6 +75,18 @@ const Index = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [gradeTopicCounts, setGradeTopicCounts] = useState<Record<number, number>>({});
 
+  // Pull-to-refresh for topic dashboard
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await quiz.retryLoadQuestions?.();
+      // Also refresh due topics
+      if (user) {
+        const { data } = await getDueTopics(quiz.subject);
+        if (data) setDueTopics(data);
+      }
+    },
+  });
+
   // Fetch topic counts per grade (only topics that have questions)
   useEffect(() => {
     const fetchCounts = async () => {
