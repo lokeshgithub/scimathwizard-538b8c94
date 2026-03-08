@@ -263,7 +263,7 @@ export const AnswerFeedbackSheet = ({
                 {/* Next button — always visible and prominent */}
                 <motion.button
                   onClick={handleNext}
-                  className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-opacity ${
+                  className={`w-full py-4 rounded-2xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 transition-opacity min-h-[52px] ${
                     isCorrect 
                       ? 'bg-success text-white hover:opacity-90' 
                       : 'bg-primary text-primary-foreground hover:opacity-90'

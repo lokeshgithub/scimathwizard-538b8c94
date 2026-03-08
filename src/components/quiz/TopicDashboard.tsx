@@ -511,7 +511,7 @@ export const TopicDashboard = ({
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(categoryName)}
-                  className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                  className="w-full p-3 sm:p-3 flex items-center justify-between hover:bg-muted/50 transition-colors min-h-[48px]"
                   aria-expanded={isExpanded}
                   aria-label={`${categoryName} category, ${categoryMastered} of ${categoryTopics.length} complete. Click to ${isExpanded ? 'collapse' : 'expand'}`}
                 >

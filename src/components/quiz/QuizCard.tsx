@@ -459,7 +459,7 @@ export const QuizCard = ({
               >
                 <motion.span 
                   className={`
-                    w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300
+                    w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 flex-shrink-0
                     ${showAsCorrect 
                       ? 'bg-success text-white' 
                       : showAsIncorrect 
