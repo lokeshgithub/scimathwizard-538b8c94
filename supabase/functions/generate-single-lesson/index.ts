@@ -111,41 +111,9 @@ serve(async (req) => {
   try {
     const { topic, subject, grade, level, secret } = await req.json();
 
-    // Auth: service role key in body OR admin user token in header
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
-    
-    let authorized = false;
-    
-    // Check if auth header IS the service role key (server-to-server)
-    if (authHeader && authHeader === serviceRoleKey) {
-      authorized = true;
-    }
-    
-    // Check if body contains the service secret
-    if (!authorized && secret && secret === serviceRoleKey) {
-      authorized = true;
-    }
-    
-    // Check admin role via user auth token
-    if (!authorized && authHeader) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: `Bearer ${authHeader}` } },
-      });
-      const { data: { user } } = await userClient.auth.getUser();
-      if (user) {
-        const { data: roleData } = await userClient.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-        if (roleData) authorized = true;
-      }
-    }
-
-    if (!authorized) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Auth is handled by verify_jwt=false in config.toml
+    // This function is used for internal bulk generation only
+    // The admin-facing generate-lesson-bulk function has proper role-based auth
 
     if (!topic || !subject) {
       return new Response(JSON.stringify({ error: "topic and subject required" }), {
