@@ -32,7 +32,16 @@ const PageLoader = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — questions don't change often
+      gcTime: 30 * 60 * 1000, // 30 min cache
+      retry: 1,
+      refetchOnWindowFocus: false, // Avoid unnecessary refetches during quiz
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
