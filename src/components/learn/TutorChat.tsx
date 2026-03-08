@@ -21,7 +21,9 @@ interface TutorChatProps {
   topic: string;
   subject: string;
   grade?: number;
-  lessonContext: string; // The full lesson markdown for context
+  lessonContext: string;
+  highlightedText?: string;
+  onHighlightConsumed?: () => void;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -31,7 +33,7 @@ const SUGGESTED_QUESTIONS = [
   "I'm confused about the steps",
 ];
 
-export const TutorChat = ({ topic, subject, grade, lessonContext }: TutorChatProps) => {
+export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedText, onHighlightConsumed }: TutorChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -53,6 +55,17 @@ export const TutorChat = ({ topic, subject, grade, lessonContext }: TutorChatPro
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [isOpen]);
+
+  // When highlighted text arrives, open chat and prefill
+  useEffect(() => {
+    if (highlightedText && highlightedText.trim()) {
+      setIsOpen(true);
+      const prefix = `Explain this part: "${highlightedText.trim().slice(0, 200)}"`;
+      setInput(prefix);
+      onHighlightConsumed?.();
+      setTimeout(() => inputRef.current?.focus(), 400);
+    }
+  }, [highlightedText, onHighlightConsumed]);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();

@@ -8,7 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import {
   ArrowLeft, BookOpen, Loader2, RefreshCw, Sparkles,
   Brain, AlertCircle, ChevronUp, Play, GraduationCap,
-  Lightbulb, CheckCircle2, XCircle, Target
+  Lightbulb, CheckCircle2, XCircle, Target, MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -214,6 +214,8 @@ export default function GuidedLearn() {
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [highlightedText, setHighlightedText] = useState('');
+  const [selectionPopup, setSelectionPopup] = useState<{ text: string; x: number; y: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(Date.now());
@@ -285,6 +287,48 @@ export default function GuidedLearn() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Text selection detection for "Ask about this"
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const text = selection?.toString().trim() || '';
+      
+      if (text.length > 5 && text.length < 500 && contentRef.current) {
+        const anchorNode = selection?.anchorNode;
+        if (anchorNode && contentRef.current.contains(anchorNode)) {
+          const range = selection!.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setSelectionPopup({
+            text,
+            x: rect.left + rect.width / 2,
+            y: rect.top - 10,
+          });
+        } else {
+          setSelectionPopup(null);
+        }
+      } else {
+        setSelectionPopup(null);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    const dismissPopup = () => setSelectionPopup(null);
+    window.addEventListener('scroll', dismissPopup, { passive: true });
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      window.removeEventListener('scroll', dismissPopup);
+    };
+  }, []);
+
+  const handleAskAboutSelection = useCallback(() => {
+    if (selectionPopup) {
+      setHighlightedText(selectionPopup.text);
+      setSelectionPopup(null);
+      window.getSelection()?.removeAllRanges();
+      haptics.light();
+    }
+  }, [selectionPopup]);
 
   const sections = parseSections(lessonMarkdown);
   const progress = isStreaming
@@ -548,6 +592,28 @@ export default function GuidedLearn() {
         )}
       </main>
 
+      {/* Selection popup - "Ask about this" */}
+      <AnimatePresence>
+        {selectionPopup && (
+          <motion.button
+            initial={{ opacity: 0, y: 5, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleAskAboutSelection}
+            className="fixed z-[60] flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary text-primary-foreground shadow-xl text-xs font-semibold hover:bg-primary/90 transition-colors"
+            style={{
+              left: Math.min(Math.max(selectionPopup.x - 70, 16), window.innerWidth - 156),
+              top: Math.max(selectionPopup.y + window.scrollY - 44, 8),
+              position: 'absolute',
+            }}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Ask tutor about this
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* AI Tutor Chat */}
       {!isStreaming && lessonMarkdown && (
         <TutorChat
@@ -555,6 +621,8 @@ export default function GuidedLearn() {
           subject={subject}
           grade={grade}
           lessonContext={lessonMarkdown}
+          highlightedText={highlightedText}
+          onHighlightConsumed={() => setHighlightedText('')}
         />
       )}
 
