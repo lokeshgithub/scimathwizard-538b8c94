@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
 import { getLevelReward, getLevelProgressMessage } from '@/data/levelRewards';
 import { Trophy, RefreshCw, ArrowRight, Star, Sparkles, Award, Download } from 'lucide-react';
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { useEffect, useState } from 'react';
 
 interface LevelCompleteModalProps {
