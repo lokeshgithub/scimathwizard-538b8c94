@@ -10,12 +10,14 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { QuizModeProvider } from "./contexts/QuizModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute, AdminRoute } from "./components/RouteGuards";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
 
-// Lazy-loaded heavy pages
+// Only Index is eagerly loaded (main entry point)
+import Index from "./pages/Index";
+
+// All other pages lazy-loaded for smaller initial bundle
+const Auth = lazy(() => import("./pages/Auth"));
+const Profile = lazy(() => import("./pages/Profile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdaptiveChallenge = lazy(() => import("./pages/AdaptiveChallenge"));
 const AdaptiveHistory = lazy(() => import("./pages/AdaptiveHistory"));
@@ -30,7 +32,16 @@ const PageLoader = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — questions don't change often
+      gcTime: 30 * 60 * 1000, // 30 min cache
+      retry: 1,
+      refetchOnWindowFocus: false, // Avoid unnecessary refetches during quiz
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -44,8 +55,8 @@ const App = () => (
           <div className="pb-14 md:pb-0">
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
+              <Route path="/profile" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Profile /></Suspense></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><Suspense fallback={<PageLoader />}><Admin /></Suspense></AdminRoute>} />
               <Route path="/adaptive" element={<Suspense fallback={<PageLoader />}><AdaptiveChallenge /></Suspense>} />
               <Route path="/adaptive/history" element={<Suspense fallback={<PageLoader />}><AdaptiveHistory /></Suspense>} />
@@ -53,7 +64,7 @@ const App = () => (
               <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
               <Route path="/report" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Report /></Suspense></ProtectedRoute>} />
               <Route path="/install" element={<Suspense fallback={<PageLoader />}><Install /></Suspense>} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
           </div>
           <MobileBottomNav />
