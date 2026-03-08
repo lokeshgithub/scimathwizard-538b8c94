@@ -608,6 +608,12 @@ export const TopicDashboard = ({
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                        <DropdownMenuItem asChild>
+                                          <Link to={`/learn/${topic.name}?subject=${currentSubject || 'math'}`}>
+                                            <GraduationCap className="w-4 h-4 mr-2" />
+                                            Learn This Topic
+                                          </Link>
+                                        </DropdownMenuItem>
                                         {hasSolvedQuestions && onStartReview && (
                                           <DropdownMenuItem onClick={() => {
                                             const started = onStartReview(topic.name);
