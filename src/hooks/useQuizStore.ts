@@ -51,7 +51,7 @@ export const saveSubjectPreference = (subject: Subject): void => {
 };
 
 const SCHEMA_VERSION = 4; // v4: Force star reset to match database (Feb 2026)
-const THRESHOLD = 0.9; // Legacy default, use getThresholdForLevel() instead
+// THRESHOLD constant removed — use getThresholdForLevel(level) exclusively
 const PER_LEVEL = 10; // 10 questions per level for statistical validity
 const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;

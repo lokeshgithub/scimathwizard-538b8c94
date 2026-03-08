@@ -24,7 +24,6 @@ interface MasteryPanelProps {
   progress: TopicProgress;
   levelStats: { correct: number; total: number };
   perLevel: number;
-  threshold?: number;
   topicLevels?: number[];
   onResetProgress?: () => void;
   onPracticeLevel?: (level: number) => void;
@@ -68,7 +67,6 @@ export const MasteryPanel = ({
   progress,
   levelStats,
   perLevel,
-  threshold = 0.9,
   topicLevels = [1, 2, 3, 4, 5],
   onResetProgress,
   onPracticeLevel,
@@ -77,9 +75,10 @@ export const MasteryPanel = ({
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number | null>(null);
   const currentTheme = getThemeForLevel(currentLevel);
+  const threshold = getThresholdForLevel(currentLevel);
   const requiredCorrect = Math.ceil(threshold * perLevel);
   const progressPercent = levelStats.total > 0 
-    ? Math.round((levelStats.correct / requiredCorrect) * 100)
+    ? Math.min(100, Math.round((levelStats.total / perLevel) * 100))
     : 0;
   const accuracy = levelStats.total > 0 
     ? Math.round((levelStats.correct / levelStats.total) * 100)
@@ -223,10 +222,10 @@ export const MasteryPanel = ({
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Level {currentLevel} Progress</span>
           <span className="font-semibold text-foreground">
-            {levelStats.correct}/{requiredCorrect} needed ({Math.round(threshold * 100)}%)
+            {levelStats.total}/{perLevel} answered • Need {requiredCorrect} correct ({Math.round(threshold * 100)}%)
           </span>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden relative">
           <motion.div
             className={`h-full bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'}`}
             initial={{ width: 0 }}
