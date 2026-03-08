@@ -214,6 +214,8 @@ export default function GuidedLearn() {
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [highlightedText, setHighlightedText] = useState('');
+  const [selectionPopup, setSelectionPopup] = useState<{ text: string; x: number; y: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(Date.now());
