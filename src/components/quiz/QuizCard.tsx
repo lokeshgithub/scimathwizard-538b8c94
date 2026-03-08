@@ -10,6 +10,8 @@ import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
+import { SwipeHint } from './SwipeHint';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Hints only available for levels 4+ (easier levels should be manageable without hints)
 const MIN_LEVEL_FOR_HINTS = 4;
