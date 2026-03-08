@@ -74,23 +74,6 @@ const Report = () => {
     }
   }, [user, filters]);
 
-  // PDF download handler
-  const handleDownloadPdf = useCallback(() => {
-    const filterLabel = filters.timeRange === 'last_session' ? 'Last Session'
-      : filters.timeRange === 'last_week' ? 'Last Week'
-      : filters.timeRange === 'last_3_weeks' ? 'Last 3 Weeks'
-      : filters.timeRange === 'last_month' ? 'Last Month'
-      : 'All Time';
-    const subjectLabel = filters.subject === 'all' ? 'All Subjects' : filters.subject;
-    exportAggregatedReportToPdf(
-      aggregated,
-      filters.subject,
-      profile?.display_name || undefined,
-      `${subjectLabel} • ${filterLabel}`
-    );
-    toast.success('PDF downloaded!');
-  }, [aggregated, filters, profile]);
-
   // Fetch reports from database when logged in
   useEffect(() => {
     if (!user) return;
@@ -107,6 +90,23 @@ const Report = () => {
 
   // Aggregate data for the current filter
   const aggregated = useMemo(() => aggregateReports(reports), [reports]);
+
+  // PDF download handler
+  const handleDownloadPdf = useCallback(() => {
+    const filterLabel = filters.timeRange === 'last_session' ? 'Last Session'
+      : filters.timeRange === 'last_week' ? 'Last Week'
+      : filters.timeRange === 'last_3_weeks' ? 'Last 3 Weeks'
+      : filters.timeRange === 'last_month' ? 'Last Month'
+      : 'All Time';
+    const subjectLabel = filters.subject === 'all' ? 'All Subjects' : filters.subject;
+    exportAggregatedReportToPdf(
+      aggregated,
+      filters.subject,
+      profile?.display_name || undefined,
+      `${subjectLabel} • ${filterLabel}`
+    );
+    toast.success('PDF downloaded!');
+  }, [aggregated, filters, profile]);
 
   // Filter topic breakdown by selected topic
   const filteredTopicSummary = useMemo(() => {
