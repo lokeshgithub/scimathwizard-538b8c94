@@ -292,10 +292,12 @@ export const QuizCard = ({
   };
 
   return (
+    <AnimatePresence mode="wait">
     <motion.div
       className="bg-card rounded-2xl shadow-card overflow-hidden"
-      initial={{ opacity: 0, x: 60 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, x: 40, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -40, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       key={question.id}
       data-testid="quiz-card"
