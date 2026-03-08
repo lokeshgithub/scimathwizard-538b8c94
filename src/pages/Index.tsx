@@ -539,9 +539,9 @@ const Index = () => {
                     <PathwayNav />
                   </div>
 
-                  {/* Report Button - Links to report page, shows session stats */}
-                  <div className="relative group">
-                    {hasAnsweredQuestions ? (
+                  {/* Session Report Button - Only shows when there's an active session with answers */}
+                  {hasAnsweredQuestions && (
+                    <div className="relative group">
                       <Button
                         variant="secondary"
                         size="sm"
@@ -554,31 +554,15 @@ const Index = () => {
                           {quiz.sessionPerformance.questionTimings.length}
                         </span>
                       </Button>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        asChild
-                        className="flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
-                      >
-                        <Link to="/report" className="flex items-center gap-1">
-                          <BarChart3 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Report</span>
-                        </Link>
-                      </Button>
-                    )}
-                    {/* Tooltip on hover */}
-                    <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
-                      <p className="text-sm font-medium text-foreground mb-1">
-                        {hasAnsweredQuestions ? 'Session Report Ready' : 'Performance Report'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {hasAnsweredQuestions
-                          ? `Click to see a detailed breakdown of your ${quiz.sessionPerformance.questionTimings.length} answered question${quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.`
-                          : 'View your stats, strengths, and areas to improve. Start practicing to build your session report.'}
-                      </p>
+                      {/* Tooltip on hover */}
+                      <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
+                        <p className="text-sm font-medium text-foreground mb-1">Session Report Ready</p>
+                        <p className="text-xs text-muted-foreground">
+                          Click to see a detailed breakdown of your {quiz.sessionPerformance.questionTimings.length} answered question{quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Sound Toggle */}
                   <SoundToggle enabled={sound.enabled} onToggle={sound.toggleSound} />
