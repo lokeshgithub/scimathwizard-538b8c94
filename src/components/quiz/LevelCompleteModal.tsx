@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { themeLevels, getRandomCharacter, getRandomMessage } from '@/data/characters';
 import { getLevelReward, getLevelProgressMessage } from '@/data/levelRewards';
 import { Trophy, RefreshCw, ArrowRight, Star, Sparkles, Award, Download } from 'lucide-react';
+import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { useEffect, useState } from 'react';
 
 interface LevelCompleteModalProps {
@@ -207,7 +208,7 @@ export const LevelCompleteModal = ({
                   ? (isTopicComplete 
                       ? "Congratulations! You've mastered this topic! 🌟" 
                       : `Ready for Level ${level + 1}? ${progressMessage}`)
-                  : "You need 90% accuracy (9/10) to advance. Let's try again!"
+                  : `You need ${Math.round(getThresholdForLevel(level) * 100)}% accuracy (${Math.ceil(stats.total * getThresholdForLevel(level))}/${stats.total}) to advance. Let's try again!`
                 }
               </p>
 
