@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download, Trash2, Play, FlaskConical } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2, LogOut, UserPlus, Download, Trash2, Play, FlaskConical, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -68,6 +68,16 @@ const Admin = () => {
     blueprintMatch?: boolean;
   }>>([]);
   const [smartUploadReports, setSmartUploadReports] = useState<SmartUploadReport[]>([]);
+
+  // Lesson generation state
+  const [isGeneratingLessons, setIsGeneratingLessons] = useState(false);
+  const [lessonGenResults, setLessonGenResults] = useState<Array<{ topic: string; subject: string; grade: number; level: number; status: string; error?: string }>>([]);
+  const [lessonGenProgress, setLessonGenProgress] = useState({ current: 0, total: 0 });
+  const [lessonGenGrade, setLessonGenGrade] = useState(7);
+  const [lessonGenSubject, setLessonGenSubject] = useState('Math');
+  const [lessonGenLevels, setLessonGenLevels] = useState('1-3');
+  const [lessonOverwrite, setLessonOverwrite] = useState(false);
+  const lessonAbortRef = useRef(false);
 
   // Test Mode state
   const [testSubject, setTestSubject] = useState('Math');
@@ -159,6 +169,93 @@ const Admin = () => {
   }, [isAdmin, fetchAvailableTopics, summaryRefreshKey]);
 
   // Start test mode - navigate to quiz
+  // Bulk lesson generation handler
+  const handleBulkGenerateLessons = useCallback(async () => {
+    // Get topics for selected subject/grade
+    const filteredTopics = availableTopics.filter(
+      t => t.subject === lessonGenSubject && t.questionCount > 0
+    );
+
+    if (filteredTopics.length === 0) {
+      toast.error(`No topics with questions found for ${lessonGenSubject}`);
+      return;
+    }
+
+    // Parse level range
+    const levelParts = lessonGenLevels.split('-').map(Number);
+    const startLevel = levelParts[0] || 1;
+    const endLevel = levelParts[1] || levelParts[0] || 1;
+    const levels = Array.from({ length: endLevel - startLevel + 1 }, (_, i) => startLevel + i);
+
+    // Build task list
+    const tasks: Array<{ topic: string; subject: string; grade: number; level: number }> = [];
+    for (const t of filteredTopics) {
+      for (const l of levels) {
+        tasks.push({ topic: t.name, subject: lessonGenSubject.toLowerCase(), grade: lessonGenGrade, level: l });
+      }
+    }
+
+    setIsGeneratingLessons(true);
+    setLessonGenResults([]);
+    setLessonGenProgress({ current: 0, total: tasks.length });
+    lessonAbortRef.current = false;
+
+    // Process in batches of 5
+    const batchSize = 5;
+    const allResults: typeof lessonGenResults = [];
+
+    for (let i = 0; i < tasks.length; i += batchSize) {
+      if (lessonAbortRef.current) break;
+      const batch = tasks.slice(i, i + batchSize);
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lesson-bulk`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ topics: batch, overwrite: lessonOverwrite }),
+          }
+        );
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ error: 'Request failed' }));
+          for (const t of batch) {
+            allResults.push({ ...t, status: 'error', error: err.error || `HTTP ${resp.status}` });
+          }
+        } else {
+          const data = await resp.json();
+          allResults.push(...(data.results || []));
+        }
+      } catch (e) {
+        for (const t of batch) {
+          allResults.push({ ...t, status: 'error', error: (e as Error).message });
+        }
+      }
+
+      setLessonGenResults([...allResults]);
+      setLessonGenProgress({ current: Math.min(i + batchSize, tasks.length), total: tasks.length });
+
+      // Check for rate limit
+      if (allResults.some(r => r.topic === 'RATE_LIMITED')) {
+        toast.error('Rate limited. Try again later.');
+        break;
+      }
+    }
+
+    setIsGeneratingLessons(false);
+    const generated = allResults.filter(r => r.status === 'generated').length;
+    const existing = allResults.filter(r => r.status === 'exists').length;
+    const errors = allResults.filter(r => r.status === 'error').length;
+    toast.success(`Lessons: ${generated} generated, ${existing} already existed, ${errors} errors`);
+  }, [availableTopics, lessonGenSubject, lessonGenGrade, lessonGenLevels, lessonOverwrite]);
+
   const handleStartTestMode = useCallback(() => {
     if (!testTopic) {
       toast.error('Please select a topic');
@@ -1136,6 +1233,125 @@ const Admin = () => {
               <Play className="w-4 h-4 mr-2" />
               Start Test Mode
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Bulk Lesson Generation */}
+        <Card className="mt-6 border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <BookOpen className="w-5 h-5" />
+              Bulk Generate Lessons
+            </CardTitle>
+            <CardDescription>
+              Pre-generate AI lessons for all topics so students get instant content without waiting for AI.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Subject</label>
+                <Select value={lessonGenSubject} onValueChange={setLessonGenSubject}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Math">Math</SelectItem>
+                    <SelectItem value="Physics">Physics</SelectItem>
+                    <SelectItem value="Chemistry">Chemistry</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Grade</label>
+                <Select value={String(lessonGenGrade)} onValueChange={(v) => setLessonGenGrade(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[7, 8, 9, 10, 11, 12].map(g => (
+                      <SelectItem key={g} value={String(g)}>Class {g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Levels</label>
+                <Select value={lessonGenLevels} onValueChange={setLessonGenLevels}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Level 1 only</SelectItem>
+                    <SelectItem value="1-2">Levels 1-2</SelectItem>
+                    <SelectItem value="1-3">Levels 1-3</SelectItem>
+                    <SelectItem value="1-6">Levels 1-6 (all)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="overwrite-lessons"
+                checked={lessonOverwrite}
+                onChange={(e) => setLessonOverwrite(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Label htmlFor="overwrite-lessons" className="cursor-pointer text-sm">
+                Overwrite existing lessons (regenerate all)
+              </Label>
+            </div>
+
+            {isGeneratingLessons && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Generating lessons...</span>
+                  <span>{lessonGenProgress.current} / {lessonGenProgress.total}</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${lessonGenProgress.total > 0 ? (lessonGenProgress.current / lessonGenProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {lessonGenResults.length > 0 && (
+              <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
+                {lessonGenResults.filter(r => r.topic !== 'RATE_LIMITED').map((r, i) => (
+                  <div key={i} className={`flex items-center gap-2 px-2 py-1 rounded ${
+                    r.status === 'generated' ? 'bg-success/10 text-success' :
+                    r.status === 'exists' ? 'bg-muted text-muted-foreground' :
+                    'bg-destructive/10 text-destructive'
+                  }`}>
+                    {r.status === 'generated' ? <Sparkles className="w-3 h-3" /> :
+                     r.status === 'exists' ? <CheckCircle className="w-3 h-3" /> :
+                     <AlertCircle className="w-3 h-3" />}
+                    <span>{r.topic} (L{r.level})</span>
+                    <span className="ml-auto">{r.status}{r.error ? `: ${r.error}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleBulkGenerateLessons}
+                disabled={isGeneratingLessons}
+                className="gap-2"
+              >
+                {isGeneratingLessons ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                ) : (
+                  <><BookOpen className="w-4 h-4" /> Generate All Lessons</>
+                )}
+              </Button>
+              {isGeneratingLessons && (
+                <Button
+                  variant="outline"
+                  onClick={() => { lessonAbortRef.current = true; }}
+                >
+                  Stop
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 

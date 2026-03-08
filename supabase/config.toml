@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.tutor-chat]
 verify_jwt = false
+
+[functions.generate-lesson-bulk]
+verify_jwt = false

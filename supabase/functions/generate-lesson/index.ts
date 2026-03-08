@@ -11,6 +11,37 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PUT = cache a lesson (fire-and-forget from client)
+  if (req.method === "PUT") {
+    try {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const serviceClient = createClient(supabaseUrl, serviceKey);
+
+      const { topic, subject, grade, level, content } = await req.json();
+      if (!topic || !subject || !content) {
+        return new Response(JSON.stringify({ error: "Missing fields" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await serviceClient.from("lessons").upsert(
+        { topic_name: topic, subject, grade: grade || 7, level: level || 1, content, generated_by: "auto_cache", updated_at: new Date().toISOString() },
+        { onConflict: "topic_name,subject,grade,level" }
+      );
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      console.error("Cache lesson error:", e);
+      return new Response(JSON.stringify({ error: "Cache failed" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   try {
     const { topic, subject, grade, level, weakAreas, wrongQuestions } = await req.json();
 

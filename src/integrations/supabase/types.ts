@@ -131,6 +131,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lessons: {
+        Row: {
+          content: string
+          created_at: string
+          generated_by: string | null
+          grade: number
+          id: string
+          level: number
+          subject: string
+          topic_name: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          generated_by?: string | null
+          grade?: number
+          id?: string
+          level?: number
+          subject: string
+          topic_name: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          generated_by?: string | null
+          grade?: number
+          id?: string
+          level?: number
+          subject?: string
+          topic_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       practice_schedules: {
         Row: {
           created_at: string
