@@ -10,6 +10,9 @@ import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
 import { offlineSyncService } from '@/services/offlineSyncService';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { usePremium } from '@/hooks/usePremium';
+import { PremiumGate } from '@/components/PremiumGate';
 
 interface SessionSummaryProps {
   analysis: SessionAnalysis;
@@ -31,6 +34,8 @@ const formatName = (name: string) => {
 };
 
 export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onClose }: SessionSummaryProps) => {
+  const { user } = useAuth();
+  const { isPremium } = usePremium(user?.id);
   const [recommendations, setRecommendations] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -227,6 +232,13 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
         return;
       }
 
+      // Only call AI edge function for premium users
+      if (!isPremium) {
+        setRecommendations(generateFallbackRecommendations());
+        setIsLoadingAI(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke('generate-session-analysis', {
           body: {
@@ -255,7 +267,7 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
     };
 
     fetchRecommendations();
-  }, [analysis, subject, generateFallbackRecommendations]);
+  }, [analysis, subject, generateFallbackRecommendations, isPremium]);
 
   if (analysis.totalQuestions === 0) {
     return (
@@ -386,41 +398,64 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
           </div>
 
           {/* AI Recommendations */}
-          <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
-            <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" /> {aiError ? 'Recommendations' : 'AI Coach Recommendations'}
-            </h3>
-            {aiError && (
-              <div className="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {aiError}
+          {isPremium ? (
+            <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+              <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary" /> {aiError ? 'Recommendations' : 'AI Coach Recommendations'}
+              </h3>
+              {aiError && (
+                <div className="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {aiError}
+                </div>
+              )}
+              {isLoadingAI ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Analyzing your performance...</span>
+                </div>
+              ) : (
+                <div className="text-sm text-foreground space-y-1">
+                  {recommendations.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) {
+                      return <h4 key={i} className="font-bold text-primary mt-3 mb-1 text-base">{line.replace('## ', '')}</h4>;
+                    }
+                    if (line.startsWith('- ') || line.startsWith('• ')) {
+                      return <p key={i} className="ml-4 mb-1">{line}</p>;
+                    }
+                    if (line.trim()) {
+                      return <p key={i} className="mb-1">{line}</p>;
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* Show basic fallback recommendations for free users */}
+              <div className="bg-muted/50 rounded-xl p-4 border border-border mb-3">
+                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-muted-foreground" /> Basic Recommendations
+                </h3>
+                <div className="text-sm text-foreground space-y-1">
+                  {recommendations.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) {
+                      return <h4 key={i} className="font-bold text-foreground mt-3 mb-1 text-base">{line.replace('## ', '')}</h4>;
+                    }
+                    if (line.startsWith('- ') || line.startsWith('• ')) {
+                      return <p key={i} className="ml-4 mb-1">{line}</p>;
+                    }
+                    if (line.trim()) {
+                      return <p key={i} className="mb-1">{line}</p>;
+                    }
+                    return null;
+                  })}
+                </div>
               </div>
-            )}
-            {isLoadingAI ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Analyzing your performance...</span>
-              </div>
-            ) : (
-              <div className="text-sm text-foreground space-y-1">
-                {recommendations.split('\n').map((line, i) => {
-                  // Format headers
-                  if (line.startsWith('## ')) {
-                    return <h4 key={i} className="font-bold text-primary mt-3 mb-1 text-base">{line.replace('## ', '')}</h4>;
-                  }
-                  // Format bullet points
-                  if (line.startsWith('- ') || line.startsWith('• ')) {
-                    return <p key={i} className="ml-4 mb-1">{line}</p>;
-                  }
-                  // Regular paragraphs
-                  if (line.trim()) {
-                    return <p key={i} className="mb-1">{line}</p>;
-                  }
-                  return null;
-                })}
-              </div>
-            )}
-          </div>
+              <PremiumGate feature="ai_analysis" message="Unlock AI-powered personalized coaching with detailed topic analysis, study plans, and improvement strategies."><span /></PremiumGate>
+            </div>
+          )}
 
           {/* Export Name Input */}
           {showNameInput && (
