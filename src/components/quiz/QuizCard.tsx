@@ -140,7 +140,7 @@ export const QuizCard = ({
   // Check if hints are available for this question
   // - Must be level 4+
   // - Question must have at least one hint
-  const hasHintsAvailable = level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0;
+  const hasHintsAvailable = isPremium && level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0;
   const hasMoreHints = hintsUsed < parsedHints.length;
 
   // Handle revealing the next hint
