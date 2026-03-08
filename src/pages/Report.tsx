@@ -38,6 +38,7 @@ import { ReportStrengthsWeaknesses } from '@/components/report/ReportStrengthsWe
 import { ReportHistoryList } from '@/components/report/ReportHistoryList';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { exportAggregatedReportToPdf } from '@/utils/exportReportPdf';
 
 const Report = () => {
   const quiz = useQuizStore();
