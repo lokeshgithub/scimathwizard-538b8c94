@@ -225,17 +225,30 @@ export const MasteryPanel = ({
             {levelStats.total}/{perLevel} answered • Need {requiredCorrect} correct ({Math.round(threshold * 100)}%)
           </span>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden relative">
+        <div className="h-3.5 bg-muted rounded-full overflow-hidden relative">
           <motion.div
-            className={`h-full bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'}`}
+            className={`h-full rounded-full bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} progress-bar-animated`}
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
           />
+          {/* Accuracy marker overlay */}
+          {levelStats.total > 0 && accuracy >= Math.round(threshold * 100) && (
+            <motion.div
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5, type: 'spring', stiffness: 500 }}
+            >
+              <Sparkles className="w-3 h-3 text-white drop-shadow" />
+            </motion.div>
+          )}
         </div>
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{levelStats.correct} correct of {levelStats.total} answered</span>
-          <span>Accuracy: {accuracy}%</span>
+          <span className={accuracy >= Math.round(threshold * 100) ? 'text-success font-medium' : ''}>
+            Accuracy: {accuracy}%{accuracy >= Math.round(threshold * 100) ? ' ✓' : ''}
+          </span>
         </div>
       </div>
 
