@@ -7,6 +7,8 @@ import type { QuestionTiming } from '@/types/quiz';
 interface AreasToImproveProps {
   questionTimings: QuestionTiming[];
   onPractice: (topic: string) => void;
+  currentSubject?: string;
+  currentGrade?: number;
 }
 
 interface WeakTopic {
