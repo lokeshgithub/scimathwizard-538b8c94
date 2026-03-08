@@ -513,7 +513,6 @@ export default function FocusedPractice() {
                   progress={quiz.getTopicProgress(quiz.topic)}
                   levelStats={quiz.levelStats}
                   perLevel={quiz.PER_LEVEL}
-                  threshold={quiz.THRESHOLD}
                   topicLevels={quiz.getTopicLevels(quiz.topic)}
                 />
               )}

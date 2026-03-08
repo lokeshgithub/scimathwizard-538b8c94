@@ -67,7 +67,6 @@ export const MasteryPanel = ({
   progress,
   levelStats,
   perLevel,
-  threshold = 0.9,
   topicLevels = [1, 2, 3, 4, 5],
   onResetProgress,
   onPracticeLevel,
@@ -76,9 +75,10 @@ export const MasteryPanel = ({
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [selectedPracticeLevel, setSelectedPracticeLevel] = useState<number | null>(null);
   const currentTheme = getThemeForLevel(currentLevel);
+  const threshold = getThresholdForLevel(currentLevel);
   const requiredCorrect = Math.ceil(threshold * perLevel);
   const progressPercent = levelStats.total > 0 
-    ? Math.round((levelStats.correct / requiredCorrect) * 100)
+    ? Math.min(100, Math.round((levelStats.total / perLevel) * 100))
     : 0;
   const accuracy = levelStats.total > 0 
     ? Math.round((levelStats.correct / levelStats.total) * 100)
