@@ -186,6 +186,23 @@ export default function OlympiadTest() {
     );
   }
 
+  if (!isPremium && !premiumLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-3 px-4 sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <PathwayNav />
+          </div>
+        </header>
+        <main className="max-w-2xl mx-auto px-4 py-12">
+          <PremiumGate feature="olympiad" message="Olympiad Practice with Foundation, Regional, and National level tests is a Premium feature. Request a free trial to unlock!">
+            <div />
+          </PremiumGate>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header - Compact with navigation */}
