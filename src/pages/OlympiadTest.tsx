@@ -20,6 +20,8 @@ import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useOlympiadTest } from '@/hooks/useOlympiadTest';
 import { useAuth } from '@/hooks/useAuth';
+import { usePremiumCheck } from '@/components/PremiumGate';
+import { PremiumGate } from '@/components/PremiumGate';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useConfetti } from '@/hooks/useConfetti';
 import { OlympiadQuizCard } from '@/components/olympiad/OlympiadQuizCard';
