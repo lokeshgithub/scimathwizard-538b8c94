@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.generate-lesson-bulk]
 verify_jwt = false
+
+[functions.generate-single-lesson]
+verify_jwt = false
