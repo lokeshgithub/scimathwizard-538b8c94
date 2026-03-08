@@ -10,12 +10,14 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { QuizModeProvider } from "./contexts/QuizModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute, AdminRoute } from "./components/RouteGuards";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
 
-// Lazy-loaded heavy pages
+// Only Index is eagerly loaded (main entry point)
+import Index from "./pages/Index";
+
+// All other pages lazy-loaded for smaller initial bundle
+const Auth = lazy(() => import("./pages/Auth"));
+const Profile = lazy(() => import("./pages/Profile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdaptiveChallenge = lazy(() => import("./pages/AdaptiveChallenge"));
 const AdaptiveHistory = lazy(() => import("./pages/AdaptiveHistory"));
