@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { UsageDashboard } from '@/components/admin/UsageDashboard';
 import { QuestionBankSummary } from '@/components/admin/QuestionBankSummary';
+import { PremiumManagement } from '@/components/admin/PremiumManagement';
 import {
   AlertDialog,
   AlertDialogAction,
