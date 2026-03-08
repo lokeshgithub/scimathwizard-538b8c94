@@ -169,6 +169,93 @@ const Admin = () => {
   }, [isAdmin, fetchAvailableTopics, summaryRefreshKey]);
 
   // Start test mode - navigate to quiz
+  // Bulk lesson generation handler
+  const handleBulkGenerateLessons = useCallback(async () => {
+    // Get topics for selected subject/grade
+    const filteredTopics = availableTopics.filter(
+      t => t.subject === lessonGenSubject && t.questionCount > 0
+    );
+
+    if (filteredTopics.length === 0) {
+      toast.error(`No topics with questions found for ${lessonGenSubject}`);
+      return;
+    }
+
+    // Parse level range
+    const levelParts = lessonGenLevels.split('-').map(Number);
+    const startLevel = levelParts[0] || 1;
+    const endLevel = levelParts[1] || levelParts[0] || 1;
+    const levels = Array.from({ length: endLevel - startLevel + 1 }, (_, i) => startLevel + i);
+
+    // Build task list
+    const tasks: Array<{ topic: string; subject: string; grade: number; level: number }> = [];
+    for (const t of filteredTopics) {
+      for (const l of levels) {
+        tasks.push({ topic: t.name, subject: lessonGenSubject.toLowerCase(), grade: lessonGenGrade, level: l });
+      }
+    }
+
+    setIsGeneratingLessons(true);
+    setLessonGenResults([]);
+    setLessonGenProgress({ current: 0, total: tasks.length });
+    lessonAbortRef.current = false;
+
+    // Process in batches of 5
+    const batchSize = 5;
+    const allResults: typeof lessonGenResults = [];
+
+    for (let i = 0; i < tasks.length; i += batchSize) {
+      if (lessonAbortRef.current) break;
+      const batch = tasks.slice(i, i + batchSize);
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lesson-bulk`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ topics: batch, overwrite: lessonOverwrite }),
+          }
+        );
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ error: 'Request failed' }));
+          for (const t of batch) {
+            allResults.push({ ...t, status: 'error', error: err.error || `HTTP ${resp.status}` });
+          }
+        } else {
+          const data = await resp.json();
+          allResults.push(...(data.results || []));
+        }
+      } catch (e) {
+        for (const t of batch) {
+          allResults.push({ ...t, status: 'error', error: (e as Error).message });
+        }
+      }
+
+      setLessonGenResults([...allResults]);
+      setLessonGenProgress({ current: Math.min(i + batchSize, tasks.length), total: tasks.length });
+
+      // Check for rate limit
+      if (allResults.some(r => r.topic === 'RATE_LIMITED')) {
+        toast.error('Rate limited. Try again later.');
+        break;
+      }
+    }
+
+    setIsGeneratingLessons(false);
+    const generated = allResults.filter(r => r.status === 'generated').length;
+    const existing = allResults.filter(r => r.status === 'exists').length;
+    const errors = allResults.filter(r => r.status === 'error').length;
+    toast.success(`Lessons: ${generated} generated, ${existing} already existed, ${errors} errors`);
+  }, [availableTopics, lessonGenSubject, lessonGenGrade, lessonGenLevels, lessonOverwrite]);
+
   const handleStartTestMode = useCallback(() => {
     if (!testTopic) {
       toast.error('Please select a topic');
