@@ -388,9 +388,12 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
                       </span>
                     )}
                     {topic.needsAccuracyWork && (
-                      <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> Review Concepts
-                      </span>
+                      <Link
+                        to={`/learn/${topic.topic}?subject=${subject}&level=1`}
+                        className="text-xs bg-primary/15 text-primary px-2.5 py-1 rounded-full flex items-center gap-1 font-medium hover:bg-primary/25 transition-colors"
+                      >
+                        <BookOpen className="w-3 h-3" /> Learn This Topic
+                      </Link>
                     )}
                   </div>
                 </div>
