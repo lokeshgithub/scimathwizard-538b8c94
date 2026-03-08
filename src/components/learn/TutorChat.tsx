@@ -33,7 +33,7 @@ const SUGGESTED_QUESTIONS = [
   "I'm confused about the steps",
 ];
 
-export const TutorChat = ({ topic, subject, grade, lessonContext }: TutorChatProps) => {
+export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedText, onHighlightConsumed }: TutorChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
