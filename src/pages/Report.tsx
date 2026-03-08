@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { usePremiumCheck } from '@/components/PremiumGate';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart3,
@@ -43,6 +44,7 @@ import { exportAggregatedReportToPdf } from '@/utils/exportReportPdf';
 const Report = () => {
   const quiz = useQuizStore();
   const { user, profile } = useAuth();
+  const { isPremium } = usePremiumCheck();
 
   // Current session analysis (in-memory, for non-logged-in or live session)
   const liveAnalysis = useMemo(() => quiz.calculateSessionAnalysis(), [quiz]);
@@ -203,6 +205,7 @@ const Report = () => {
                 availableTopics={availableTopics}
                 showHistory={showHistory}
                 onToggleHistory={() => setShowHistory(!showHistory)}
+                isPremium={isPremium}
               />
             </div>
             <Button

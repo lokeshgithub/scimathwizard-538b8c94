@@ -39,6 +39,8 @@ import { TopicPrereqGraph } from '@/components/quiz/TopicPrereqGraph';
 import { WelcomeModal } from '@/components/quiz/WelcomeModal';
 import { OnboardingTour } from '@/components/quiz/OnboardingTour';
 import { SpacedRepetitionCard } from '@/components/adaptive/SpacedRepetitionCard';
+import { usePremiumCheck } from '@/components/PremiumGate';
+import { PremiumGate } from '@/components/PremiumGate';
 import { FriendsPanel } from '@/components/friends/FriendsPanel';
 import { StarShop } from '@/components/quiz/StarShop';
 import { Button } from '@/components/ui/button';
@@ -65,6 +67,7 @@ const Index = () => {
   // Pass user progress for adaptive daily challenge difficulty
   const dailyChallenge = useDailyChallenge(quiz.banks, quiz.progress);
   const { user, profile, isAdmin, signOut, updateStats, updateGrade } = useAuth();
+  const { isPremium } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -742,8 +745,13 @@ const Index = () => {
                     questionTimings={quiz.sessionPerformance.questionTimings}
                   />
 
-                  {/* Spaced Repetition Card - show when logged in */}
-                  {user && <SpacedRepetitionCard />}
+                  {/* Spaced Repetition Card - Premium only, show when logged in */}
+                  {user && isPremium && <SpacedRepetitionCard />}
+                  {user && !isPremium && (
+                    <PremiumGate feature="spaced_repetition" message="Spaced repetition helps you review weak topics at optimal intervals. Upgrade to Premium to unlock!">
+                      <SpacedRepetitionCard />
+                    </PremiumGate>
+                  )}
                 </>
               </ErrorBoundary>
             )}

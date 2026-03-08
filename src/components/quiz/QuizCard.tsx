@@ -8,10 +8,12 @@ import { SimpleFeedback } from './SimpleFeedback';
 import { AnswerFeedbackSheet } from './AnswerFeedbackSheet';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { SessionStats } from '@/types/quiz';
 import { SwipeHint } from './SwipeHint';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePremiumCheck } from '@/components/PremiumGate';
 
 // Hints only available for levels 4+ (easier levels should be manageable without hints)
 const MIN_LEVEL_FOR_HINTS = 4;
@@ -42,6 +44,7 @@ export const QuizCard = ({
   onPrefetchNext
 }: QuizCardProps) => {
   const isMobile = useIsMobile();
+  const { isPremium } = usePremiumCheck();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -138,7 +141,7 @@ export const QuizCard = ({
   // Check if hints are available for this question
   // - Must be level 4+
   // - Question must have at least one hint
-  const hasHintsAvailable = level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0;
+  const hasHintsAvailable = isPremium && level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0;
   const hasMoreHints = hintsUsed < parsedHints.length;
 
   // Handle revealing the next hint
@@ -377,7 +380,21 @@ export const QuizCard = ({
           </motion.div>
         )}
 
-        {/* Progressive Hints - Only show for levels 4+ and if hints exist */}
+        {/* Premium hint upsell for non-premium users */}
+        {!isAnswered && !isPremium && level >= MIN_LEVEL_FOR_HINTS && parsedHints.length > 0 && (
+          <div className="mb-4">
+            <button
+              onClick={() => toast?.('Hints are a Premium feature. Request a free trial from your Profile!')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-amber-100/50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>Need a hint?</span>
+              <span className="ml-1 text-xs bg-amber-200 dark:bg-amber-800 px-1.5 py-0.5 rounded-full">Premium</span>
+            </button>
+          </div>
+        )}
+
+        {/* Progressive Hints - Only show for premium users at levels 4+ with hints */}
         {!isAnswered && hasHintsAvailable && (
           <div className="mb-4 space-y-3">
             {/* Show revealed hints */}

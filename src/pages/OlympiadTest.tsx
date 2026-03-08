@@ -20,6 +20,8 @@ import { PathwayNav } from '@/components/quiz/PathwayNav';
 import { useQuizStore } from '@/hooks/useQuizStore';
 import { useOlympiadTest } from '@/hooks/useOlympiadTest';
 import { useAuth } from '@/hooks/useAuth';
+import { usePremiumCheck } from '@/components/PremiumGate';
+import { PremiumGate } from '@/components/PremiumGate';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useConfetti } from '@/hooks/useConfetti';
 import { OlympiadQuizCard } from '@/components/olympiad/OlympiadQuizCard';
@@ -55,6 +57,7 @@ export default function OlympiadTest() {
   const quiz = useQuizStore();
   const olympiad = useOlympiadTest(quiz.banks);
   const { profile } = useAuth();
+  const { isPremium, loading: premiumLoading } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
 
@@ -179,6 +182,23 @@ export default function OlympiadTest() {
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-4" />
           <p className="text-muted-foreground">Loading questions...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!isPremium && !premiumLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-3 px-4 sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <PathwayNav />
+          </div>
+        </header>
+        <main className="max-w-2xl mx-auto px-4 py-12">
+          <PremiumGate feature="olympiad" message="Olympiad Practice with Foundation, Regional, and National level tests is a Premium feature. Request a free trial to unlock!">
+            <div />
+          </PremiumGate>
+        </main>
       </div>
     );
   }
