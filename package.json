@@ -21,6 +21,7 @@
     "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
