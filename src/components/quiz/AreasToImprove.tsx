@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Play, Clock, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Play, Clock, Target, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QuestionTiming } from '@/types/quiz';
 
