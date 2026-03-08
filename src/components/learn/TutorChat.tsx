@@ -21,7 +21,9 @@ interface TutorChatProps {
   topic: string;
   subject: string;
   grade?: number;
-  lessonContext: string; // The full lesson markdown for context
+  lessonContext: string;
+  highlightedText?: string;
+  onHighlightConsumed?: () => void;
 }
 
 const SUGGESTED_QUESTIONS = [
