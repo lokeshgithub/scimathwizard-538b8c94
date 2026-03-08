@@ -65,6 +65,7 @@ const App = () => (
               <Route path="/olympiad" element={<Suspense fallback={<PageLoader />}><OlympiadTest /></Suspense>} />
               <Route path="/report" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Report /></Suspense></ProtectedRoute>} />
               <Route path="/install" element={<Suspense fallback={<PageLoader />}><Install /></Suspense>} />
+              <Route path="/learn/:topic" element={<Suspense fallback={<PageLoader />}><GuidedLearn /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
           </div>
