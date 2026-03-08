@@ -234,6 +234,92 @@ const Admin = () => {
     toast.success(`Lessons: ${generated} generated, ${existing} already existed, ${errors} errors`);
   }, [availableTopics, lessonGenSubject, lessonGenGrade, lessonGenLevels, lessonOverwrite]);
 
+  // Fetch lesson inventory
+  const fetchLessonInventory = useCallback(async () => {
+    const inv = await getLessonInventory();
+    setLessonInventory(inv);
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && showLessonInventory) {
+      fetchLessonInventory();
+    }
+  }, [isAdmin, showLessonInventory, fetchLessonInventory]);
+
+  // Handle lesson CSV upload
+  const handleLessonFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingLessons(true);
+    setLessonUploadResults(null);
+
+    let allLessons: LessonRow[] = [];
+
+    for (const file of Array.from(files)) {
+      const content = await file.text();
+      const parsed = parseLessonCSV(content);
+      if (parsed.length === 0) {
+        toast.error(`No valid lessons found in ${file.name}. Check format: topic_name,subject,grade,level,content`);
+      }
+      allLessons = allLessons.concat(parsed);
+    }
+
+    if (allLessons.length === 0) {
+      setIsUploadingLessons(false);
+      event.target.value = '';
+      return;
+    }
+
+    const result = await uploadLessons(allLessons, lessonUploadOverwrite);
+    setLessonUploadResults(result);
+
+    if (result.inserted > 0) {
+      toast.success(`Uploaded ${result.inserted} lesson(s)${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}`);
+    }
+    if (result.errors.length > 0) {
+      toast.error(`${result.errors.length} error(s) during upload`);
+    }
+
+    setIsUploadingLessons(false);
+    event.target.value = '';
+    if (showLessonInventory) fetchLessonInventory();
+  }, [lessonUploadOverwrite, showLessonInventory, fetchLessonInventory]);
+
+  // Download lesson template
+  const handleDownloadLessonTemplate = useCallback(() => {
+    const csv = generateLessonTemplate();
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lesson_template_example.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded! Open in a text editor to see the format.');
+  }, []);
+
+  // Download all lessons as CSV
+  const handleDownloadAllLessons = useCallback(async () => {
+    try {
+      const csv = await downloadLessonsAsCSV();
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_lessons_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('All lessons downloaded!');
+    } catch (e) {
+      toast.error('Failed to download lessons');
+    }
+  }, []);
+
   const handleStartTestMode = useCallback(() => {
     if (!testTopic) {
       toast.error('Please select a topic');
