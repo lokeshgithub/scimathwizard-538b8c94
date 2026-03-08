@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Star, Trophy, Target, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { Sparkles, Star, Trophy, Target, ChevronRight, ChevronLeft, X, BarChart3, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ONBOARDING_COMPLETE_KEY = 'magic-mastery-onboarding-complete';
@@ -42,6 +42,20 @@ const tourSteps: TourStep[] = [
     icon: <Trophy className="w-5 h-5" />,
     position: 'bottom',
   },
+  {
+    targetSelector: '[data-tour="nav-adaptive"], a[href="/adaptive"]',
+    title: 'Skill Assessment',
+    description: 'Test your skills with AI-powered adaptive quizzes that adjust difficulty in real-time. Get a score out of 100!',
+    icon: <Brain className="w-5 h-5" />,
+    position: 'top',
+  },
+  {
+    targetSelector: '[data-tour="nav-report"], a[href="/report"]',
+    title: 'Performance Reports',
+    description: 'View detailed breakdowns of your accuracy, speed, strengths, and weaknesses across all sessions. Download PDF reports!',
+    icon: <BarChart3 className="w-5 h-5" />,
+    position: 'top',
+  },
 ];
 
 export const OnboardingTour = () => {
@@ -64,7 +78,13 @@ export const OnboardingTour = () => {
 
   const positionTooltip = useCallback(() => {
     const step = tourSteps[currentStep];
-    const target = document.querySelector(step.targetSelector);
+    // Support comma-separated selectors (fallback)
+    const selectors = step.targetSelector.split(',').map(s => s.trim());
+    let target: Element | null = null;
+    for (const sel of selectors) {
+      target = document.querySelector(sel);
+      if (target) break;
+    }
     
     if (!target) {
       // If target not found, skip to next step or finish

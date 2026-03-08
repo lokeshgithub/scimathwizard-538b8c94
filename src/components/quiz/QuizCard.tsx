@@ -10,6 +10,8 @@ import { getFeedback, FeedbackResult } from '@/services/feedbackService';
 import { ArrowRight, ArrowLeft, Lightbulb, BookOpen, Sparkles, CheckCircle, XCircle, Brain, Footprints, ShieldCheck, AlertTriangle, Key, Clock, HelpCircle } from 'lucide-react';
 
 import { SessionStats } from '@/types/quiz';
+import { SwipeHint } from './SwipeHint';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Hints only available for levels 4+ (easier levels should be manageable without hints)
 const MIN_LEVEL_FOR_HINTS = 4;
@@ -39,6 +41,7 @@ export const QuizCard = ({
   onSolutionViewed,
   onPrefetchNext
 }: QuizCardProps) => {
+  const isMobile = useIsMobile();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -532,6 +535,11 @@ export const QuizCard = ({
         onNext={handleNext}
         onSolutionViewed={onSolutionViewed}
       />
+
+      {/* Swipe hint on mobile after answering */}
+      {isMobile && (
+        <SwipeHint isVisible={isAnswered} canGoBack={canGoBack} />
+      )}
     </motion.div>
     </AnimatePresence>
   );

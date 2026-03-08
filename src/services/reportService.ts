@@ -134,56 +134,68 @@ const getDaysForTimeRange = (timeRange: ReportFilters['timeRange']): number => {
  * Fetch reports with filters (optimized query order)
  */
 export const fetchReports = async (
-  filters: ReportFilters
+  filters: ReportFilters,
+  retries = 2
 ): Promise<StoredReport[]> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
 
-    let query = supabase
-      .from('session_reports')
-      .select('*')
-      .eq('user_id', user.id);
+      let query = supabase
+        .from('session_reports')
+        .select('*')
+        .eq('user_id', user.id);
 
-    // 1. Subject filter FIRST (most selective)
-    if (filters.subject !== 'all') {
-      query = query.eq('subject', filters.subject);
-    }
+      // 1. Subject filter FIRST (most selective)
+      if (filters.subject !== 'all') {
+        query = query.eq('subject', filters.subject);
+      }
 
-    // 2. Time range filter SECOND (timezone-safe)
-    if (filters.timeRange !== 'all_time' && filters.timeRange !== 'last_session') {
-      const since = getUTCDateDaysAgo(getDaysForTimeRange(filters.timeRange));
-      query = query.gte('created_at', since.toISOString());
-    }
+      // 2. Time range filter SECOND (timezone-safe)
+      if (filters.timeRange !== 'all_time' && filters.timeRange !== 'last_session') {
+        const since = getUTCDateDaysAgo(getDaysForTimeRange(filters.timeRange));
+        query = query.gte('created_at', since.toISOString());
+      }
 
-    // 3. Order by date (deterministic "last session")
-    query = query.order('created_at', { ascending: false });
+      // 3. Order by date (deterministic "last session")
+      query = query.order('created_at', { ascending: false });
 
-    // 4. Limit LAST (after all other filters)
-    if (filters.timeRange === 'last_session') {
-      query = query.limit(1);
-    } else {
-      query = query.limit(100);
-    }
+      // 4. Limit LAST (after all other filters)
+      if (filters.timeRange === 'last_session') {
+        query = query.limit(1);
+      } else {
+        query = query.limit(100);
+      }
 
-    const { data, error } = await query;
+      const { data, error } = await query;
 
-    if (error) {
-      console.error('Failed to fetch reports:', error);
+      if (error) {
+        console.error(`Failed to fetch reports (attempt ${attempt + 1}):`, error);
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        return [];
+      }
+
+      return (data || []).map(row => ({
+        ...row,
+        session_id: row.session_id ?? null,
+        topic_breakdown: (row.topic_breakdown || []) as unknown as TopicBreakdownEntry[],
+        strengths: row.strengths || [],
+        weaknesses: row.weaknesses || [],
+      }));
+    } catch (e) {
+      console.error(`Error fetching reports (attempt ${attempt + 1}):`, e);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
       return [];
     }
-
-    return (data || []).map(row => ({
-      ...row,
-      session_id: row.session_id ?? null,
-      topic_breakdown: (row.topic_breakdown || []) as unknown as TopicBreakdownEntry[],
-      strengths: row.strengths || [],
-      weaknesses: row.weaknesses || [],
-    }));
-  } catch (e) {
-    console.error('Error fetching reports:', e);
-    return [];
   }
+  return [];
 };
 
 /**

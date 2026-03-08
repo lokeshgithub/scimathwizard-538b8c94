@@ -55,6 +55,8 @@ import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { haptics } from '@/utils/haptics';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/quiz/PullToRefreshIndicator';
 
 const Index = () => {
   const quiz = useQuizStore();
@@ -72,6 +74,18 @@ const Index = () => {
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [gradeTopicCounts, setGradeTopicCounts] = useState<Record<number, number>>({});
+
+  // Pull-to-refresh for topic dashboard
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await quiz.retryLoadQuestions?.();
+      // Also refresh due topics
+      if (user) {
+        const { data } = await getDueTopics(quiz.subject);
+        if (data) setDueTopics(data);
+      }
+    },
+  });
 
   // Fetch topic counts per grade (only topics that have questions)
   useEffect(() => {
@@ -468,7 +482,15 @@ const Index = () => {
   const hasAnsweredQuestions = quiz.sessionPerformance.questionTimings.length > 0;
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div ref={!isInQuizMode ? pullToRefresh.containerRef : undefined} className="min-h-screen bg-background overflow-x-hidden">
+      {/* Pull-to-refresh indicator (dashboard only) */}
+      {!isInQuizMode && (
+        <PullToRefreshIndicator
+          isPulling={pullToRefresh.isPulling}
+          refreshing={pullToRefresh.refreshing}
+          pullDistance={pullToRefresh.pullDistance}
+        />
+      )}
       {/* Header - Compact in quiz mode, full in dashboard mode */}
       <motion.header
         className={`bg-gradient-magical text-white px-4 overflow-hidden ${isInQuizMode ? 'py-2' : 'py-4'}`}
