@@ -228,7 +228,7 @@ export default function GuidedLearn() {
     return () => setIsInQuizMode(false);
   }, [setIsInQuizMode]);
 
-  const generateLesson = useCallback(() => {
+  const generateLesson = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -239,6 +239,18 @@ export default function GuidedLearn() {
     setActiveSection(0);
     startTimeRef.current = Date.now();
 
+    // 1. Check DB for cached lesson first
+    try {
+      const cached = await fetchCachedLesson(topic || '', subject, grade, level);
+      if (cached) {
+        setLessonMarkdown(cached);
+        setIsStreaming(false);
+        haptics.success();
+        return;
+      }
+    } catch { /* fall through to AI generation */ }
+
+    // 2. No cached lesson — generate via AI
     const request: LessonRequest = {
       topic: topic || '',
       subject,
@@ -246,7 +258,7 @@ export default function GuidedLearn() {
       level,
     };
 
-    // Try to get wrong questions from sessionStorage (set by entry points)
+    // Try to get wrong questions from sessionStorage
     try {
       const stored = sessionStorage.getItem('learn-wrong-questions');
       if (stored) {
@@ -255,14 +267,21 @@ export default function GuidedLearn() {
       }
     } catch { /* ignore */ }
 
+    let fullContent = '';
+
     streamLesson({
       request,
       onDelta: (text) => {
+        fullContent += text;
         setLessonMarkdown((prev) => prev + text);
       },
       onDone: () => {
         setIsStreaming(false);
         haptics.success();
+        // 3. Cache the generated lesson in DB for future students
+        if (fullContent.length > 200) {
+          cacheLessonInDB(topic || '', subject, grade, level, fullContent);
+        }
       },
       onError: (err) => {
         setError(err);
