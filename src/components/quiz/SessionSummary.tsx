@@ -8,6 +8,7 @@ import { BarChart3, Clock, Target, TrendingUp, Gauge, BookOpen, X, Loader2, Down
 import { supabase } from '@/integrations/supabase/client';
 import { exportSessionToPdf } from '@/utils/exportPdf';
 import { saveSessionReport } from '@/services/reportService';
+import { offlineSyncService } from '@/services/offlineSyncService';
 import { toast } from 'sonner';
 
 interface SessionSummaryProps {
