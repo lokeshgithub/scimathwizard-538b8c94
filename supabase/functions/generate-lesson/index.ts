@@ -55,7 +55,37 @@ CRITICAL RULES:
 - Use markdown formatting with headers, bold, bullet points.
 - Use LaTeX math notation with $...$ for inline and $$...$$ for display math.
 - Be encouraging but never patronizing.
-- End each section with a confidence-building note.`;
+- End each section with a confidence-building note.
+
+VISUAL AIDS — you MUST use these special markdown patterns to create visual elements:
+
+1. **Formula Cards**: Wrap key formulas in a blockquote starting with "> 📐 **Formula:**" like this:
+> 📐 **Formula:** Area of Triangle
+> $$A = \\frac{1}{2} \\times base \\times height$$
+> *Remember: Half the base times height!*
+
+2. **Step-by-Step Breakdowns**: Use numbered bold headers with the arrow marker "**Step N →**" for each step:
+**Step 1 →** Identify what is given
+**Step 2 →** Write the formula
+**Step 3 →** Substitute values
+
+3. **Key Concept Boxes**: Use blockquotes starting with "> 🔑 **Key Idea:**" for critical concepts:
+> 🔑 **Key Idea:** A negative times a negative gives a positive
+
+4. **Comparison Tables**: Use markdown tables to compare right vs wrong approaches, or to show related formulas side by side.
+
+5. **Visual Diagrams**: When helpful, create simple ASCII/text diagrams using code blocks labeled \`\`\`diagram. Example:
+\`\`\`diagram
+    A ———— B
+    |      |
+    |      |   Rectangle: length = 5, width = 3
+    |      |
+    D ———— C
+\`\`\`
+
+6. **Warning Boxes**: Use blockquotes starting with "> ❌ **Wrong:**" and "> ✅ **Correct:**" for common mistakes.
+
+Use these visual aids GENEROUSLY throughout the lesson. Every section should have at least 1-2 visual elements.`;
 
     const userPrompt = `Create a comprehensive guided lesson for the topic "${topicFormatted}" in ${subjectFormatted} for a ${gradeText} student who is struggling at ${levelText}.${studentContext}
 
@@ -63,10 +93,11 @@ Structure the lesson EXACTLY as follows (use these exact headers):
 
 ## 🧠 What You Need to Know
 
-Explain the 2-3 most important concepts for this topic. Use analogies. Make abstract ideas concrete. Each concept should have:
-- A simple one-line definition
+Explain the 2-3 most important concepts for this topic. Use analogies. Make abstract ideas concrete. Each concept MUST include:
+- A 🔑 **Key Idea** box with the core concept
+- A 📐 **Formula** card (if applicable)
 - A real-world analogy
-- A key formula or rule (if applicable)
+- A comparison table if there are related concepts
 
 ## 🔍 Let's Work Through Examples
 
@@ -76,27 +107,31 @@ Solve 3 problems step-by-step, increasing in difficulty:
 3. **Challenge** — A tricky problem that tests deeper understanding
 
 For EACH problem:
-- State the problem clearly
-- Show the "Think First" approach (what to identify before solving)
-- Solve step-by-step with explanations for EACH step
-- Highlight the answer clearly
+- State the problem in a clear blockquote
+- Use **Step N →** format for EVERY step (show your work visually)
+- Include a \`\`\`diagram\`\`\` block if the problem involves shapes, number lines, or visual reasoning
+- Highlight the final answer with: > 🎯 **Answer:** ...
 - Add a "Why this works" note
 
 ## ⚠️ Common Mistakes to Avoid
 
 List 3-4 specific mistakes students make on this topic. For each:
-- Show the WRONG approach
+- Use > ❌ **Wrong:** to show the incorrect approach
 - Explain WHY it's wrong
-- Show the CORRECT approach
-- Give a memory trick to avoid it
+- Use > ✅ **Correct:** to show the right approach
+- Give a memory trick in a 🔑 **Key Idea** box
 
 ## 💡 Quick Tips & Tricks
 
-Share 3-4 exam shortcuts, mental math tricks, or pattern-recognition tips specific to this topic. These should give the student an "aha!" moment.
+Share 3-4 exam shortcuts using 📐 **Formula** cards. Include:
+- Mental math tricks
+- Pattern-recognition tips
+- Shortcut formulas in formula cards
+- A comparison table of when to use which formula/trick
 
 ## 🎯 Ready to Practice?
 
-Write a brief encouraging message. Mention that they now have the tools to tackle ${levelText} problems. Include one "challenge yourself" question they can think about (don't solve it).`;
+Write a brief encouraging message. Mention that they now have the tools to tackle ${levelText} problems. Include one "challenge yourself" question in a blockquote (don't solve it).`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -112,7 +147,7 @@ Write a brief encouraging message. Mention that they now have the tools to tackl
         ],
         stream: true,
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 6000,
       }),
     });
 
