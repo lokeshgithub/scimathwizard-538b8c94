@@ -294,13 +294,27 @@ export const QuizCard = ({
   return (
     <AnimatePresence mode="wait">
     <motion.div
-      className="bg-card rounded-2xl shadow-card overflow-hidden"
+      className="bg-card rounded-2xl shadow-card overflow-hidden touch-pan-y"
       initial={{ opacity: 0, x: 40, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: -40, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
       key={question.id}
       data-testid="quiz-card"
+      drag={isAnswered ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(_e, info) => {
+        if (Math.abs(info.offset.x) > 80) {
+          if (info.offset.x < -80) {
+            // Swipe left → next question
+            handleNext();
+          } else if (info.offset.x > 80 && canGoBack && onPrevious) {
+            // Swipe right → previous question
+            onPrevious();
+          }
+        }
+      }}
     >
       {/* Header */}
       <div className={`bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} p-4`}>
