@@ -337,7 +337,7 @@ export const QuizCard = ({
       </div>
 
       {/* Question */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <p className="text-base sm:text-lg font-medium text-foreground mb-4 leading-relaxed" data-testid="question-text">
           {question.question}
         </p>
