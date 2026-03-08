@@ -232,6 +232,13 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
         return;
       }
 
+      // Only call AI edge function for premium users
+      if (!isPremium) {
+        setRecommendations(generateFallbackRecommendations());
+        setIsLoadingAI(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke('generate-session-analysis', {
           body: {
@@ -260,7 +267,7 @@ export const SessionSummary = ({ analysis, subject, sessionStats, sessionId, onC
     };
 
     fetchRecommendations();
-  }, [analysis, subject, generateFallbackRecommendations]);
+  }, [analysis, subject, generateFallbackRecommendations, isPremium]);
 
   if (analysis.totalQuestions === 0) {
     return (
