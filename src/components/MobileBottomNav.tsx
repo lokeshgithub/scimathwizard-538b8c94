@@ -37,6 +37,7 @@ export const MobileBottomNav = () => {
             <button
               key={path}
               onClick={() => { haptics.light(); navigate(path); }}
+              data-tour={`nav-${label.toLowerCase()}`}
               className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative"
             >
               {isActive && (
