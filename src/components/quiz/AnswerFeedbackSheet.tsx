@@ -126,7 +126,7 @@ export const AnswerFeedbackSheet = ({
               </div>
 
               {/* Compact feedback header */}
-              <div className="px-5 pb-4">
+              <div className="px-4 sm:px-5 pb-4 pb-safe">
                 <div className="flex items-center gap-3 mb-3">
                   <motion.div
                     initial={{ scale: 0 }}
