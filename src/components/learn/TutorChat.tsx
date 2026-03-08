@@ -56,6 +56,17 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
     }
   }, [isOpen]);
 
+  // When highlighted text arrives, open chat and prefill
+  useEffect(() => {
+    if (highlightedText && highlightedText.trim()) {
+      setIsOpen(true);
+      const prefix = `Explain this part: "${highlightedText.trim().slice(0, 200)}"`;
+      setInput(prefix);
+      onHighlightConsumed?.();
+      setTimeout(() => inputRef.current?.focus(), 400);
+    }
+  }, [highlightedText, onHighlightConsumed]);
+
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
