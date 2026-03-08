@@ -222,10 +222,10 @@ export const MasteryPanel = ({
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Level {currentLevel} Progress</span>
           <span className="font-semibold text-foreground">
-            {levelStats.correct}/{requiredCorrect} needed ({Math.round(threshold * 100)}%)
+            {levelStats.total}/{perLevel} answered • Need {requiredCorrect} correct ({Math.round(threshold * 100)}%)
           </span>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden relative">
           <motion.div
             className={`h-full bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'}`}
             initial={{ width: 0 }}
