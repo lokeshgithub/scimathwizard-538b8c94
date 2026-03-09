@@ -163,7 +163,7 @@ export function LandingHero({ onGetStarted }: LandingHeroProps) {
           </h2>
           <div className="grid sm:grid-cols-3 gap-8">
             {[
-              { step: '1', title: 'Pick a Topic', desc: 'Choose from 25+ topics in Maths (more subjects coming soon)', emoji: '📚' },
+              { step: '1', title: 'Pick a Topic', desc: 'Choose from topics across Maths, Physics, and Chemistry', emoji: '📚' },
               { step: '2', title: 'Practice & Level Up', desc: 'Answer 10 questions per level. Score 80%+ to unlock the next level', emoji: '🎯' },
               { step: '3', title: 'Track & Improve', desc: 'Get AI-powered analysis, spaced repetition reminders, and detailed reports', emoji: '📊' },
             ].map((item, i) => (
