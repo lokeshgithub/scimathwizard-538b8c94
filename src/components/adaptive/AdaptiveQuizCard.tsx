@@ -27,6 +27,7 @@ export const AdaptiveQuizCard = ({
   onAnswer,
   onNext,
 }: AdaptiveQuizCardProps) => {
+  const { mode } = useAppMode();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
