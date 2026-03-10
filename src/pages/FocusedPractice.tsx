@@ -129,7 +129,7 @@ export default function FocusedPractice() {
       sound.playCorrect();
       setPracticeStats(prev => ({ correct: prev.correct + 1, total: prev.total + 1 }));
       if (practiceStats.correct > 0 && (practiceStats.correct + 1) % 3 === 0) {
-        confetti.fireLevelUp(true);
+        if (isFunMode) confetti.fireLevelUp(true);
       }
     } else {
       sound.playIncorrect();
