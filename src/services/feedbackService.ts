@@ -193,7 +193,8 @@ function getUniqueCharacter(level: number): Character {
  *   - Immediate for exceptional (10+ streak) or struggling (5+ wrong)
  */
 export function getFeedback(context: FeedbackContext): FeedbackResult {
-  const { isCorrect, level } = context;
+  const { isCorrect, level, appMode } = context;
+  const isFocused = appMode === 'focused';
 
   // Increment counter
   questionsSinceLastSpecialFeedback++;
@@ -204,36 +205,30 @@ export function getFeedback(context: FeedbackContext): FeedbackResult {
     questionsSinceLastSpecialFeedback = 0;
     nextSpecialFeedbackAt = getRandomGap();
 
-    // 50% chance: character message, 50% chance: fun element (riddle/joke)
+    if (isFocused) {
+      // Focused mode: only professional character messages, no fun elements
+      const character = getFocusedCharacter();
+      const messageType = isCorrect ? 'correct' : 'encouragement';
+      const message = getFocusedMessage(character, messageType);
+      return { type: 'character', character, message };
+    }
+
+    // Fun mode: 50% character, 50% fun element
     const showCharacter = Math.random() < 0.5;
 
     if (showCharacter) {
       const character = getUniqueCharacter(level);
       const messageType = isCorrect ? 'correct' : 'encouragement';
       const message = getUniqueCharacterMessage(character, messageType);
-
-      return {
-        type: 'character',
-        character,
-        message,
-      };
+      return { type: 'character', character, message };
     } else {
-      // Show fun element (riddle, joke, fact, etc.)
       const funElement = getRandomFunElement(level);
       if (funElement) {
-        return {
-          type: 'fun_element',
-          funElement,
-        };
+        return { type: 'fun_element', funElement };
       }
-      // Fallback to character if no fun element available
       const character = getUniqueCharacter(level);
       const message = getUniqueCharacterMessage(character, isCorrect ? 'correct' : 'encouragement');
-      return {
-        type: 'character',
-        character,
-        message,
-      };
+      return { type: 'character', character, message };
     }
   }
 
