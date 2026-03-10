@@ -66,6 +66,7 @@ interface FeedbackContext {
   streak: number;          // Current consecutive correct answers
   totalAnswered: number;   // Total questions answered in session
   recentWrongCount: number; // Wrong answers in last 5 questions (for struggling detection)
+  appMode?: 'focused' | 'fun'; // Learning mode
 }
 
 /**
