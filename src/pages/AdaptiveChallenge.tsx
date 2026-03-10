@@ -47,6 +47,7 @@ const AdaptiveChallenge = () => {
   const adaptive = useAdaptiveChallenge(quiz.banks);
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const isFunMode = (() => { try { return localStorage.getItem('app-learning-mode') !== 'focused'; } catch { return true; } })();
   
   // Use saved subject preference from localStorage (persists across all pathways)
   const [selectedSubject, setSelectedSubject] = useState<Subject>(getSavedSubject);
