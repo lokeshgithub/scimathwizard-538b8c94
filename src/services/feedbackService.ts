@@ -10,6 +10,7 @@
 
 import { Character, getRandomCharacter, getRandomMessage, themeLevels } from '@/data/characters';
 import { getRandomFunElement, FunElement } from '@/data/funElements';
+import { getFocusedCharacter, getFocusedMessage } from '@/data/focusedCharacters';
 
 // Session-level tracking for used messages (reset on page refresh)
 const usedCharacterMessages = new Set<string>();
