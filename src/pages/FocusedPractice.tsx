@@ -39,6 +39,7 @@ export default function FocusedPractice() {
   const quiz = useQuizStore();
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const isFunMode = (() => { try { return localStorage.getItem('app-learning-mode') !== 'focused'; } catch { return true; } })();
   
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
