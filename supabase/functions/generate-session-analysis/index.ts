@@ -68,9 +68,9 @@ Deno.serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const body: AnalysisRequest = await req.json();
@@ -163,14 +163,14 @@ Be SPECIFIC - mention actual topic names, give concrete study tips, and referenc
     const startTime = Date.now();
     const validUserId = userId && isValidUUID(userId) ? userId : null;
     
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         messages: [
           { 
             role: "system", 
@@ -246,7 +246,7 @@ Be SPECIFIC - mention actual topic names, give concrete study tips, and referenc
         response_tokens: responseTokens,
         total_tokens: totalTokens,
         response_time_ms: responseTime,
-        model: 'google/gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
       },
       estimatedCost
     );
