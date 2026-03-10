@@ -255,7 +255,12 @@ export function resetFeedbackTracking(): void {
 /**
  * Get encouragement message for hints or timeouts
  */
-export function getEncouragementMessage(level: number): { character: Character; message: string } {
+export function getEncouragementMessage(level: number, appMode?: 'focused' | 'fun'): { character: Character; message: string } {
+  if (appMode === 'focused') {
+    const character = getFocusedCharacter();
+    const message = getFocusedMessage(character, 'encouragement');
+    return { character, message };
+  }
   const character = getUniqueCharacter(level);
   const message = getUniqueCharacterMessage(character, 'encouragement');
   return { character, message };
