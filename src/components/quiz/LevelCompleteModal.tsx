@@ -28,7 +28,8 @@ export const LevelCompleteModal = ({
   onRetry,
   onContinuePracticing,
 }: LevelCompleteModalProps) => {
-  const [character, setCharacter] = useState(getRandomCharacter(level));
+  const { isFunMode } = useAppMode();
+  const [character, setCharacter] = useState(isFunMode ? getRandomCharacter(level) : getFocusedCharacter());
   const [message, setMessage] = useState('');
   const [showReward, setShowReward] = useState(false);
   
@@ -40,9 +41,12 @@ export const LevelCompleteModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      const char = getRandomCharacter(level);
+      const char = isFunMode ? getRandomCharacter(level) : getFocusedCharacter();
       setCharacter(char);
-      setMessage(getRandomMessage(char, passed ? 'levelUp' : 'encouragement'));
+      setMessage(isFunMode 
+        ? getRandomMessage(char, passed ? 'levelUp' : 'encouragement')
+        : getFocusedMessage(char, passed ? 'levelUp' : 'encouragement')
+      );
       setShowReward(false);
       
       // Show reward animation after a delay when passed
@@ -50,7 +54,7 @@ export const LevelCompleteModal = ({
         setTimeout(() => setShowReward(true), 500);
       }
     }
-  }, [isOpen, passed, level, reward]);
+  }, [isOpen, passed, level, reward, isFunMode]);
 
   return (
     <AnimatePresence>
