@@ -145,7 +145,7 @@ export default function FocusedPractice() {
     
     const masteryResult = quiz.checkMastery();
     if (masteryResult === 'passed') {
-      confetti.fireLevelUp(true);
+      if (isFunMode) confetti.fireLevelUp(true);
       quiz.advanceLevel();
     } else if (masteryResult === 'failed') {
       quiz.retryLevel();

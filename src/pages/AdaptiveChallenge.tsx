@@ -137,7 +137,7 @@ const AdaptiveChallenge = () => {
     // Check if challenge will be complete after advancing
     if (adaptive.state.isComplete) {
       sound.playLevelUp();
-      confetti.fireMastery();
+      if (isFunMode) confetti.fireMastery();
     }
   }, [adaptive, sound, confetti]);
 
