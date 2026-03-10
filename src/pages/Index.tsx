@@ -983,11 +983,12 @@ const Index = () => {
       {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
       {/* Achievements still tracked, just no pop-up interruption */}
 
-      {/* Star Shop - Spend stars on rewards */}
-      <StarShop
-        stars={quiz.sessionStats.stars}
-        onPurchase={(cost) => quiz.deductStars(cost)}
-        masteredTopicsPerSubject={masteredTopicsPerSubject}
+      {/* Star Shop - Spend stars on rewards (Fun Mode only) */}
+      {isFunMode && (
+        <StarShop
+          stars={quiz.sessionStats.stars}
+          onPurchase={(cost) => quiz.deductStars(cost)}
+          masteredTopicsPerSubject={masteredTopicsPerSubject}
       />
 
       {/* Welcome Modal for first-time users */}
