@@ -15,6 +15,7 @@ import { exportCertificateToPdf } from '@/utils/exportCertificate';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { AvatarCustomizer } from '@/components/profile/AvatarCustomizer';
 import { PremiumStatusCard } from '@/components/profile/PremiumStatusCard';
+import { LearningModeToggle } from '@/components/profile/LearningModeToggle';
 
 interface AdaptiveResult {
   id: string;
