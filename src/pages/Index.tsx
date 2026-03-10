@@ -990,6 +990,7 @@ const Index = () => {
           onPurchase={(cost) => quiz.deductStars(cost)}
           masteredTopicsPerSubject={masteredTopicsPerSubject}
       />
+      )}
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />
