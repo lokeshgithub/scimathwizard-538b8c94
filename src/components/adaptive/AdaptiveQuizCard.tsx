@@ -6,6 +6,7 @@ import { themeLevels } from '@/data/characters';
 import { FunElementCard } from '@/components/quiz/FunElementCard';
 import { SimpleFeedback } from '@/components/quiz/SimpleFeedback';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 interface AdaptiveQuizCardProps {
   question: Question;

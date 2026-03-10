@@ -46,6 +46,7 @@ export const QuizCard = ({
 }: QuizCardProps) => {
   const isMobile = useIsMobile();
   const { isPremium } = usePremiumCheck();
+  const { mode } = useAppMode();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
