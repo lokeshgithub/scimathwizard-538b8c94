@@ -163,6 +163,8 @@ const Profile = () => {
       </motion.header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Learning Mode Toggle */}
+        <LearningModeToggle />
         {/* Profile Overview Card */}
         <motion.div
           className="bg-card rounded-2xl shadow-card p-6"
