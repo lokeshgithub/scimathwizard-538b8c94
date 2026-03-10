@@ -575,6 +575,22 @@ const Index = () => {
                     <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="font-bold text-sm sm:text-lg">Class {quiz.selectedGrade}</span>
                   </motion.div>
+
+                  {/* Mode Indicator Badge */}
+                  <motion.div
+                    className={`flex items-center gap-1 rounded-full px-2 py-1 border flex-shrink-0 ${
+                      isFunMode
+                        ? 'bg-primary/20 border-primary/40 text-primary'
+                        : 'bg-muted/50 border-border text-muted-foreground'
+                    }`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', delay: 0.3 }}
+                    title={isFunMode ? 'Fun Mode: Characters & rewards enabled' : 'Focused Learner: Clean & professional'}
+                  >
+                    <span className="text-sm">{isFunMode ? '🎮' : '📚'}</span>
+                    <span className="text-xs font-medium hidden sm:inline">{isFunMode ? 'Fun' : 'Focused'}</span>
+                  </motion.div>
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
