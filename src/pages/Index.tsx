@@ -485,7 +485,7 @@ const Index = () => {
     if (unlockTarget) {
       quiz.unlockLevel(unlockTarget.topic, level);
       sound.playLevelUp();
-      confetti.fireLevelUp(false);
+      if (isFunMode) confetti.fireLevelUp(false);
     }
   }, [unlockTarget, quiz, sound, confetti]);
 
