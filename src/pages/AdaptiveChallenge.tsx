@@ -120,7 +120,7 @@ const AdaptiveChallenge = () => {
         return q.isCorrect;
       }).length;
       
-      if (correctStreak >= 3) {
+      if (correctStreak >= 3 && isFunMode) {
         confetti.fireStreak(correctStreak);
       }
     } else {
