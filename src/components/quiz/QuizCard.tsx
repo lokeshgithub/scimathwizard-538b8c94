@@ -201,8 +201,9 @@ export const QuizCard = ({
         isCorrect: result.isCorrect,
         level,
         streak: newConsecutive,
-        totalAnswered: sessionStats.solved, // Use solved as total answered
+        totalAnswered: sessionStats.solved,
         recentWrongCount: newRecentWrong,
+        appMode: mode,
       });
       setFeedbackResult(feedback);
 
