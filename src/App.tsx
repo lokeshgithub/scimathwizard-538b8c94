@@ -52,6 +52,7 @@ const App = () => (
       <Sonner />
       <ErrorBoundary section="App">
       <BrowserRouter>
+        <AppModeProvider>
         <QuizModeProvider>
           <OfflineIndicator />
           <div className="pb-14 md:pb-0">
