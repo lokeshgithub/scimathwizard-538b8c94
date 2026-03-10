@@ -47,6 +47,7 @@ const AdaptiveChallenge = () => {
   const adaptive = useAdaptiveChallenge(quiz.banks);
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const isFunMode = (() => { try { return localStorage.getItem('app-learning-mode') !== 'focused'; } catch { return true; } })();
   
   // Use saved subject preference from localStorage (persists across all pathways)
   const [selectedSubject, setSelectedSubject] = useState<Subject>(getSavedSubject);
@@ -119,7 +120,7 @@ const AdaptiveChallenge = () => {
         return q.isCorrect;
       }).length;
       
-      if (correctStreak >= 3) {
+      if (correctStreak >= 3 && isFunMode) {
         confetti.fireStreak(correctStreak);
       }
     } else {
@@ -136,7 +137,7 @@ const AdaptiveChallenge = () => {
     // Check if challenge will be complete after advancing
     if (adaptive.state.isComplete) {
       sound.playLevelUp();
-      confetti.fireMastery();
+      if (isFunMode) confetti.fireMastery();
     }
   }, [adaptive, sound, confetti]);
 

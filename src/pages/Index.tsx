@@ -59,6 +59,7 @@ import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { haptics } from '@/utils/haptics';
+import { useAppMode } from '@/contexts/AppModeContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/quiz/PullToRefreshIndicator';
 
@@ -71,6 +72,7 @@ const Index = () => {
   const { isPremium } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const { isFunMode } = useAppMode();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
@@ -430,9 +432,9 @@ const Index = () => {
       
       const isTopicComplete = quiz.level >= quiz.MAX_LEVEL;
       if (isTopicComplete) {
-        confetti.fireMastery();
+        if (isFunMode) confetti.fireMastery();
       } else {
-        confetti.fireLevelUp(true);
+        if (isFunMode) confetti.fireLevelUp(true);
       }
       
       // Check for perfect level (100% accuracy)
@@ -483,7 +485,7 @@ const Index = () => {
     if (unlockTarget) {
       quiz.unlockLevel(unlockTarget.topic, level);
       sound.playLevelUp();
-      confetti.fireLevelUp(false);
+      if (isFunMode) confetti.fireLevelUp(false);
     }
   }, [unlockTarget, quiz, sound, confetti]);
 
@@ -981,12 +983,14 @@ const Index = () => {
       {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
       {/* Achievements still tracked, just no pop-up interruption */}
 
-      {/* Star Shop - Spend stars on rewards */}
-      <StarShop
-        stars={quiz.sessionStats.stars}
-        onPurchase={(cost) => quiz.deductStars(cost)}
-        masteredTopicsPerSubject={masteredTopicsPerSubject}
+      {/* Star Shop - Spend stars on rewards (Fun Mode only) */}
+      {isFunMode && (
+        <StarShop
+          stars={quiz.sessionStats.stars}
+          onPurchase={(cost) => quiz.deductStars(cost)}
+          masteredTopicsPerSubject={masteredTopicsPerSubject}
       />
+      )}
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal />

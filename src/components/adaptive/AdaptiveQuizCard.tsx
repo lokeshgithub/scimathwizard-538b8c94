@@ -6,6 +6,7 @@ import { themeLevels } from '@/data/characters';
 import { FunElementCard } from '@/components/quiz/FunElementCard';
 import { SimpleFeedback } from '@/components/quiz/SimpleFeedback';
 import { getFeedback, FeedbackResult } from '@/services/feedbackService';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 interface AdaptiveQuizCardProps {
   question: Question;
@@ -26,6 +27,7 @@ export const AdaptiveQuizCard = ({
   onAnswer,
   onNext,
 }: AdaptiveQuizCardProps) => {
+  const { mode } = useAppMode();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number>(-1);
@@ -92,6 +94,7 @@ export const AdaptiveQuizCard = ({
       streak: newConsecutive,
       totalAnswered: questionsAnswered,
       recentWrongCount: newRecentWrong,
+      appMode: mode,
     });
     setFeedbackResult(feedback);
   };

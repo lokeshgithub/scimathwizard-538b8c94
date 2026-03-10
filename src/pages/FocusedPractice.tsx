@@ -39,6 +39,7 @@ export default function FocusedPractice() {
   const quiz = useQuizStore();
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const isFunMode = (() => { try { return localStorage.getItem('app-learning-mode') !== 'focused'; } catch { return true; } })();
   
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [dueTopics, setDueTopics] = useState<DueTopic[]>([]);
@@ -128,7 +129,7 @@ export default function FocusedPractice() {
       sound.playCorrect();
       setPracticeStats(prev => ({ correct: prev.correct + 1, total: prev.total + 1 }));
       if (practiceStats.correct > 0 && (practiceStats.correct + 1) % 3 === 0) {
-        confetti.fireLevelUp(true);
+        if (isFunMode) confetti.fireLevelUp(true);
       }
     } else {
       sound.playIncorrect();
@@ -144,7 +145,7 @@ export default function FocusedPractice() {
     
     const masteryResult = quiz.checkMastery();
     if (masteryResult === 'passed') {
-      confetti.fireLevelUp(true);
+      if (isFunMode) confetti.fireLevelUp(true);
       quiz.advanceLevel();
     } else if (masteryResult === 'failed') {
       quiz.retryLevel();

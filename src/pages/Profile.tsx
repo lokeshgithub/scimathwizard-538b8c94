@@ -15,6 +15,7 @@ import { exportCertificateToPdf } from '@/utils/exportCertificate';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { AvatarCustomizer } from '@/components/profile/AvatarCustomizer';
 import { PremiumStatusCard } from '@/components/profile/PremiumStatusCard';
+import { LearningModeToggle } from '@/components/profile/LearningModeToggle';
 
 interface AdaptiveResult {
   id: string;
@@ -162,6 +163,8 @@ const Profile = () => {
       </motion.header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Learning Mode Toggle */}
+        <LearningModeToggle />
         {/* Profile Overview Card */}
         <motion.div
           className="bg-card rounded-2xl shadow-card p-6"

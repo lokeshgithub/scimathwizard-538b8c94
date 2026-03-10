@@ -154,7 +154,8 @@ export default function OlympiadTest() {
   const handleNext = () => {
     if (olympiad.state.currentQuestionIndex >= olympiad.state.questions.length - 1) {
       // Test complete
-      confetti.fireMastery();
+      const isFunMode = (() => { try { return localStorage.getItem('app-learning-mode') !== 'focused'; } catch { return true; } })();
+      if (isFunMode) confetti.fireMastery();
       sound.playLevelUp();
     } else {
       olympiad.nextQuestion();
