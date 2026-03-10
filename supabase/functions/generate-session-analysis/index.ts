@@ -246,7 +246,7 @@ Be SPECIFIC - mention actual topic names, give concrete study tips, and referenc
         response_tokens: responseTokens,
         total_tokens: totalTokens,
         response_time_ms: responseTime,
-        model: 'google/gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
       },
       estimatedCost
     );
