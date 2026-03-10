@@ -59,6 +59,7 @@ import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuizMode } from '@/contexts/QuizModeContext';
 import { haptics } from '@/utils/haptics';
+import { useAppMode } from '@/contexts/AppModeContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/quiz/PullToRefreshIndicator';
 
