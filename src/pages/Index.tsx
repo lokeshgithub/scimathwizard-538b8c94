@@ -72,6 +72,7 @@ const Index = () => {
   const { isPremium } = usePremiumCheck();
   const sound = useSoundEffects();
   const confetti = useConfetti();
+  const { isFunMode } = useAppMode();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showModal, setShowModal] = useState(false);
   const [modalPassed, setModalPassed] = useState(false);
