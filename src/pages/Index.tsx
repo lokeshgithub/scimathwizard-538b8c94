@@ -432,9 +432,9 @@ const Index = () => {
       
       const isTopicComplete = quiz.level >= quiz.MAX_LEVEL;
       if (isTopicComplete) {
-        confetti.fireMastery();
+        if (isFunMode) confetti.fireMastery();
       } else {
-        confetti.fireLevelUp(true);
+        if (isFunMode) confetti.fireLevelUp(true);
       }
       
       // Check for perfect level (100% accuracy)
