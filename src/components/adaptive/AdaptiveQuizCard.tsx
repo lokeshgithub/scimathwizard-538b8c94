@@ -94,6 +94,7 @@ export const AdaptiveQuizCard = ({
       streak: newConsecutive,
       totalAnswered: questionsAnswered,
       recentWrongCount: newRecentWrong,
+      appMode: mode,
     });
     setFeedbackResult(feedback);
   };
