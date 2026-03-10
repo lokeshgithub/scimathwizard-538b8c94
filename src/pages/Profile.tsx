@@ -37,12 +37,7 @@ const Profile = () => {
   const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const [avatarKey, setAvatarKey] = useState(0); // Force re-render when avatar changes
 
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
+  // No longer redirecting guests — they can access Profile for mode toggle
 
   // Fetch adaptive challenge results
   useEffect(() => {
