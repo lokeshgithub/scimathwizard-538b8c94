@@ -37,12 +37,7 @@ const Profile = () => {
   const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const [avatarKey, setAvatarKey] = useState(0); // Force re-render when avatar changes
 
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
+  // No longer redirecting guests — they can access Profile for mode toggle
 
   // Fetch adaptive challenge results
   useEffect(() => {
@@ -127,7 +122,44 @@ const Profile = () => {
   }
 
   if (!user || !profile) {
-    return null;
+    // Guest view: show mode toggle + sign-in prompt
+    return (
+      <div className="min-h-screen bg-background">
+        <motion.header 
+          className="bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white py-6 px-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="max-w-4xl mx-auto flex items-center gap-3">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Settings className="w-6 h-6" />
+              <h1 className="text-xl md:text-2xl font-bold">Settings</h1>
+            </div>
+          </div>
+        </motion.header>
+
+        <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          <LearningModeToggle />
+
+          <div className="bg-card border border-border rounded-xl p-6 text-center space-y-3">
+            <User className="w-10 h-10 mx-auto text-muted-foreground" />
+            <h3 className="font-semibold text-foreground">Sign in for full profile</h3>
+            <p className="text-sm text-muted-foreground">
+              Track your progress, earn stars, and unlock achievements.
+            </p>
+            <Link to="/auth">
+              <Button className="mt-2">Sign In / Sign Up</Button>
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
