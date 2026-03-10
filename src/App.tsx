@@ -73,6 +73,7 @@ const App = () => (
           </div>
           <MobileBottomNav />
         </QuizModeProvider>
+        </AppModeProvider>
       </BrowserRouter>
       </ErrorBoundary>
     </TooltipProvider>
