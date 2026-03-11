@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
 import { SessionStats } from '@/types/quiz';
 import { Zap, Target, Flame, Trophy, Star, TrendingUp, CheckCircle, BarChart3 } from 'lucide-react';
-import { useContext } from 'react';
-import { AppModeContext } from '@/contexts/AppModeContext';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 interface StatsBarProps {
   stats: SessionStats;
