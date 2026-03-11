@@ -30,8 +30,8 @@ const tourSteps: TourStep[] = [
   },
   {
     targetSelector: '[data-tour="stats-bar"]',
-    title: 'Track Your Stars ⭐',
-    description: 'Earn stars for every correct answer! Streaks multiply your rewards. Spend stars in the Star Shop for fun rewards.',
+    title: 'Track Your Progress',
+    description: 'Fun Mode: Earn stars for correct answers! Streaks multiply rewards. Spend stars in the Star Shop for rewards. Focused Mode: Track accuracy and completion metrics.',
     icon: <Star className="w-5 h-5" />,
     position: 'bottom',
   },
