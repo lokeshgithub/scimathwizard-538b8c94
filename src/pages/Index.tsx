@@ -1005,7 +1005,7 @@ const Index = () => {
           stars={quiz.sessionStats.stars}
           onPurchase={(cost) => quiz.deductStars(cost)}
           masteredTopicsPerSubject={masteredTopicsPerSubject}
-      />
+        />
       )}
 
       {/* Welcome Modal for first-time users */}
