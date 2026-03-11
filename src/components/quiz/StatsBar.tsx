@@ -8,7 +8,7 @@ interface StatsBarProps {
 }
 
 export const StatsBar = ({ stats }: StatsBarProps) => {
-  const { isFunMode } = useContext(AppModeContext);
+  const { isFunMode } = useAppMode();
 
   const accuracy = stats.solved > 0
     ? Math.round((stats.correct / stats.solved) * 100)
