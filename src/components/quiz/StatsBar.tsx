@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
 import { SessionStats } from '@/types/quiz';
-import { Zap, Target, Flame, Trophy, Star, TrendingUp } from 'lucide-react';
+import { Zap, Target, Flame, Trophy, Star, TrendingUp, CheckCircle, BarChart3 } from 'lucide-react';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 interface StatsBarProps {
   stats: SessionStats;
 }
 
 export const StatsBar = ({ stats }: StatsBarProps) => {
+  const { isFunMode } = useAppMode();
+
   const accuracy = stats.solved > 0
     ? Math.round((stats.correct / stats.solved) * 100)
     : 0;
@@ -44,34 +47,71 @@ export const StatsBar = ({ stats }: StatsBarProps) => {
 
   return (
     <div className="mb-6">
-      {/* Stars Display - Clean and minimal */}
+      {/* Top Card - Stars (Fun) or Academic Progress (Focused) */}
       <motion.div
         className="bg-card rounded-xl p-4 mb-4 shadow-card"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-gold rounded-lg">
-              <Star className="w-5 h-5 text-white fill-white" />
+        {isFunMode ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-gold rounded-lg">
+                  <Star className="w-5 h-5 text-white fill-white" />
+                </div>
+                <span className="font-semibold text-foreground">Session Stars</span>
+              </div>
+              <span className="text-2xl font-bold text-gradient-gold">{stats.stars} ⭐</span>
             </div>
-            <span className="font-semibold text-foreground">Session Stars</span>
-          </div>
-          <span className="text-2xl font-bold text-gradient-gold">{stats.stars} ⭐</span>
-        </div>
 
-        {/* Streak bonus indicator - only show when streak >= 3 */}
-        {stats.streak >= 3 && (
-          <motion.div
-            className="flex items-center justify-center gap-2 mt-3 p-2 bg-destructive/10 rounded-lg"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-          >
-            <TrendingUp className="w-4 h-4 text-destructive" />
-            <span className="text-sm font-medium text-destructive">
-              🔥 {stats.streak} streak! Bonus stars active!
-            </span>
-          </motion.div>
+            {stats.streak >= 3 && (
+              <motion.div
+                className="flex items-center justify-center gap-2 mt-3 p-2 bg-destructive/10 rounded-lg"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <TrendingUp className="w-4 h-4 text-destructive" />
+                <span className="text-sm font-medium text-destructive">
+                  🔥 {stats.streak} streak! Bonus stars active!
+                </span>
+              </motion.div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                </div>
+                <span className="font-semibold text-foreground">Session Progress</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-success">{accuracy}%</span>
+                  <span className="text-xs text-muted-foreground ml-1">accuracy</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-primary">{stats.correct}</span>
+                  <span className="text-xs text-muted-foreground ml-1">/ {stats.solved}</span>
+                </div>
+              </div>
+            </div>
+
+            {stats.streak >= 3 && (
+              <motion.div
+                className="flex items-center justify-center gap-2 mt-3 p-2 bg-success/10 rounded-lg"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span className="text-sm font-medium text-success">
+                  {stats.streak} correct in a row — great consistency!
+                </span>
+              </motion.div>
+            )}
+          </>
         )}
       </motion.div>
 
