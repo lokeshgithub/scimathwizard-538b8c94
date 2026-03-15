@@ -51,6 +51,7 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -63,7 +64,10 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   useEffect(() => {
     setIsLoadingHistory(true);
     loadChatHistory(chatKey).then((history) => {
-      if (history.length > 0) setMessages(history);
+      if (history.length > 0) {
+        setMessages(history);
+        setHasLoadedHistory(true);
+      }
     }).finally(() => setIsLoadingHistory(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic, subject, grade]);
@@ -360,6 +364,21 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
                       ))}
                     </div>
                   </div>
+                </motion.div>
+              )}
+
+              {/* Continued conversation indicator */}
+              {hasLoadedHistory && messages.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-center gap-2 py-1"
+                >
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    Continued conversation
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
                 </motion.div>
               )}
 
