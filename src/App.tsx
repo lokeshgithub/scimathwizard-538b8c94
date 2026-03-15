@@ -11,6 +11,7 @@ import { QuizModeProvider } from "./contexts/QuizModeContext";
 import { AppModeProvider } from "./contexts/AppModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute, AdminRoute } from "./components/RouteGuards";
+import FeedbackWidget from "./components/FeedbackWidget";
 
 // Only Index is eagerly loaded (main entry point)
 import Index from "./pages/Index";

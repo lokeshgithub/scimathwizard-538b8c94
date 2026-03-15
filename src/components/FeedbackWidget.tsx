@@ -24,13 +24,9 @@ const FeedbackWidget = () => {
   const [submitting, setSubmitting] = useState(false);
   const location = useLocation();
 
-  // Hide on /testing page
-  if (location.pathname === "/testing") return null;
-
   const captureScreenshot = useCallback(async () => {
     setCapturing(true);
     try {
-      // Temporarily hide the widget for clean screenshot
       const widget = document.getElementById("feedback-widget");
       if (widget) widget.style.display = "none";
 
@@ -52,7 +48,6 @@ const FeedbackWidget = () => {
 
   const handleOpen = useCallback(async () => {
     setIsOpen(true);
-    // Auto-capture screenshot on open
     await captureScreenshot();
   }, [captureScreenshot]);
 
@@ -66,7 +61,6 @@ const FeedbackWidget = () => {
     try {
       let screenshotPath: string | null = null;
 
-      // Upload screenshot if available
       if (screenshot) {
         const blob = await (await fetch(screenshot)).blob();
         const fileName = `feedback_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -79,10 +73,9 @@ const FeedbackWidget = () => {
         }
       }
 
-      // Get current user if logged in
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from("user_feedback").insert({
+      const { error } = await supabase.from("user_feedback" as any).insert({
         feedback_type: feedbackType,
         message: message.trim() || null,
         page_url: window.location.pathname,
@@ -93,7 +86,7 @@ const FeedbackWidget = () => {
           screen: `${screen.width}x${screen.height}`,
           viewport: `${window.innerWidth}x${window.innerHeight}`,
         },
-      });
+      } as any);
 
       if (error) throw error;
 
@@ -109,6 +102,9 @@ const FeedbackWidget = () => {
       setSubmitting(false);
     }
   };
+
+  // Hide on /testing page
+  if (location.pathname === "/testing") return null;
 
   return (
     <div id="feedback-widget" className="fixed right-0 top-1/2 -translate-y-1/2 z-50">
@@ -132,7 +128,6 @@ const FeedbackWidget = () => {
             className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="font-semibold text-foreground text-sm">Quick Feedback</h3>
               <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
