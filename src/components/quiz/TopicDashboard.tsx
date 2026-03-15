@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
 import { SignUpPrompt } from './SignUpPrompt';
 import { AreasToImprove } from './AreasToImprove';
+import { LevelingHelpDialog } from './LevelingHelpDialog';
 import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
 import type { DueTopic } from '@/services/spacedRepetitionService';
 import {
