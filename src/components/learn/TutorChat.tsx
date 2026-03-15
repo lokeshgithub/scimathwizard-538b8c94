@@ -198,11 +198,6 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
     }
   }, [messages, isStreaming, topic, subject, grade, lessonContext]);
 
-  const clearChat = useCallback(() => {
-    haptics.light();
-    setMessages([]);
-  }, []);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(input);
