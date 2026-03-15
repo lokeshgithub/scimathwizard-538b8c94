@@ -4,7 +4,7 @@ import { Sparkles, Zap, Trophy, Brain, Users, BarChart3, Star, CheckCircle2, Arr
 import { Button } from '@/components/ui/button';
 
 const features = [
-  { icon: Brain, title: '2,800+ Questions', desc: 'Across 25+ topics, 6 mastery levels each' },
+  { icon: Brain, title: '10,000+ Questions', desc: 'Across 25+ topics, 6 mastery levels each' },
   { icon: Zap, title: 'AI-Powered Analysis', desc: 'Get personalized feedback after every session' },
   { icon: Trophy, title: 'Adaptive Challenges', desc: 'Difficulty adjusts to your skill level in real-time' },
   { icon: Users, title: 'Battle Friends', desc: 'Challenge classmates to live quiz battles' },
