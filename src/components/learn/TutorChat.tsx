@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { haptics } from '@/utils/haptics';
+import { loadChatHistory, saveChatHistory, deleteChatHistory } from '@/services/tutorChatService';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tutor-chat`;
 
