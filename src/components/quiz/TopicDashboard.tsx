@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ContinueSession, saveLastSession } from './ContinueSession';
 import { SignUpPrompt } from './SignUpPrompt';
 import { AreasToImprove } from './AreasToImprove';
+import { LevelingHelpDialog } from './LevelingHelpDialog';
 import { useGuestLimits, GUEST_TOPIC_LIMIT_COUNT } from '@/hooks/useGuestLimits';
 import type { DueTopic } from '@/services/spacedRepetitionService';
 import {
@@ -459,7 +460,10 @@ export const TopicDashboard = ({
         {/* Overall Progress Bar */}
         <div className="bg-card rounded-xl p-4 shadow-card">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Overall Progress</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Overall Progress</span>
+              <LevelingHelpDialog />
+            </div>
             <span className="text-sm text-muted-foreground">
               {overallStats.completedTopics}/{overallStats.totalTopics} topics mastered
             </span>
