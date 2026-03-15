@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {
-  MessageCircle, Send, X, Loader2, Sparkles, ChevronDown,
+  MessageCircle, Send, X, Loader2, Sparkles, ChevronDown, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { haptics } from '@/utils/haptics';
