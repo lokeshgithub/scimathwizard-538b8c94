@@ -27,6 +27,7 @@ const OlympiadTest = lazy(() => import("./pages/OlympiadTest"));
 const Report = lazy(() => import("./pages/Report"));
 const Install = lazy(() => import("./pages/Install"));
 const GuidedLearn = lazy(() => import("./pages/GuidedLearn"));
+const TestFeedback = lazy(() => import("./pages/TestFeedback"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
