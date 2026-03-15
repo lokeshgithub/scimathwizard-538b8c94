@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { themeLevels } from '@/data/characters';
 import { TopicProgress } from '@/types/quiz';
-import { CheckCircle, Lock, Circle, Sparkles, RotateCcw } from 'lucide-react';
+import { CheckCircle, Lock, Circle, Sparkles, RotateCcw, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
