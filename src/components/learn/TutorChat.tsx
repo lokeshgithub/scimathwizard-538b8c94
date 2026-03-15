@@ -114,7 +114,9 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
     haptics.light();
     setMessages([]);
     setShowClearConfirm(false);
-  }, []);
+    deleteChatHistory(chatKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, subject, grade]);
 
   const handleClearClick = useCallback(() => {
     haptics.light();
