@@ -164,7 +164,7 @@ export function LandingHero({ onGetStarted }: LandingHeroProps) {
           <div className="grid sm:grid-cols-3 gap-8">
             {[
               { step: '1', title: 'Pick a Topic', desc: 'Choose from topics across Maths, Physics, and Chemistry', emoji: '📚' },
-              { step: '2', title: 'Practice & Level Up', desc: 'Answer 10 questions per level. Score 80%+ to unlock the next level', emoji: '🎯' },
+              { step: '2', title: 'Practice & Level Up', desc: 'Answer 10 questions per level. Hit the accuracy target (100% → 70% as levels increase) to advance', emoji: '🎯' },
               { step: '3', title: 'Track & Improve', desc: 'Get AI-powered analysis, spaced repetition reminders, and detailed reports', emoji: '📊' },
             ].map((item, i) => (
               <motion.div
