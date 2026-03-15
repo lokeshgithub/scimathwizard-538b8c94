@@ -44,7 +44,7 @@ export async function saveChatHistory(key: ChatHistoryKey, messages: ChatMessage
   // Upsert based on unique constraint
   await supabase
     .from('tutor_chat_histories')
-    .upsert(row, { onConflict: 'user_id,topic,subject,grade' });
+    .upsert([row], { onConflict: 'user_id,topic,subject,grade' });
 }
 
 export async function deleteChatHistory(key: ChatHistoryKey): Promise<void> {
