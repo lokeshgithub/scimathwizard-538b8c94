@@ -796,6 +796,18 @@ const Index = () => {
                 {/* Level selector pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs text-muted-foreground mr-1">Level:</span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        <p className="font-semibold mb-1">Accuracy targets per level:</p>
+                        <p>L1: 100% · L2-3: 90% · L4-5: 80% · L6+: 70%</p>
+                        <p className="mt-1 text-muted-foreground">Higher levels are harder, so the bar is lower!</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   {quiz.getTopicLevels(quiz.topic).map((lvl) => {
                     const isActive = lvl === quiz.level;
                     const unlocked = quiz.isLevelUnlocked(quiz.topic!, lvl);
