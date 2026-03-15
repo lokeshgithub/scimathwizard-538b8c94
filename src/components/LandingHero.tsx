@@ -65,7 +65,7 @@ export function LandingHero({ onGetStarted }: LandingHeroProps) {
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               The adaptive quiz platform built for Class 7+ students preparing for
               <strong className="text-foreground"> IIT Foundation, Olympiads &amp; NTSE</strong>.
-              2,800+ questions. 6 difficulty levels. AI-powered coaching.
+              Unlimited practice questions. 6 difficulty levels. AI-powered coaching.
             </p>
 
             {/* CTA Buttons */}
