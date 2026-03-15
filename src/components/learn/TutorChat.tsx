@@ -50,11 +50,34 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const chatKey = { topic, subject, grade: grade || 7 };
   const topicFormatted = topic.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+  // Load chat history on mount
+  useEffect(() => {
+    setIsLoadingHistory(true);
+    loadChatHistory(chatKey).then((history) => {
+      if (history.length > 0) setMessages(history);
+    }).finally(() => setIsLoadingHistory(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, subject, grade]);
+
+  // Debounced save whenever messages change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveChatHistory(chatKey, messages);
+    }, 1000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   // Lock body scroll on mobile when chat is open
   useEffect(() => {
