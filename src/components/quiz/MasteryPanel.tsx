@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { themeLevels } from '@/data/characters';
 import { TopicProgress } from '@/types/quiz';
-import { CheckCircle, Lock, Circle, Sparkles, RotateCcw } from 'lucide-react';
+import { CheckCircle, Lock, Circle, Sparkles, RotateCcw, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -221,8 +222,20 @@ export const MasteryPanel = ({
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Level {currentLevel} Progress</span>
-          <span className="font-semibold text-foreground">
+          <span className="font-semibold text-foreground flex items-center gap-1">
             {levelStats.total}/{perLevel} answered • Need {requiredCorrect} correct ({Math.round(threshold * 100)}%)
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help inline-block" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[220px] text-xs">
+                  <p className="font-semibold mb-1">Accuracy targets per level:</p>
+                  <p>L1: 100% · L2-3: 90% · L4-5: 80% · L6+: 70%</p>
+                  <p className="mt-1 text-muted-foreground">Higher levels are harder, so the bar is lower!</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </span>
         </div>
         <div className="h-3.5 bg-muted rounded-full overflow-hidden relative">
