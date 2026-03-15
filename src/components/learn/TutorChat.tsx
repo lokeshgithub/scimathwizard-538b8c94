@@ -44,6 +44,14 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
 
   const topicFormatted = topic.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
+  // Lock body scroll on mobile when chat is open
+  useEffect(() => {
+    if (isOpen && window.innerWidth < 640) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
