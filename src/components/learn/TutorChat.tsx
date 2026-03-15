@@ -339,10 +339,6 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
-                >
                   <div className="bg-muted rounded-2xl rounded-tl-sm p-3.5">
                     <p className="text-sm text-foreground">
                       Hi! 👋 I'm your AI tutor for <strong>{topicFormatted}</strong>. I've read the whole lesson — ask me anything you didn't understand!
