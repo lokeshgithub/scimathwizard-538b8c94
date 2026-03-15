@@ -11,6 +11,7 @@ import { QuizModeProvider } from "./contexts/QuizModeContext";
 import { AppModeProvider } from "./contexts/AppModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute, AdminRoute } from "./components/RouteGuards";
+import FeedbackWidget from "./components/FeedbackWidget";
 
 // Only Index is eagerly loaded (main entry point)
 import Index from "./pages/Index";
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
           </div>
+          <FeedbackWidget />
           <MobileBottomNav />
         </QuizModeProvider>
         </AppModeProvider>

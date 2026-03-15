@@ -669,6 +669,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feedback: {
+        Row: {
+          created_at: string
+          device_info: Json | null
+          feedback_type: string
+          id: string
+          message: string | null
+          page_url: string | null
+          screenshot_path: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_info?: Json | null
+          feedback_type?: string
+          id?: string
+          message?: string | null
+          page_url?: string | null
+          screenshot_path?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_info?: Json | null
+          feedback_type?: string
+          id?: string
+          message?: string | null
+          page_url?: string | null
+          screenshot_path?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
