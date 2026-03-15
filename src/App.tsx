@@ -27,6 +27,7 @@ const OlympiadTest = lazy(() => import("./pages/OlympiadTest"));
 const Report = lazy(() => import("./pages/Report"));
 const Install = lazy(() => import("./pages/Install"));
 const GuidedLearn = lazy(() => import("./pages/GuidedLearn"));
+const TestFeedback = lazy(() => import("./pages/TestFeedback"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/report" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Report /></Suspense></ProtectedRoute>} />
               <Route path="/install" element={<Suspense fallback={<PageLoader />}><Install /></Suspense>} />
               <Route path="/learn/:topic" element={<Suspense fallback={<PageLoader />}><GuidedLearn /></Suspense>} />
+              <Route path="/testing" element={<Suspense fallback={<PageLoader />}><TestFeedback /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
           </div>
