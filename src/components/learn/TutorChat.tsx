@@ -8,6 +8,16 @@ import {
   MessageCircle, Send, X, Loader2, Sparkles, ChevronDown, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { haptics } from '@/utils/haptics';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tutor-chat`;
@@ -35,6 +45,7 @@ const SUGGESTED_QUESTIONS = [
 
 export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedText, onHighlightConsumed }: TutorChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -78,6 +89,12 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   const clearChat = useCallback(() => {
     haptics.light();
     setMessages([]);
+    setShowClearConfirm(false);
+  }, []);
+
+  const handleClearClick = useCallback(() => {
+    haptics.light();
+    setShowClearConfirm(true);
   }, []);
 
   const sendMessage = useCallback(async (text: string) => {
@@ -265,7 +282,7 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
                 <p className="text-xs text-primary-foreground/70 truncate">{topicFormatted}</p>
               </div>
               <button
-                onClick={clearChat}
+                onClick={handleClearClick}
                 disabled={messages.length === 0}
                 className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Clear chat"
@@ -410,6 +427,26 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Clear Chat Confirmation Dialog */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete your entire chat history with the AI tutor. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowClearConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={clearChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear Chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
