@@ -13,7 +13,7 @@ const features = [
 ];
 
 const socialProof = [
-  { metric: '2,800+', label: 'Questions' },
+  { metric: '10,000+', label: 'Questions' },
   { metric: '25+', label: 'Topics' },
   { metric: '6', label: 'Mastery Levels' },
   { metric: '100%', label: 'Free' },
