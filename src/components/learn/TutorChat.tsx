@@ -44,6 +44,14 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
 
   const topicFormatted = topic.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
+  // Lock body scroll on mobile when chat is open
+  useEffect(() => {
+    if (isOpen && window.innerWidth < 640) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -240,7 +248,7 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[400px] sm:max-h-[600px] h-[85vh] sm:h-auto bg-card border border-border sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-[400px] sm:max-h-[600px] sm:h-[min(600px,80vh)] bg-card border border-border sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-secondary px-4 py-3 flex items-center gap-3 shrink-0">
