@@ -265,6 +265,14 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
                 <p className="text-xs text-primary-foreground/70 truncate">{topicFormatted}</p>
               </div>
               <button
+                onClick={clearChat}
+                disabled={messages.length === 0}
+                className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Clear chat"
+              >
+                <Trash2 className="w-4 h-4 text-primary-foreground" />
+              </button>
+              <button
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors"
               >
