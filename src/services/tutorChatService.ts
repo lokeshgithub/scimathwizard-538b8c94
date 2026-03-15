@@ -32,12 +32,15 @@ export async function saveChatHistory(key: ChatHistoryKey, messages: ChatMessage
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  // Limit to last 20 messages to prevent database entry from growing too large
+  const limitedMessages = messages.slice(-20);
+
   const row = {
     user_id: user.id,
     topic: key.topic,
     subject: key.subject,
     grade: key.grade,
-    messages: JSON.parse(JSON.stringify(messages)),
+    messages: JSON.parse(JSON.stringify(limitedMessages)),
     updated_at: new Date().toISOString(),
   };
 
