@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { haptics } from '@/utils/haptics';
+import { loadChatHistory, saveChatHistory, deleteChatHistory } from '@/services/tutorChatService';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tutor-chat`;
 
@@ -49,11 +50,34 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const chatKey = { topic, subject, grade: grade || 7 };
   const topicFormatted = topic.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+  // Load chat history on mount
+  useEffect(() => {
+    setIsLoadingHistory(true);
+    loadChatHistory(chatKey).then((history) => {
+      if (history.length > 0) setMessages(history);
+    }).finally(() => setIsLoadingHistory(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, subject, grade]);
+
+  // Debounced save whenever messages change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveChatHistory(chatKey, messages);
+    }, 1000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   // Lock body scroll on mobile when chat is open
   useEffect(() => {
@@ -90,7 +114,9 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
     haptics.light();
     setMessages([]);
     setShowClearConfirm(false);
-  }, []);
+    deleteChatHistory(chatKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, subject, grade]);
 
   const handleClearClick = useCallback(() => {
     haptics.light();
@@ -299,8 +325,15 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+              {/* Loading history */}
+              {isLoadingHistory && messages.length === 0 && (
+                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading conversation...</span>
+                </div>
+              )}
               {/* Welcome message */}
-              {messages.length === 0 && (
+              {messages.length === 0 && !isLoadingHistory && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
