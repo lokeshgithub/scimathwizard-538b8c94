@@ -460,7 +460,10 @@ export const TopicDashboard = ({
         {/* Overall Progress Bar */}
         <div className="bg-card rounded-xl p-4 shadow-card">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Overall Progress</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Overall Progress</span>
+              <LevelingHelpDialog />
+            </div>
             <span className="text-sm text-muted-foreground">
               {overallStats.completedTopics}/{overallStats.totalTopics} topics mastered
             </span>
