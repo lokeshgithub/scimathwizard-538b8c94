@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {
-  MessageCircle, Send, X, Loader2, Sparkles, ChevronDown,
+  MessageCircle, Send, X, Loader2, Sparkles, ChevronDown, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { haptics } from '@/utils/haptics';
@@ -74,6 +74,11 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
       setTimeout(() => inputRef.current?.focus(), 400);
     }
   }, [highlightedText, onHighlightConsumed]);
+
+  const clearChat = useCallback(() => {
+    haptics.light();
+    setMessages([]);
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -259,6 +264,14 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
                 <h3 className="text-sm font-bold text-primary-foreground">AI Tutor</h3>
                 <p className="text-xs text-primary-foreground/70 truncate">{topicFormatted}</p>
               </div>
+              <button
+                onClick={clearChat}
+                disabled={messages.length === 0}
+                className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Clear chat"
+              >
+                <Trash2 className="w-4 h-4 text-primary-foreground" />
+              </button>
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors"
