@@ -64,7 +64,10 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   useEffect(() => {
     setIsLoadingHistory(true);
     loadChatHistory(chatKey).then((history) => {
-      if (history.length > 0) setMessages(history);
+      if (history.length > 0) {
+        setMessages(history);
+        setHasLoadedHistory(true);
+      }
     }).finally(() => setIsLoadingHistory(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topic, subject, grade]);
