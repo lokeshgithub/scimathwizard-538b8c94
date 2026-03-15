@@ -45,6 +45,7 @@ const SUGGESTED_QUESTIONS = [
 
 export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedText, onHighlightConsumed }: TutorChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
