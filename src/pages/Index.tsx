@@ -55,6 +55,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getDueTopics, DueTopic } from '@/services/spacedRepetitionService';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuizMode } from '@/contexts/QuizModeContext';
