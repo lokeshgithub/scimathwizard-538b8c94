@@ -89,6 +89,12 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
   const clearChat = useCallback(() => {
     haptics.light();
     setMessages([]);
+    setShowClearConfirm(false);
+  }, []);
+
+  const handleClearClick = useCallback(() => {
+    haptics.light();
+    setShowClearConfirm(true);
   }, []);
 
   const sendMessage = useCallback(async (text: string) => {
