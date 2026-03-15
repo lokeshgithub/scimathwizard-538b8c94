@@ -74,6 +74,7 @@ const App = () => (
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
           </div>
+          <FeedbackWidget />
           <MobileBottomNav />
         </QuizModeProvider>
         </AppModeProvider>
