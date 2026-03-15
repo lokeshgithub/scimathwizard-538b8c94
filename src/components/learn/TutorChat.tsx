@@ -325,9 +325,20 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+              {/* Loading history */}
+              {isLoadingHistory && messages.length === 0 && (
+                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading conversation...</span>
+                </div>
+              )}
               {/* Welcome message */}
-              {messages.length === 0 && (
+              {messages.length === 0 && !isLoadingHistory && (
                 <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
