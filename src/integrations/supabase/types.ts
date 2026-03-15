@@ -529,6 +529,84 @@ export type Database = {
         }
         Relationships: []
       }
+      test_feedback: {
+        Row: {
+          browser: string
+          checkpoints: Json
+          created_at: string
+          device: string
+          id: string
+          notes: string | null
+          test_name: string
+          test_number: number
+          tester_name: string
+        }
+        Insert: {
+          browser: string
+          checkpoints?: Json
+          created_at?: string
+          device: string
+          id?: string
+          notes?: string | null
+          test_name: string
+          test_number: number
+          tester_name: string
+        }
+        Update: {
+          browser?: string
+          checkpoints?: Json
+          created_at?: string
+          device?: string
+          id?: string
+          notes?: string | null
+          test_name?: string
+          test_number?: number
+          tester_name?: string
+        }
+        Relationships: []
+      }
+      test_overall_feedback: {
+        Row: {
+          browser: string
+          bugs_found: string | null
+          created_at: string
+          device: string
+          favorite_feature: string | null
+          id: string
+          mode_tested: string | null
+          most_confusing: string | null
+          rating: number | null
+          suggestions: string | null
+          tester_name: string
+        }
+        Insert: {
+          browser: string
+          bugs_found?: string | null
+          created_at?: string
+          device: string
+          favorite_feature?: string | null
+          id?: string
+          mode_tested?: string | null
+          most_confusing?: string | null
+          rating?: number | null
+          suggestions?: string | null
+          tester_name: string
+        }
+        Update: {
+          browser?: string
+          bugs_found?: string | null
+          created_at?: string
+          device?: string
+          favorite_feature?: string | null
+          id?: string
+          mode_tested?: string | null
+          most_confusing?: string | null
+          rating?: number | null
+          suggestions?: string | null
+          tester_name?: string
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           created_at: string
