@@ -37,7 +37,7 @@ export async function saveChatHistory(key: ChatHistoryKey, messages: ChatMessage
     topic: key.topic,
     subject: key.subject,
     grade: key.grade,
-    messages: messages as unknown as Record<string, unknown>[],
+    messages: JSON.parse(JSON.stringify(messages)),
     updated_at: new Date().toISOString(),
   };
 
