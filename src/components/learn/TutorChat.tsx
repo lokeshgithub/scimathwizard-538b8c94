@@ -75,6 +75,11 @@ export const TutorChat = ({ topic, subject, grade, lessonContext, highlightedTex
     }
   }, [highlightedText, onHighlightConsumed]);
 
+  const clearChat = useCallback(() => {
+    haptics.light();
+    setMessages([]);
+  }, []);
+
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
