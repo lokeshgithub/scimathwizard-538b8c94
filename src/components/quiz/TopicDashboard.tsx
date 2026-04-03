@@ -375,12 +375,6 @@ export const TopicDashboard = ({
       return;
     }
 
-    const unlocked = isLevelUnlocked ? isLevelUnlocked(topicName, level) : true;
-    if (!unlocked && onRequestUnlock) {
-      onRequestUnlock(topicName, level);
-      return;
-    }
-
     guestLimits.recordTopicAccess(topicName);
     if (onStartLevel) onStartLevel(topicName, level);
   };
