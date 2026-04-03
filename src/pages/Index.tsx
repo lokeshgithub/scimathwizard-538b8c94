@@ -610,16 +610,16 @@ const Index = () => {
                         className="flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30"
                       >
                         <BarChart3 className="w-4 h-4" />
-                        <span className="hidden sm:inline">View Report</span>
+                        <span className="hidden sm:inline">Session Summary</span>
                         <span className="rounded-full px-1.5 py-0.5 text-xs font-bold bg-white/20">
                           {quiz.sessionPerformance.questionTimings.length}
                         </span>
                       </Button>
                       {/* Tooltip on hover */}
                       <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
-                        <p className="text-sm font-medium text-foreground mb-1">Session Report Ready</p>
+                        <p className="text-sm font-medium text-foreground mb-1">Session Summary</p>
                         <p className="text-xs text-muted-foreground">
-                          Click to see a detailed breakdown of your {quiz.sessionPerformance.questionTimings.length} answered question{quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.
+                          Click to see a breakdown of your {quiz.sessionPerformance.questionTimings.length} answered question{quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} this session — accuracy, speed, and tips.
                         </p>
                       </div>
                     </div>
