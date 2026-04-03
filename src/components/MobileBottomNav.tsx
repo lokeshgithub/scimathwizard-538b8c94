@@ -8,7 +8,7 @@ import { haptics } from '@/utils/haptics';
 const tabs = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/adaptive', icon: Brain, label: 'Quiz' },
-  { path: '/report', icon: BarChart3, label: 'Report' },
+  { path: '/report', icon: BarChart3, label: 'History' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];
 

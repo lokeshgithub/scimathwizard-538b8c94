@@ -558,12 +558,14 @@ const Index = () => {
                 <div className="flex items-center gap-2 min-w-0">
                   <motion.div
                     className="flex items-center gap-1 sm:gap-2 min-w-0"
-                    animate={{ y: [0, -5, 0] }}
+                    animate={isFunMode ? { y: [0, -5, 0] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
-                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">Magic Mastery Quiz</h1>
-                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
+                    {isFunMode && <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />}
+                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">
+                      {isFunMode ? 'Magic Mastery Quiz' : 'SciMathWizard'}
+                    </h1>
+                    {isFunMode && <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />}
                   </motion.div>
 
                   {/* Grade Badge - Shows currently selected grade */}
@@ -610,16 +612,16 @@ const Index = () => {
                         className="flex items-center gap-1 sm:gap-2 border-0 transition-all px-2 sm:px-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30"
                       >
                         <BarChart3 className="w-4 h-4" />
-                        <span className="hidden sm:inline">View Report</span>
+                        <span className="hidden sm:inline">Session Summary</span>
                         <span className="rounded-full px-1.5 py-0.5 text-xs font-bold bg-white/20">
                           {quiz.sessionPerformance.questionTimings.length}
                         </span>
                       </Button>
                       {/* Tooltip on hover */}
                       <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-left">
-                        <p className="text-sm font-medium text-foreground mb-1">Session Report Ready</p>
+                        <p className="text-sm font-medium text-foreground mb-1">Session Summary</p>
                         <p className="text-xs text-muted-foreground">
-                          Click to see a detailed breakdown of your {quiz.sessionPerformance.questionTimings.length} answered question{quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} — including accuracy, speed, and improvement tips.
+                          Click to see a breakdown of your {quiz.sessionPerformance.questionTimings.length} answered question{quiz.sessionPerformance.questionTimings.length !== 1 ? 's' : ''} this session — accuracy, speed, and tips.
                         </p>
                       </div>
                     </div>
@@ -677,7 +679,9 @@ const Index = () => {
                 </div>
               </div>
               <p className="text-white/80 text-sm mt-2">
-                Master each level with increasing challenges! ✨
+                {isFunMode 
+                  ? 'Master each level with increasing challenges! ✨' 
+                  : 'Practice systematically. Track your progress.'}
               </p>
             </>
           )}
@@ -693,10 +697,13 @@ const Index = () => {
             <PwaInstallBanner />
 
             {/* Daily Goal & Streak */}
+            {/* Daily Goal & Streak - Fun Mode only */}
+            {isFunMode && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
               <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
             </div>
+            )}
 
             <div data-tour="stats-bar">
               <StatsBar stats={quiz.sessionStats} />
@@ -817,11 +824,11 @@ const Index = () => {
                       <button
                         key={lvl}
                         onClick={() => {
-                          if (unlocked && lvl !== quiz.level) {
+                          if (lvl !== quiz.level) {
+                            // Allow switching to ANY level during quiz (no lock in quiz view)
                             quiz.switchLevel(quiz.topic!, lvl);
                           }
                         }}
-                        disabled={!unlocked}
                         className={`
                           flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all
                           min-w-[36px] h-[42px] px-1
@@ -829,19 +836,15 @@ const Index = () => {
                             ? 'bg-primary text-primary-foreground ring-2 ring-primary/30 scale-110'
                             : isMastered
                               ? 'bg-success/20 text-success hover:bg-success/30'
-                              : unlocked
-                                ? 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
                           }
                         `}
-                        title={isMastered ? `Level ${lvl} ✓ (${thresholdPct}%)` : unlocked ? `Level ${lvl} — need ${thresholdPct}% to pass` : `Level ${lvl} locked`}
+                        title={isMastered ? `Level ${lvl} ✓ (${thresholdPct}%)` : `Level ${lvl} — need ${thresholdPct}% to pass`}
                       >
-                        <span>{unlocked ? lvl : '🔒'}</span>
-                        {unlocked && (
-                          <span className={`text-[9px] font-medium leading-none ${isActive ? 'opacity-80' : 'opacity-60'}`}>
-                            {thresholdPct}%
-                          </span>
-                        )}
+                        <span>{lvl}</span>
+                        <span className={`text-[9px] font-medium leading-none ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                          {thresholdPct}%
+                        </span>
                       </button>
                     );
                   })}
@@ -860,7 +863,14 @@ const Index = () => {
                   ) : (
                     <>
                       <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                      <span>⭐ {quiz.sessionStats.stars}</span>
+                      {isFunMode && <span>⭐ {quiz.sessionStats.stars}</span>}
+                      {!isFunMode && (
+                        <span className="text-muted-foreground">
+                          {quiz.levelStats.total > 0 
+                            ? `${Math.round((quiz.levelStats.correct / quiz.levelStats.total) * 100)}% accuracy`
+                            : 'Start answering'}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -875,7 +885,7 @@ const Index = () => {
                 animate={{ opacity: 1 }}
               >
                 <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                <span>⭐ {quiz.sessionStats.stars}</span>
+                {isFunMode && <span>⭐ {quiz.sessionStats.stars}</span>}
               </motion.div>
             )}
 
@@ -974,40 +984,45 @@ const Index = () => {
         />
       )}
 
-      {/* Daily Challenge */}
-      <DailyChallengeCard
-        challenge={dailyChallenge.challenge}
-        stats={dailyChallenge.stats}
-        isLoading={dailyChallenge.isLoading}
-        isTodayCompleted={dailyChallenge.isTodayCompleted}
-        bonusStars={dailyChallenge.bonusStars}
-        onComplete={dailyChallenge.completeChallenge}
-        onClearBonus={dailyChallenge.clearBonusStars}
-        onAddStars={handleAddStars}
-      />
+      {/* Daily Challenge - Fun Mode only */}
+      {isFunMode && (
+        <DailyChallengeCard
+          challenge={dailyChallenge.challenge}
+          stats={dailyChallenge.stats}
+          isLoading={dailyChallenge.isLoading}
+          isTodayCompleted={dailyChallenge.isTodayCompleted}
+          bonusStars={dailyChallenge.bonusStars}
+          onComplete={dailyChallenge.completeChallenge}
+          onClearBonus={dailyChallenge.clearBonusStars}
+          onAddStars={handleAddStars}
+        />
+      )}
 
-      {/* Battle Mode */}
-      <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />
+      {/* Battle Mode - Fun Mode only */}
+      {isFunMode && <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />}
 
-      {/* Friends Panel */}
-      <FriendsPanel 
-        currentSubject={quiz.subject}
-        topics={Object.keys(quiz.banks[quiz.subject] || {})}
-        onJoinBattle={(roomCode) => {
-          // This will be handled by the BattleMode component's join functionality
-          console.log('Join battle with code:', roomCode);
-        }}
-      />
+      {/* Friends Panel - Fun Mode only */}
+      {isFunMode && (
+        <FriendsPanel 
+          currentSubject={quiz.subject}
+          topics={Object.keys(quiz.banks[quiz.subject] || {})}
+          onJoinBattle={(roomCode) => {
+            console.log('Join battle with code:', roomCode);
+          }}
+        />
+      )}
 
-      {/* Leaderboard */}
-      <Leaderboard currentUserId={user?.id} />
+      {/* Leaderboard - Fun Mode only */}
+      {isFunMode && <Leaderboard currentUserId={user?.id} />}
 
-      {/* Achievements Panel */}
-      <AchievementsPanel 
-        achievements={achievements.achievements}
-        unlockedCount={achievements.getUnlockedCount()}
-        totalCount={achievements.getTotalCount()}
-      />
+      {/* Achievements Panel - Fun Mode only */}
+      {isFunMode && (
+        <AchievementsPanel 
+          achievements={achievements.achievements}
+          unlockedCount={achievements.getUnlockedCount()}
+          totalCount={achievements.getTotalCount()}
+        />
+      )}
 
       {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
       {/* Achievements still tracked, just no pop-up interruption */}

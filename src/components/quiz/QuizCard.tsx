@@ -326,11 +326,19 @@ export const QuizCard = ({
       }}
     >
       {/* Header */}
-      <div className={`bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'} p-4`}>
+      <div className={`p-4 ${mode === 'focused' 
+        ? 'bg-muted border-b border-border' 
+        : `bg-gradient-to-r ${currentTheme?.bgClass || 'from-primary to-secondary'}`
+      }`}>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <span className="text-white/80 text-sm">Question {levelStats.total + 1}</span>
-            <span className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-semibold">
+            <span className={`text-sm ${mode === 'focused' ? 'text-muted-foreground' : 'text-white/80'}`}>
+              Question {levelStats.total + 1}
+            </span>
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${mode === 'focused' 
+              ? 'bg-primary/10 text-primary' 
+              : 'bg-white/20 text-white'
+            }`}>
               Level {level}
             </span>
           </div>
@@ -340,11 +348,17 @@ export const QuizCard = ({
               aria-live="polite"
               aria-label={`Time elapsed: ${formatTime(elapsedTime)}`}
               className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                isAnswered 
-                  ? 'bg-white/20 text-white' 
-                  : elapsedTime > 60 
-                    ? 'bg-amber-500/80 text-white animate-pulse' 
-                    : 'bg-white/20 text-white'
+                mode === 'focused'
+                  ? isAnswered 
+                    ? 'bg-muted-foreground/10 text-muted-foreground'
+                    : elapsedTime > 60
+                      ? 'bg-amber-500/10 text-amber-600 animate-pulse'
+                      : 'bg-muted-foreground/10 text-muted-foreground'
+                  : isAnswered 
+                    ? 'bg-white/20 text-white' 
+                    : elapsedTime > 60 
+                      ? 'bg-amber-500/80 text-white animate-pulse' 
+                      : 'bg-white/20 text-white'
               }`}
               animate={!isAnswered && elapsedTime > 30 ? { scale: [1, 1.02, 1] } : {}}
               transition={{ duration: 1, repeat: Infinity }}
@@ -352,7 +366,7 @@ export const QuizCard = ({
               <Clock className="w-4 h-4" />
               <span>{formatTime(elapsedTime)}</span>
             </motion.div>
-            <span className="text-white/80 text-sm">
+            <span className={`text-sm ${mode === 'focused' ? 'text-muted-foreground' : 'text-white/80'}`}>
               {levelStats.correct}/{levelStats.total} correct
             </span>
           </div>

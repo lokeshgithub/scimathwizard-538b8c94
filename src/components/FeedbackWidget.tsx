@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
 import { useLocation } from "react-router-dom";
 
 const FEEDBACK_TYPES = [
@@ -27,8 +26,11 @@ const FeedbackWidget = () => {
   const captureScreenshot = useCallback(async () => {
     setCapturing(true);
     try {
+      // Dynamically import html2canvas only when needed
+      const html2canvas = (await import("html2canvas")).default;
+      
       const widget = document.getElementById("feedback-widget");
-      if (widget) widget.style.display = "none";
+      if (widget) widget.style.visibility = "hidden";
 
       const canvas = await html2canvas(document.body, {
         scale: 0.5,
@@ -37,19 +39,20 @@ const FeedbackWidget = () => {
         allowTaint: true,
       });
 
-      if (widget) widget.style.display = "";
+      if (widget) widget.style.visibility = "";
       setScreenshot(canvas.toDataURL("image/jpeg", 0.6));
     } catch {
-      toast.error("Couldn't capture screenshot");
+      // Screenshot failed - that's OK, user can still submit text feedback
+      toast.info("Screenshot unavailable, but you can still type your feedback!");
     } finally {
       setCapturing(false);
     }
   }, []);
 
-  const handleOpen = useCallback(async () => {
+  const handleOpen = useCallback(() => {
+    // Just open the panel - don't auto-capture screenshot (it was causing vanishing issues)
     setIsOpen(true);
-    await captureScreenshot();
-  }, [captureScreenshot]);
+  }, []);
 
   const handleSubmit = async () => {
     if (!message.trim() && !screenshot) {
@@ -107,7 +110,7 @@ const FeedbackWidget = () => {
   if (location.pathname === "/testing") return null;
 
   return (
-    <div id="feedback-widget" className="fixed right-0 top-1/2 -translate-y-1/2 z-50">
+    <div id="feedback-widget" className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
       {/* Collapsed tab */}
       {!isOpen && (
         <button
@@ -176,7 +179,7 @@ const FeedbackWidget = () => {
                   className="w-full text-xs"
                 >
                   {capturing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Camera className="w-3 h-3 mr-1" />}
-                  {capturing ? "Capturing..." : "Capture Screenshot"}
+                  {capturing ? "Capturing..." : "Attach Screenshot (optional)"}
                 </Button>
               )}
 
@@ -184,7 +187,7 @@ const FeedbackWidget = () => {
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="What's on your mind? (optional with screenshot)"
+                placeholder="What's on your mind?"
                 className="text-sm min-h-[80px] resize-none"
                 maxLength={1000}
               />

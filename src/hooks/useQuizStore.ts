@@ -193,6 +193,8 @@ interface ActiveSession {
   subject: Subject;
   level: number;
   levelStats: { correct: number; total: number };
+  questionIndex: number; // Track where user left off
+  questionIds: string[]; // Preserve question order for resume
   timestamp: number;
 }
 
@@ -528,19 +530,21 @@ export const useQuizStore = () => {
   // Sessions are saved PER TOPIC so switching topics doesn't lose progress
   // DEBOUNCED to prevent blocking during rapid answer submissions
   useEffect(() => {
-    if (topic && levelStats.total > 0) {
+    if (topic && (levelStats.total > 0 || questionIndex > 0)) {
       const timeoutId = setTimeout(() => {
         saveActiveSession(topic, {
           subject,
           level,
           levelStats,
+          questionIndex,
+          questionIds: currentQuestions.map(q => q.id),
           timestamp: Date.now(),
         });
       }, 300); // Debounce 300ms
 
       return () => clearTimeout(timeoutId);
     }
-  }, [topic, subject, level, levelStats]);
+  }, [topic, subject, level, levelStats, questionIndex, currentQuestions]);
 
   // Save answered question IDs to sessionStorage (persists across page refresh)
   // DEBOUNCED to prevent blocking - sessionStorage is synchronous
@@ -743,6 +747,29 @@ export const useQuizStore = () => {
       restoredLevelStats = activeSession.levelStats;
       restoredFromSession = true;
       logger.debug(`[selectTopic] Restored from active session for "${topicName}": level ${currentLevel}, stats:`, restoredLevelStats);
+      
+      // Restore question order and index from session
+      if (activeSession.questionIds && activeSession.questionIds.length > 0) {
+        const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
+        const questionMap = new Map(allForLevel.map(q => [q.id, q]));
+        
+        // Rebuild questions in saved order
+        const restoredQuestions = activeSession.questionIds
+          .map(id => questionMap.get(id))
+          .filter((q): q is Question => !!q);
+        
+        if (restoredQuestions.length > 0) {
+          setCurrentQuestions(restoredQuestions);
+          // Resume from where they left off (next unanswered question)
+          const resumeIndex = Math.min(activeSession.questionIndex || 0, restoredQuestions.length - 1);
+          setQuestionIndex(resumeIndex);
+          setLevel(currentLevel);
+          setLevelStats(restoredLevelStats);
+          setQuestionStartTime(Date.now());
+          logger.debug(`[selectTopic] Restored ${restoredQuestions.length} questions, resuming at index ${resumeIndex}`);
+          return; // Skip the normal question loading below
+        }
+      }
     } else {
       // No active session - find the appropriate level
       // Check explicitly unlocked levels first
