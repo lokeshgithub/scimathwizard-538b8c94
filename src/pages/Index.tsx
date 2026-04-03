@@ -885,7 +885,7 @@ const Index = () => {
                 animate={{ opacity: 1 }}
               >
                 <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                <span>⭐ {quiz.sessionStats.stars}</span>
+                {isFunMode && <span>⭐ {quiz.sessionStats.stars}</span>}
               </motion.div>
             )}
 
