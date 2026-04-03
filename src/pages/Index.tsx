@@ -558,12 +558,14 @@ const Index = () => {
                 <div className="flex items-center gap-2 min-w-0">
                   <motion.div
                     className="flex items-center gap-1 sm:gap-2 min-w-0"
-                    animate={{ y: [0, -5, 0] }}
+                    animate={isFunMode ? { y: [0, -5, 0] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
-                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">Magic Mastery Quiz</h1>
-                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />
+                    {isFunMode && <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />}
+                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">
+                      {isFunMode ? 'Magic Mastery Quiz' : 'SciMathWizard'}
+                    </h1>
+                    {isFunMode && <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 hidden sm:block" />}
                   </motion.div>
 
                   {/* Grade Badge - Shows currently selected grade */}
