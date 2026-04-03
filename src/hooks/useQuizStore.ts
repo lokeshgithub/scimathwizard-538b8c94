@@ -193,6 +193,8 @@ interface ActiveSession {
   subject: Subject;
   level: number;
   levelStats: { correct: number; total: number };
+  questionIndex: number; // Track where user left off
+  questionIds: string[]; // Preserve question order for resume
   timestamp: number;
 }
 
