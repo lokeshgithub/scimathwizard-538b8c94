@@ -817,11 +817,11 @@ const Index = () => {
                       <button
                         key={lvl}
                         onClick={() => {
-                          if (unlocked && lvl !== quiz.level) {
+                          if (lvl !== quiz.level) {
+                            // Allow switching to ANY level during quiz (no lock in quiz view)
                             quiz.switchLevel(quiz.topic!, lvl);
                           }
                         }}
-                        disabled={!unlocked}
                         className={`
                           flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all
                           min-w-[36px] h-[42px] px-1
@@ -829,19 +829,15 @@ const Index = () => {
                             ? 'bg-primary text-primary-foreground ring-2 ring-primary/30 scale-110'
                             : isMastered
                               ? 'bg-success/20 text-success hover:bg-success/30'
-                              : unlocked
-                                ? 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
                           }
                         `}
-                        title={isMastered ? `Level ${lvl} ✓ (${thresholdPct}%)` : unlocked ? `Level ${lvl} — need ${thresholdPct}% to pass` : `Level ${lvl} locked`}
+                        title={isMastered ? `Level ${lvl} ✓ (${thresholdPct}%)` : `Level ${lvl} — need ${thresholdPct}% to pass`}
                       >
-                        <span>{unlocked ? lvl : '🔒'}</span>
-                        {unlocked && (
-                          <span className={`text-[9px] font-medium leading-none ${isActive ? 'opacity-80' : 'opacity-60'}`}>
-                            {thresholdPct}%
-                          </span>
-                        )}
+                        <span>{lvl}</span>
+                        <span className={`text-[9px] font-medium leading-none ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                          {thresholdPct}%
+                        </span>
                       </button>
                     );
                   })}
