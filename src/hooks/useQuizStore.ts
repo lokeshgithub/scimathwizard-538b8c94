@@ -530,7 +530,7 @@ export const useQuizStore = () => {
   // Sessions are saved PER TOPIC so switching topics doesn't lose progress
   // DEBOUNCED to prevent blocking during rapid answer submissions
   useEffect(() => {
-    if (topic && levelStats.total > 0) {
+    if (topic && (levelStats.total > 0 || questionIndex > 0)) {
       const timeoutId = setTimeout(() => {
         saveActiveSession(topic, {
           subject,
@@ -544,7 +544,7 @@ export const useQuizStore = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [topic, subject, level, levelStats]);
+  }, [topic, subject, level, levelStats, questionIndex, currentQuestions]);
 
   // Save answered question IDs to sessionStorage (persists across page refresh)
   // DEBOUNCED to prevent blocking - sessionStorage is synchronous
