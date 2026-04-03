@@ -647,8 +647,6 @@ export const TopicDashboard = ({
                                 <div className="flex items-center gap-1 mb-2">
                                   {topic.levels.slice(0, 7).map((level: number) => {
                                     const isMastered = topic.progress[level]?.mastered;
-                                    const unlocked = isLevelUnlocked ? isLevelUnlocked(topic.name, level) : true;
-                                    const isLocked = !unlocked && !isMastered;
 
                                     return (
                                       <button
@@ -662,15 +660,13 @@ export const TopicDashboard = ({
                                           transition-all hover:scale-110
                                           ${isMastered
                                             ? `${colors.bg} text-white`
-                                            : isLocked
-                                            ? 'bg-muted/70 text-muted-foreground/50'
                                             : 'bg-muted text-muted-foreground hover:bg-muted/80'
                                           }
                                         `}
-                                        title={isMastered ? `L${level} Mastered` : isLocked ? `L${level} Locked` : `L${level} — need ${Math.round(getThresholdForLevel(level) * 100)}% to pass`}
+                                        title={isMastered ? `L${level} Mastered` : `L${level} — need ${Math.round(getThresholdForLevel(level) * 100)}% to pass`}
                                         data-testid={`level-button-${level}`}
                                       >
-                                        {isLocked ? <Lock className="w-2.5 h-2.5" /> : level}
+                                        {level}
                                       </button>
                                     );
                                   })}
