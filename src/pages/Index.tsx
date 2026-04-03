@@ -679,7 +679,9 @@ const Index = () => {
                 </div>
               </div>
               <p className="text-white/80 text-sm mt-2">
-                Master each level with increasing challenges! ✨
+                {isFunMode 
+                  ? 'Master each level with increasing challenges! ✨' 
+                  : 'Practice systematically. Track your progress.'}
               </p>
             </>
           )}
