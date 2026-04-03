@@ -697,10 +697,13 @@ const Index = () => {
             <PwaInstallBanner />
 
             {/* Daily Goal & Streak */}
+            {/* Daily Goal & Streak - Fun Mode only */}
+            {isFunMode && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" data-tour="daily-goals">
               <DailyGoalTracker questionsAnswered={quiz.sessionStats.solved} dailyGoal={20} />
               <DailyStreakTracker hasAnsweredToday={quiz.sessionStats.solved > 0} />
             </div>
+            )}
 
             <div data-tour="stats-bar">
               <StatsBar stats={quiz.sessionStats} />
