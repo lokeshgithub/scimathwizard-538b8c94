@@ -863,7 +863,14 @@ const Index = () => {
                   ) : (
                     <>
                       <span>{quiz.levelStats.correct}/{quiz.levelStats.total} correct</span>
-                      <span>⭐ {quiz.sessionStats.stars}</span>
+                      {isFunMode && <span>⭐ {quiz.sessionStats.stars}</span>}
+                      {!isFunMode && (
+                        <span className="text-muted-foreground">
+                          {quiz.levelStats.total > 0 
+                            ? `${Math.round((quiz.levelStats.correct / quiz.levelStats.total) * 100)}% accuracy`
+                            : 'Start answering'}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
