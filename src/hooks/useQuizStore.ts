@@ -536,6 +536,8 @@ export const useQuizStore = () => {
           subject,
           level,
           levelStats,
+          questionIndex,
+          questionIds: currentQuestions.map(q => q.id),
           timestamp: Date.now(),
         });
       }, 300); // Debounce 300ms
