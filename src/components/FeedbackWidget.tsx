@@ -110,21 +110,23 @@ const FeedbackWidget = () => {
   if (location.pathname === "/testing") return null;
 
   return (
-    <div id="feedback-widget" className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
-      {/* Collapsed tab */}
+    <>
+      {/* Collapsed tab - fixed to right edge */}
       {!isOpen && (
-        <button
-          onClick={handleOpen}
-          className="flex items-center gap-1.5 bg-primary text-primary-foreground px-2 py-3 rounded-l-lg shadow-lg hover:px-3 transition-all duration-200 text-xs font-medium"
-          style={{ writingMode: "vertical-lr", textOrientation: "mixed" }}
-          aria-label="Send feedback"
-        >
-          <MessageSquarePlus className="w-4 h-4 rotate-90" />
-          Feedback
-        </button>
+        <div id="feedback-widget" className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+          <button
+            onClick={handleOpen}
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground px-2 py-3 rounded-l-lg shadow-lg hover:px-3 transition-all duration-200 text-xs font-medium"
+            style={{ writingMode: "vertical-lr", textOrientation: "mixed" }}
+            aria-label="Send feedback"
+          >
+            <MessageSquarePlus className="w-4 h-4 rotate-90" />
+            Feedback
+          </button>
+        </div>
       )}
 
-      {/* Expanded panel */}
+      {/* Expanded panel - rendered as a top-level overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20" onClick={() => setIsOpen(false)}>
           <div
@@ -210,7 +212,7 @@ const FeedbackWidget = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
