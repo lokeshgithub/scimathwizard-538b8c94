@@ -984,40 +984,45 @@ const Index = () => {
         />
       )}
 
-      {/* Daily Challenge */}
-      <DailyChallengeCard
-        challenge={dailyChallenge.challenge}
-        stats={dailyChallenge.stats}
-        isLoading={dailyChallenge.isLoading}
-        isTodayCompleted={dailyChallenge.isTodayCompleted}
-        bonusStars={dailyChallenge.bonusStars}
-        onComplete={dailyChallenge.completeChallenge}
-        onClearBonus={dailyChallenge.clearBonusStars}
-        onAddStars={handleAddStars}
-      />
+      {/* Daily Challenge - Fun Mode only */}
+      {isFunMode && (
+        <DailyChallengeCard
+          challenge={dailyChallenge.challenge}
+          stats={dailyChallenge.stats}
+          isLoading={dailyChallenge.isLoading}
+          isTodayCompleted={dailyChallenge.isTodayCompleted}
+          bonusStars={dailyChallenge.bonusStars}
+          onComplete={dailyChallenge.completeChallenge}
+          onClearBonus={dailyChallenge.clearBonusStars}
+          onAddStars={handleAddStars}
+        />
+      )}
 
-      {/* Battle Mode */}
-      <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />
+      {/* Battle Mode - Fun Mode only */}
+      {isFunMode && <BattleMode banks={quiz.banks} currentSubject={quiz.subject} />}
 
-      {/* Friends Panel */}
-      <FriendsPanel 
-        currentSubject={quiz.subject}
-        topics={Object.keys(quiz.banks[quiz.subject] || {})}
-        onJoinBattle={(roomCode) => {
-          // This will be handled by the BattleMode component's join functionality
-          console.log('Join battle with code:', roomCode);
-        }}
-      />
+      {/* Friends Panel - Fun Mode only */}
+      {isFunMode && (
+        <FriendsPanel 
+          currentSubject={quiz.subject}
+          topics={Object.keys(quiz.banks[quiz.subject] || {})}
+          onJoinBattle={(roomCode) => {
+            console.log('Join battle with code:', roomCode);
+          }}
+        />
+      )}
 
-      {/* Leaderboard */}
-      <Leaderboard currentUserId={user?.id} />
+      {/* Leaderboard - Fun Mode only */}
+      {isFunMode && <Leaderboard currentUserId={user?.id} />}
 
-      {/* Achievements Panel */}
-      <AchievementsPanel 
-        achievements={achievements.achievements}
-        unlockedCount={achievements.getUnlockedCount()}
-        totalCount={achievements.getTotalCount()}
-      />
+      {/* Achievements Panel - Fun Mode only */}
+      {isFunMode && (
+        <AchievementsPanel 
+          achievements={achievements.achievements}
+          unlockedCount={achievements.getUnlockedCount()}
+          totalCount={achievements.getTotalCount()}
+        />
+      )}
 
       {/* Achievement Unlocked Animation - DISABLED for snappier flow */}
       {/* Achievements still tracked, just no pop-up interruption */}
