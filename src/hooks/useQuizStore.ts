@@ -1460,6 +1460,20 @@ export const useQuizStore = () => {
 
   // Exit current quiz and go back to topic selection
   const exitToTopics = useCallback(() => {
+    // CRITICAL: Force-save active session IMMEDIATELY before clearing state
+    // The debounced save (300ms) might not fire before state clears
+    if (topic && (levelStats.total > 0 || questionIndex > 0)) {
+      saveActiveSession(topic, {
+        subject,
+        level,
+        levelStats,
+        questionIndex,
+        questionIds: currentQuestions.map(q => q.id),
+        timestamp: Date.now(),
+      });
+      logger.debug(`[exitToTopics] Force-saved session for "${topic}": level ${level}, stats:`, levelStats, `questionIndex: ${questionIndex}`);
+    }
+
     setTopic(null);
     setMixedTopics(null);
     setCurrentQuestions([]);
@@ -1469,7 +1483,7 @@ export const useQuizStore = () => {
     setIsReviewMode(false);
     // Don't reset levelStats or progress - keep their work
     // Don't clear active session - they may want to resume later
-  }, []);
+  }, [topic, subject, level, levelStats, questionIndex, currentQuestions]);
 
   // Wrapper to save subject preference to localStorage
   const setSubject = useCallback((newSubject: Subject) => {

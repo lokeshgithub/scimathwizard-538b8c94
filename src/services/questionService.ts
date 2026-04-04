@@ -502,20 +502,34 @@ export function logAnswerToServer(
 }
 
 // Validate answer via edge function (server-side validation)
+// Includes a 10-second timeout to prevent infinite "validating..." spinner
 export async function validateAnswer(
   questionId: string,
   selectedAnswer: number // This should be the ORIGINAL (unshuffled) index
 ): Promise<{ isCorrect: boolean; correctIndex: number; explanation: string }> {
-  const { data, error } = await supabase.functions.invoke('validate-answer', {
-    body: { questionId, selectedAnswer },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-  if (error) {
-    console.error('Error validating answer:', error);
-    throw new Error('Failed to validate answer');
+  try {
+    const { data, error } = await supabase.functions.invoke('validate-answer', {
+      body: { questionId, selectedAnswer },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      console.error('Error validating answer:', error);
+      throw new Error('Failed to validate answer. Please try again.');
+    }
+
+    return data;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err?.name === 'AbortError' || err?.message?.includes('abort')) {
+      throw new Error('Answer check timed out. Please check your connection and try again.');
+    }
+    throw err;
   }
-
-  return data;
 }
 
 // Check for duplicate questions in a topic
