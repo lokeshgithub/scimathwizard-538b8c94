@@ -210,11 +210,12 @@ export const QuizCard = ({
 
       // Pop-up milestone animations removed for snappier flow
       // Level completion modal still shows via handleNext -> checkMastery
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error validating answer:', error);
       setIsValidating(false);
       setSelectedAnswer(null); // Reset on error
-      setAnswerError('Failed to validate answer. Please try again.');
+      const msg = error?.message || 'Failed to validate answer. Please try again.';
+      setAnswerError(msg);
     }
   }, [isAnswered, isValidating, onAnswer, level, consecutiveCorrect, recentWrongCount, sessionStats.totalCorrect, sessionStats.solved, onPrefetchNext]);
 
