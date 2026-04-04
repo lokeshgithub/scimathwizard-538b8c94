@@ -417,7 +417,7 @@ export const useQuizStore = () => {
 
     // If we have enough at target level, use those
     if (targetLevelQuestions.length >= 3) {
-      const shuffled = [...targetLevelQuestions].sort(() => Math.random() - 0.5);
+      const shuffled = dedupAndShuffle(targetLevelQuestions);
       return shuffled.slice(0, 3);
     }
 
@@ -427,7 +427,7 @@ export const useQuizStore = () => {
 
     if (combined.length === 0) return [];
 
-    const shuffled = [...combined].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(combined);
     return shuffled.slice(0, 3);
   }, [banks, subject]);
 
@@ -848,7 +848,7 @@ export const useQuizStore = () => {
 
     // If unlimited practice mode or no new questions available, use all questions
     const questionsToUse = (startUnlimited || available.length === 0) ? allForLevel : available;
-    const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(questionsToUse);
 
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
@@ -900,7 +900,7 @@ export const useQuizStore = () => {
     }
     
     // Shuffle all questions
-    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(allQuestions);
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
@@ -1119,7 +1119,7 @@ export const useQuizStore = () => {
       const available = getAvailableQuestions(topic!, newLevel);
       const allForLevel = banks[subject]?.[topic!]?.filter(q => q.level === newLevel) || [];
       const questionsToUse = available.length > 0 ? available : allForLevel;
-      const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
+      const shuffled = dedupAndShuffle(questionsToUse);
 
       setCurrentQuestions(shuffled);
       setQuestionIndex(0);
@@ -1135,7 +1135,7 @@ export const useQuizStore = () => {
     // Reset level stats but keep on same level with all questions
     setLevelStats({ correct: 0, total: 0 });
     const allForLevel = banks[subject]?.[topic]?.filter(q => q.level === level) || [];
-    const shuffled = [...allForLevel].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(allForLevel);
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionHistory([]);
@@ -1156,7 +1156,7 @@ export const useQuizStore = () => {
     const available = getAvailableQuestions(topicName, newLevel);
     const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === newLevel) || [];
     const questionsToUse = available.length > 0 ? available : allForLevel;
-    const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(questionsToUse);
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
@@ -1168,7 +1168,7 @@ export const useQuizStore = () => {
     const available = getAvailableQuestions(topic!, level);
     const allForLevel = banks[subject]?.[topic!]?.filter(q => q.level === level) || [];
     const questionsToUse = available.length > 0 ? available : allForLevel;
-    const shuffled = [...questionsToUse].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(questionsToUse);
     
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
@@ -1402,7 +1402,7 @@ export const useQuizStore = () => {
     setIsReviewMode(false); // Not review mode
 
     // Load ALL questions for this level, not just 10
-    const shuffled = [...levelQuestions].sort(() => Math.random() - 0.5);
+    const shuffled = dedupAndShuffle(levelQuestions);
     setCurrentQuestions(shuffled);
     setQuestionIndex(0);
     setLevelStats({ correct: 0, total: 0 });
