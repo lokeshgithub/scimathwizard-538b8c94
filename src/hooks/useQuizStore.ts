@@ -1161,10 +1161,13 @@ export const useQuizStore = () => {
     setSessionAnsweredIds(new Set());
 
     const available = getAvailableQuestions(topicName, newLevel);
-    const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === newLevel) || [];
-    const questionsToUse = available.length > 0 ? available : allForLevel;
-    const shuffled = dedupAndShuffle(questionsToUse);
-    setCurrentQuestions(shuffled);
+    if (available.length === 0) {
+      // Show empty state — user already solved all questions in this level
+      setCurrentQuestions([]);
+    } else {
+      const shuffled = dedupAndShuffle(available);
+      setCurrentQuestions(shuffled);
+    }
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
   }, [getAvailableQuestions, banks, subject]);
