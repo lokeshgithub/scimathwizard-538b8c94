@@ -57,6 +57,18 @@ const DEFAULT_MAX_LEVEL = 5; // Fallback, actual max detected from data
 const MIN_LEVEL = 1;
 const MAX_SUPPORTED_LEVEL = 7; // Maximum levels we support
 
+// Deduplicate questions by text content (prevents same question appearing multiple times)
+function deduplicateQuestions(questions: Question[]): Question[] {
+  const seen = new Set<string>();
+  return questions.filter(q => {
+    // Normalize question text for comparison (trim, lowercase, collapse whitespace)
+    const key = q.question.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // Star rewards use conservative level-based system from masteryRewards.ts
 // getQuestionStars(isCorrect, streak, level) = level + small streak bonus
 // - Level 1-7: 1-7 stars (linear, NOT multiplicative)
