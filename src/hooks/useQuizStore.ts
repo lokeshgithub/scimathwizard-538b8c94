@@ -846,11 +846,18 @@ export const useQuizStore = () => {
     const available = getAvailableQuestions(topicName, currentLevel);
     const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
 
-    // If unlimited practice mode or no new questions available, use all questions
-    const questionsToUse = (startUnlimited || available.length === 0) ? allForLevel : available;
-    const shuffled = dedupAndShuffle(questionsToUse);
-
-    setCurrentQuestions(shuffled);
+    // If unlimited practice mode, use all questions
+    // If no new questions available, show empty state (don't silently re-serve answered questions)
+    if (startUnlimited) {
+      const shuffled = dedupAndShuffle(allForLevel);
+      setCurrentQuestions(shuffled);
+    } else if (available.length === 0) {
+      // Let the UI show "All Questions Solved!" instead of silently recycling
+      setCurrentQuestions([]);
+    } else {
+      const shuffled = dedupAndShuffle(available);
+      setCurrentQuestions(shuffled);
+    }
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
   }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking, unlockedLevels]);
@@ -1154,10 +1161,13 @@ export const useQuizStore = () => {
     setSessionAnsweredIds(new Set());
 
     const available = getAvailableQuestions(topicName, newLevel);
-    const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === newLevel) || [];
-    const questionsToUse = available.length > 0 ? available : allForLevel;
-    const shuffled = dedupAndShuffle(questionsToUse);
-    setCurrentQuestions(shuffled);
+    if (available.length === 0) {
+      // Show empty state — user already solved all questions in this level
+      setCurrentQuestions([]);
+    } else {
+      const shuffled = dedupAndShuffle(available);
+      setCurrentQuestions(shuffled);
+    }
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
   }, [getAvailableQuestions, banks, subject]);
@@ -1166,11 +1176,12 @@ export const useQuizStore = () => {
     setLevelStats({ correct: 0, total: 0 });
     
     const available = getAvailableQuestions(topic!, level);
-    const allForLevel = banks[subject]?.[topic!]?.filter(q => q.level === level) || [];
-    const questionsToUse = available.length > 0 ? available : allForLevel;
-    const shuffled = dedupAndShuffle(questionsToUse);
-    
-    setCurrentQuestions(shuffled);
+    if (available.length === 0) {
+      setCurrentQuestions([]);
+    } else {
+      const shuffled = dedupAndShuffle(available);
+      setCurrentQuestions(shuffled);
+    }
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
   }, [level, topic, getAvailableQuestions, banks, subject]);

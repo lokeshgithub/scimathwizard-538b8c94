@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LandingHero } from '@/components/LandingHero';
-import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, AlertCircle, RefreshCw, Info } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, LogIn, LogOut, GraduationCap, Brain, Settings, ArrowLeft, ArrowRight, AlertCircle, CheckCircle, RefreshCw, Info } from 'lucide-react';
 import { getThresholdForLevel } from '@/utils/levelThresholds';
 import { toast } from 'sonner';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -915,15 +915,23 @@ const Index = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <CheckCircle className="w-12 h-12 text-primary mx-auto mb-4" />
                 {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level) > 0 ? (
                   // All questions solved in practice mode
                   <>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">All Questions Solved!</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">🎉 All Questions Mastered!</h3>
                     <p className="text-muted-foreground mb-4">
-                      You've answered all {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level)} questions in this level correctly.
+                      You've answered all {quiz.getSolvedQuestionsCount(quiz.topic, quiz.level)} questions in Level {quiz.level} correctly. Amazing work!
                     </p>
-                    <div className="flex gap-3 justify-center">
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      {quiz.level < quiz.MAX_LEVEL && (
+                        <Button onClick={() => {
+                          if (quiz.topic) quiz.switchLevel(quiz.topic, quiz.level + 1);
+                        }}>
+                          <ArrowRight className="w-4 h-4 mr-2" />
+                          Next Level
+                        </Button>
+                      )}
                       <Button onClick={() => {
                         if (quiz.topic) {
                           const started = quiz.startReviewMode(quiz.topic, quiz.level);
@@ -934,7 +942,12 @@ const Index = () => {
                       }} variant="outline">
                         Review Solved Questions
                       </Button>
-                      <Button onClick={quiz.exitToTopics}>
+                      <Button onClick={() => {
+                        if (quiz.topic) quiz.startUnlimitedPractice(quiz.topic, quiz.level);
+                      }} variant="outline">
+                        Practice Again
+                      </Button>
+                      <Button onClick={quiz.exitToTopics} variant="ghost">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Topics
                       </Button>
