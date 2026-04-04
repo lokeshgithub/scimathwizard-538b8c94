@@ -69,6 +69,11 @@ function deduplicateQuestions(questions: Question[]): Question[] {
   });
 }
 
+// Helper: deduplicate then shuffle
+function dedupAndShuffle(questions: Question[]): Question[] {
+  return deduplicateQuestions(questions).sort(() => Math.random() - 0.5);
+}
+
 // Star rewards use conservative level-based system from masteryRewards.ts
 // getQuestionStars(isCorrect, streak, level) = level + small streak bonus
 // - Level 1-7: 1-7 stars (linear, NOT multiplicative)
