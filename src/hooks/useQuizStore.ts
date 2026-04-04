@@ -846,11 +846,18 @@ export const useQuizStore = () => {
     const available = getAvailableQuestions(topicName, currentLevel);
     const allForLevel = banks[subject]?.[topicName]?.filter(q => q.level === currentLevel) || [];
 
-    // If unlimited practice mode or no new questions available, use all questions
-    const questionsToUse = (startUnlimited || available.length === 0) ? allForLevel : available;
-    const shuffled = dedupAndShuffle(questionsToUse);
-
-    setCurrentQuestions(shuffled);
+    // If unlimited practice mode, use all questions
+    // If no new questions available, show empty state (don't silently re-serve answered questions)
+    if (startUnlimited) {
+      const shuffled = dedupAndShuffle(allForLevel);
+      setCurrentQuestions(shuffled);
+    } else if (available.length === 0) {
+      // Let the UI show "All Questions Solved!" instead of silently recycling
+      setCurrentQuestions([]);
+    } else {
+      const shuffled = dedupAndShuffle(available);
+      setCurrentQuestions(shuffled);
+    }
     setQuestionIndex(0);
     setQuestionStartTime(Date.now());
   }, [getTopicProgress, getTopicMaxLevel, getAvailableQuestions, banks, subject, questionTracking, unlockedLevels]);
